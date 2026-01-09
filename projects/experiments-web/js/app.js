@@ -9,8 +9,12 @@ const App = {
     state: {
         currentTab: 'experiments',
         currentExperiment: null,
-        calendarMonth: new Date()
+        calendarMonth: new Date(),
+        currentFilter: 'ALL' // NEW: Track active filter
     },
+
+    // Flag to prevent duplicate event bindings
+    eventsInitialized: false,
 
     /**
      * Initialize the app
@@ -60,17 +64,32 @@ const App = {
      * Render Experiments tab
      */
     renderExperimentsScreen() {
-        const experiments = DataManager.getExperiments();
+        let experiments = DataManager.getExperiments();
         const today = new Date();
         const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
         const dateStr = today.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }).toUpperCase();
 
+        // Apply filter if not "ALL"
+        const filter = this.state.currentFilter;
+        if (filter !== 'ALL') {
+            experiments = experiments.filter(e =>
+                e.category && e.category.toUpperCase() === filter
+            );
+        }
+
         let content = '';
         if (experiments.length === 0) {
-            content = UI.emptyState('Idle Station', 'No active protocols running.');
+            if (filter === 'ALL') {
+                content = UI.emptyState('Idle Station', 'No active protocols running.');
+            } else {
+                content = UI.emptyState('No Results', `No ${filter.toLowerCase()} experiments found.`);
+            }
         } else {
             content = experiments.map(e => UI.experimentRow(e)).join('');
         }
+
+        // Helper to determine active pill
+        const isActive = (f) => this.state.currentFilter === f ? 'active' : '';
 
         return `
             <div class="screen active" id="screen-experiments">
@@ -80,10 +99,10 @@ const App = {
                 </div>
                 
                 <div class="filter-pills">
-                    <button class="pill active">ALL</button>
-                    <button class="pill">HEALTH</button>
-                    <button class="pill">FOCUS</button>
-                    <button class="pill">GROWTH</button>
+                    <button class="pill ${isActive('ALL')}" data-filter="ALL">ALL</button>
+                    <button class="pill ${isActive('HEALTH')}" data-filter="HEALTH">HEALTH</button>
+                    <button class="pill ${isActive('FOCUS')}" data-filter="FOCUS">FOCUS</button>
+                    <button class="pill ${isActive('GROWTH')}" data-filter="GROWTH">GROWTH</button>
                 </div>
                 
                 <div id="experiments-list">
@@ -351,9 +370,13 @@ const App = {
     },
 
     /**
-     * Bind all event handlers
+     * Bind all event handlers (called ONCE on init)
      */
     bindEvents() {
+        // CRITICAL: Prevent duplicate event bindings that cause freezing
+        if (this.eventsInitialized) return;
+        this.eventsInitialized = true;
+
         const app = document.getElementById('app');
 
         // Tab navigation
@@ -362,8 +385,8 @@ const App = {
             if (tabItem) {
                 this.state.currentTab = tabItem.dataset.tab;
                 this.state.currentExperiment = null;
+                this.state.currentFilter = 'ALL'; // Reset filter on tab change
                 this.render();
-                this.bindEvents();
             }
         });
 
@@ -460,12 +483,15 @@ const App = {
             }
         });
 
-        // Filter pills
+        // Filter pills - uses state-based filtering
         app.addEventListener('click', (e) => {
-            const pill = e.target.closest('.pill');
+            const pill = e.target.closest('.pill[data-filter]');
             if (pill) {
-                document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
-                pill.classList.add('active');
+                const filter = pill.dataset.filter;
+                if (this.state.currentFilter !== filter) {
+                    this.state.currentFilter = filter;
+                    this.render();
+                }
             }
         });
 
@@ -529,7 +555,6 @@ const App = {
         this.closeModal('modal-create');
         form.reset();
         this.render();
-        this.bindEvents();
     },
 
     /**
@@ -549,7 +574,6 @@ const App = {
         this.closeModal('modal-checkin');
         form.reset();
         this.render();
-        this.bindEvents();
     },
 
     /**
@@ -562,12 +586,13 @@ const App = {
             successCriteria: template.successCriteria,
             durationDays: template.durationDays,
             frequency: template.frequency,
+            category: template.category, // FIXED: Include category for filtering
             startDate: new Date().toISOString()
         });
 
         this.state.currentTab = 'experiments';
+        this.state.currentFilter = 'ALL'; // Reset filter to show new experiment
         this.render();
-        this.bindEvents();
     }
 };
 
