@@ -119,6 +119,7 @@ const UI = {
                 <div class="entry-content">
                     <div class="entry-date">${formatted}</div>
                     ${entry.note ? `<div class="entry-note">${escapeHtml(entry.note)}</div>` : ''}
+                    ${entry.reflection ? `<div class="entry-reflection-badge">✨ Reflection</div>` : ''}
                 </div>
             </div>
         `;

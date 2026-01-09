@@ -394,6 +394,22 @@ const App = {
                             <label class="form-label" for="checkin-note">Note (Optional)</label>
                             <textarea class="form-input" id="checkin-note" name="note" placeholder="How did it go?"></textarea>
                         </div>
+
+                        <div class="form-group">
+                            <button type="button" class="reflection-toggle">
+                                <span style="font-size: 16px;">+</span> <span>Add Weekly Reflection</span>
+                            </button>
+                            <div class="reflection-fields">
+                                <label class="form-label">What worked?</label>
+                                <textarea class="form-input" name="ref_plus" rows="2" placeholder="Wins & progress"></textarea>
+                                
+                                <label class="form-label" style="margin-top: 12px;">What didn't?</label>
+                                <textarea class="form-input" name="ref_minus" rows="2" placeholder="Obstacles & distractions"></textarea>
+                                
+                                <label class="form-label" style="margin-top: 12px;">What's next?</label>
+                                <textarea class="form-input" name="ref_next" rows="2" placeholder="Focus for next week"></textarea>
+                            </div>
+                        </div>
                         <button type="submit" class="btn btn-primary">Save</button>
                     </form>
                 </div>
@@ -433,6 +449,20 @@ const App = {
         app.addEventListener('click', (e) => {
             if (e.target.closest('#btn-check-updates')) {
                 this.checkForUpdates();
+            }
+        });
+
+        // Reflection toggle
+        app.addEventListener('click', (e) => {
+            const toggle = e.target.closest('.reflection-toggle');
+            if (toggle) {
+                const fields = toggle.nextElementSibling;
+                const isVisible = fields.classList.contains('visible');
+                const symbol = toggle.querySelector('span:first-child');
+
+                fields.classList.toggle('visible');
+                // Animate height would be better but simple visibility toggle is functional
+                if (symbol) symbol.textContent = isVisible ? '+' : '−';
             }
         });
 
@@ -626,10 +656,18 @@ const App = {
         const exp = DataManager.getExperiment(this.state.currentExperiment);
         const existingEntry = exp?.entries?.find(e => e.date === today);
 
+        const reflection = {
+            plus: data.get('ref_plus')?.trim(),
+            minus: data.get('ref_minus')?.trim(),
+            next: data.get('ref_next')?.trim()
+        };
+        const hasReflection = reflection.plus || reflection.minus || reflection.next;
+
         DataManager.addEntry(this.state.currentExperiment, {
             date: today,
             isCompleted: isCompleted,
-            note: data.get('note') || null
+            note: data.get('note') || null,
+            reflection: hasReflection ? reflection : null
         });
 
         this.closeModal('modal-checkin');
