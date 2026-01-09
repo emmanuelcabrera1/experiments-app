@@ -1,247 +1,250 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>HTML Apps Workspace</title>
-    <style>
-      :root {
-        --primary: #4a90e2;
-        --accent: #e74c3c;
-        --dark: #2c3e50;
-        --light: #f8f9fa;
-      }
 
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HTML Apps Workspace</title>
+  <style>
+    :root {
+      --primary: #4a90e2;
+      --accent: #e74c3c;
+      --dark: #2c3e50;
+      --light: #f8f9fa;
+    }
 
-      body {
-        font-family: 'Segoe UI', system-ui, sans-serif;
-        background: var(--light);
-        color: #333;
-        line-height: 1.6;
-      }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-      .container {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 0 20px;
-      }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--light);
+      color: #333;
+      line-height: 1.6;
+    }
 
-      /* Hero */
-      .hero {
-        background: white;
-        padding: 60px 0;
-        margin-bottom: 40px;
-        border-bottom: 1px solid #e0e0e0;
-        text-align: center;
-      }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
 
-      .hero h1 {
-        font-size: 3rem;
-        color: var(--dark);
-        margin-bottom: 10px;
-      }
+    /* Hero */
+    .hero {
+      background: white;
+      padding: 60px 0;
+      margin-bottom: 40px;
+      border-bottom: 1px solid #e0e0e0;
+      text-align: center;
+    }
 
-      .hero p {
-        font-size: 1.2rem;
-        color: #666;
-      }
+    .hero h1 {
+      font-size: 3rem;
+      color: var(--dark);
+      margin-bottom: 10px;
+    }
 
-      /* Grid */
-      .grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 30px;
-        margin-bottom: 60px;
-      }
+    .hero p {
+      font-size: 1.2rem;
+      color: #666;
+    }
 
-      .section-title {
-        font-size: 1.5rem;
-        color: var(--dark);
-        margin-bottom: 20px;
-        padding-bottom: 10px;
-        border-bottom: 2px solid var(--primary);
-        display: inline-block;
-      }
+    /* Grid */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 30px;
+      margin-bottom: 60px;
+    }
 
-      /* Cards */
-      .card {
-        background: white;
-        border-radius: 8px;
-        padding: 25px;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-        transition:
-          transform 0.2s,
-          box-shadow 0.2s;
-        border: 1px solid #eee;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-      }
+    .section-title {
+      font-size: 1.5rem;
+      color: var(--dark);
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--primary);
+      display: inline-block;
+    }
 
-      .card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-        border-color: var(--primary);
-      }
+    /* Cards */
+    .card {
+      background: white;
+      border-radius: 8px;
+      padding: 25px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+      transition:
+        transform 0.2s,
+        box-shadow 0.2s;
+      border: 1px solid #eee;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
 
-      .card h3 {
-        color: var(--dark);
-        margin-bottom: 10px;
-        font-size: 1.25rem;
-      }
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+      border-color: var(--primary);
+    }
 
-      .card p {
-        color: #666;
-        margin-bottom: 20px;
-        flex-grow: 1;
-      }
+    .card h3 {
+      color: var(--dark);
+      margin-bottom: 10px;
+      font-size: 1.25rem;
+    }
 
-      .btn {
-        display: inline-block;
-        background: var(--primary);
-        color: white;
-        padding: 10px 20px;
-        border-radius: 4px;
-        text-decoration: none;
-        font-weight: 600;
-        text-align: center;
-        transition: background 0.2s;
-      }
+    .card p {
+      color: #666;
+      margin-bottom: 20px;
+      flex-grow: 1;
+    }
 
-      .btn:hover {
-        background: #357ab8;
-      }
+    .btn {
+      display: inline-block;
+      background: var(--primary);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 4px;
+      text-decoration: none;
+      font-weight: 600;
+      text-align: center;
+      transition: background 0.2s;
+    }
 
-      .btn-outline {
-        background: transparent;
-        color: var(--primary);
-        border: 2px solid var(--primary);
-      }
+    .btn:hover {
+      background: #357ab8;
+    }
 
-      .btn-outline:hover {
-        background: var(--primary);
-        color: white;
-      }
+    .btn-outline {
+      background: transparent;
+      color: var(--primary);
+      border: 2px solid var(--primary);
+    }
 
-      /* Component List */
-      .component-list {
-        list-style: none;
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-        gap: 15px;
-      }
+    .btn-outline:hover {
+      background: var(--primary);
+      color: white;
+    }
 
-      .component-list a {
-        display: block;
-        background: white;
-        padding: 15px;
-        border-radius: 6px;
-        text-decoration: none;
-        color: var(--dark);
-        text-align: center;
-        font-weight: 600;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        transition: all 0.2s;
-      }
+    /* Component List */
+    .component-list {
+      list-style: none;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 15px;
+    }
 
-      .component-list a:hover {
-        background: var(--primary);
-        color: white;
-      }
-    </style>
-  </head>
+    .component-list a {
+      display: block;
+      background: white;
+      padding: 15px;
+      border-radius: 6px;
+      text-decoration: none;
+      color: var(--dark);
+      text-align: center;
+      font-weight: 600;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      transition: all 0.2s;
+    }
 
-  <body>
-    <header class="hero">
-      <div class="container">
-        <h1>HTML Apps Workspace</h1>
-        <p>Your environment for building elegant web applications</p>
+    .component-list a:hover {
+      background: var(--primary);
+      color: white;
+    }
+  </style>
+</head>
+
+<body>
+  <header class="hero">
+    <div class="container">
+      <h1>HTML Apps Workspace</h1>
+      <p>Your environment for building elegant web applications</p>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Documentation -->
+    <section>
+      <h2 class="section-title">📚 Documentation</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>The Elegance Formula</h3>
+          <p>The complete guide with 42 principles for beautiful web design.</p>
+          <a href="documentation/elegance-formula.md" class="btn">Read Guide</a>
+        </div>
+        <div class="card">
+          <h3>Workspace Manual</h3>
+          <p>Learn how to use this workspace structure effectively.</p>
+          <a href="documentation/workspace-guide.md" class="btn btn-outline" onclick="alert('Coming soon!')">Coming
+            Soon</a>
+        </div>
       </div>
-    </header>
+    </section>
 
-    <main class="container">
-      <!-- Documentation -->
-      <section>
-        <h2 class="section-title">📚 Documentation</h2>
-        <div class="grid">
-          <div class="card">
-            <h3>The Elegance Formula</h3>
-            <p>The complete guide with 42 principles for beautiful web design.</p>
-            <a href="documentation/elegance-formula.md" class="btn">Read Guide</a>
-          </div>
-          <div class="card">
-            <h3>Workspace Manual</h3>
-            <p>Learn how to use this workspace structure effectively.</p>
-            <a
-              href="documentation/workspace-guide.md"
-              class="btn btn-outline"
-              onclick="alert('Coming soon!')"
-              >Coming Soon</a
-            >
-          </div>
+    <!-- Projects -->
+    <section>
+      <h2 class="section-title">🚀 Projects</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>First Elegant App</h3>
+          <p>A reference landing page built using the principles.</p>
+          <a href="projects/first-elegant-app/index.html" class="btn">View Project</a>
         </div>
-      </section>
-
-      <!-- Projects -->
-      <section>
-        <h2 class="section-title">🚀 Projects</h2>
-        <div class="grid">
-          <div class="card">
-            <h3>First Elegant App</h3>
-            <p>A reference landing page built using the principles.</p>
-            <a href="projects/first-elegant-app/index.html" class="btn">View Project</a>
-          </div>
+        <div class="card">
+          <h3>Experiments App</h3>
+          <p>Tiny Experiments Framework PWA with PACT methodology.</p>
+          <a href="projects/experiments-web/index.html" class="btn">Launch App</a>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <!-- Templates -->
-      <section>
-        <h2 class="section-title">📋 Starter Templates</h2>
-        <div class="grid">
-          <div class="card">
-            <h3>Basic Index</h3>
-            <p>Minimal HTML5 setup.</p>
-            <a href="templates/basic-index.html" class="btn btn-outline">View Template</a>
-          </div>
-          <div class="card">
-            <h3>Landing Page</h3>
-            <p>Complete marketing page structure.</p>
-            <a href="templates/landing-page.html" class="btn btn-outline">View Template</a>
-          </div>
-          <div class="card">
-            <h3>Contact Form</h3>
-            <p>Form with validation and styles.</p>
-            <a href="templates/contact-form.html" class="btn btn-outline">View Template</a>
-          </div>
-          <div class="card">
-            <h3>Dashboard</h3>
-            <p>Admin panel layout with data grid.</p>
-            <a href="templates/dashboard.html" class="btn btn-outline">View Template</a>
-          </div>
+    <!-- Templates -->
+    <section>
+      <h2 class="section-title">📋 Starter Templates</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Basic Index</h3>
+          <p>Minimal HTML5 setup.</p>
+          <a href="templates/basic-index.html" class="btn btn-outline">View Template</a>
         </div>
-      </section>
-
-      <!-- Components -->
-      <section>
-        <h2 class="section-title">🧩 Component Library</h2>
-        <div class="component-list">
-          <a href="components/navbar.html">Navbar</a>
-          <a href="components/buttons.html">Buttons</a>
-          <a href="components/forms.html">Forms</a>
-          <a href="components/cards.html">Cards</a>
-          <a href="components/alerts.html">Alerts</a>
-          <a href="components/modal.html">Modal</a>
+        <div class="card">
+          <h3>Landing Page</h3>
+          <p>Complete marketing page structure.</p>
+          <a href="templates/landing-page.html" class="btn btn-outline">View Template</a>
         </div>
-      </section>
-    </main>
+        <div class="card">
+          <h3>Contact Form</h3>
+          <p>Form with validation and styles.</p>
+          <a href="templates/contact-form.html" class="btn btn-outline">View Template</a>
+        </div>
+        <div class="card">
+          <h3>Dashboard</h3>
+          <p>Admin panel layout with data grid.</p>
+          <a href="templates/dashboard.html" class="btn btn-outline">View Template</a>
+        </div>
+      </div>
+    </section>
 
-    <footer style="text-align: center; padding: 40px; color: #999">
-      <p>&copy; 2024 HTML Apps Workspace</p>
-    </footer>
-  </body>
+    <!-- Components -->
+    <section>
+      <h2 class="section-title">🧩 Component Library</h2>
+      <div class="component-list">
+        <a href="components/navbar.html">Navbar</a>
+        <a href="components/buttons.html">Buttons</a>
+        <a href="components/forms.html">Forms</a>
+        <a href="components/cards.html">Cards</a>
+        <a href="components/alerts.html">Alerts</a>
+        <a href="components/modal.html">Modal</a>
+      </div>
+    </section>
+  </main>
+
+  <footer style="text-align: center; padding: 40px; color: #999">
+    <p>&copy; 2024 HTML Apps Workspace</p>
+  </footer>
+</body>
+
 </html>
