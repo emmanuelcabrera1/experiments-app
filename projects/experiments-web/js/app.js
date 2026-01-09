@@ -26,10 +26,13 @@ const App = {
     render() {
         const app = document.getElementById('app');
         app.innerHTML = `
-            ${this.renderCurrentScreen()}
+            <main role="main">
+                ${this.renderCurrentScreen()}
+            </main>
             ${this.renderTabBar()}
             ${this.renderFAB()}
             ${this.renderModals()}
+            <div id="aria-live-region" class="sr-only" aria-live="polite" aria-atomic="true"></div>
         `;
     },
 
@@ -112,7 +115,7 @@ const App = {
         return `
             <div class="screen active" id="screen-detail">
                 <div style="display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-lg);">
-                    <button id="btn-back" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                    <button id="btn-back" aria-label="Go back" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
                         ${UI.icons.back}
                     </button>
                     <h2 style="flex: 1;">${exp.title}</h2>
@@ -277,7 +280,7 @@ const App = {
         if (this.state.currentExperiment || this.state.currentTab !== 'experiments') {
             return '';
         }
-        return `<button class="fab" id="fab-add">${UI.icons.plus}</button>`;
+        return `<button class="fab" id="fab-add" aria-label="Add new experiment">${UI.icons.plus}</button>`;
     },
 
     /**
@@ -290,7 +293,7 @@ const App = {
                 <div class="modal-sheet">
                     <div class="modal-header">
                         <h2>New Experiment</h2>
-                        <button class="modal-close" data-close="modal-create">${UI.icons.x}</button>
+                        <button class="modal-close" aria-label="Close modal" data-close="modal-create">${UI.icons.x}</button>
                     </div>
                     <form id="form-create">
                         <div class="form-group">
@@ -326,7 +329,7 @@ const App = {
                 <div class="modal-sheet">
                     <div class="modal-header">
                         <h2>Check In</h2>
-                        <button class="modal-close" data-close="modal-checkin">${UI.icons.x}</button>
+                        <button class="modal-close" aria-label="Close modal" data-close="modal-checkin">${UI.icons.x}</button>
                     </div>
                     <form id="form-checkin">
                         <div class="form-group">
@@ -381,6 +384,16 @@ const App = {
             // Click on overlay to close
             if (e.target.classList.contains('modal-overlay')) {
                 this.closeModal(e.target.id);
+            }
+        });
+
+        // Escape key to close modals
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const activeModal = document.querySelector('.modal-overlay.active');
+                if (activeModal) {
+                    this.closeModal(activeModal.id);
+                }
             }
         });
 
@@ -479,14 +492,22 @@ const App = {
      * Open modal
      */
     openModal(id) {
-        document.getElementById(id).classList.add('active');
+        const modal = document.getElementById(id);
+        if (modal) {
+            modal.classList.add('active');
+            // Focus the modal for accessibility
+            modal.querySelector('.modal-sheet')?.focus();
+        }
     },
 
     /**
      * Close modal
      */
     closeModal(id) {
-        document.getElementById(id).classList.remove('active');
+        const modal = document.getElementById(id);
+        if (modal) {
+            modal.classList.remove('active');
+        }
     },
 
     /**

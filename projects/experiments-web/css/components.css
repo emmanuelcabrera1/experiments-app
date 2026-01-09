@@ -31,6 +31,50 @@
 }
 
 /* ========================================
+   FOCUS STYLES (Accessibility)
+======================================== */
+
+/* Visible focus ring for keyboard navigation */
+*:focus-visible {
+    outline: 2px solid var(--text-primary);
+    outline-offset: 2px;
+}
+
+/* Remove default outline, rely on focus-visible */
+*:focus:not(:focus-visible) {
+    outline: none;
+}
+
+/* Custom focus for buttons */
+button:focus-visible,
+.btn:focus-visible {
+    outline: 2px solid var(--text-primary);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Focus styles for form inputs */
+.form-input:focus-visible {
+    outline: none;
+    border-color: var(--text-primary);
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Focus for tab bar items */
+.tab-bar-item:focus-visible {
+    background: var(--inactive-bg);
+    border-radius: var(--radius-sm);
+}
+
+/* Focus for experiment rows */
+.experiment-row:focus-visible,
+.template-card:focus-visible,
+.entry-row:focus-visible {
+    outline: 2px solid var(--text-primary);
+    outline-offset: -2px;
+}
+
+/* ========================================
    TAB BAR
 ======================================== */
 
