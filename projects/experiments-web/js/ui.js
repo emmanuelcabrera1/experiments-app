@@ -74,12 +74,13 @@ const UI = {
         const progress = StreakCalculator.progress(experiment);
         const streak = StreakCalculator.calculate(experiment);
         const daysCompleted = StreakCalculator.daysCompleted(experiment);
+        const timeDisplay = experiment.scheduledTime ? `⏰ ${experiment.scheduledTime}` : '';
 
         return `
             <div class="experiment-row" data-id="${escapeHtml(experiment.id)}">
                 ${this.progressRing(progress)}
                 <div class="experiment-info">
-                    <div class="experiment-title">${escapeHtml(experiment.title)}</div>
+                    <div class="experiment-title">${escapeHtml(experiment.title)} ${timeDisplay ? `<span style="color: var(--text-tertiary); font-size: var(--text-xs); margin-left: var(--space-sm);">${timeDisplay}</span>` : ''}</div>
                     <div class="experiment-meta">${daysCompleted} days completed</div>
                 </div>
                 ${this.streakBadge(streak)}

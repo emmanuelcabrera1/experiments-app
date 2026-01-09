@@ -20,6 +20,8 @@ const App = {
      * Initialize the app
      */
     init() {
+        this.loadAppVersion();
+        this.setupServiceWorker();
         this.render();
         this.bindEvents();
     },
@@ -89,7 +91,8 @@ const App = {
         }
 
         // Helper to determine active pill
-        const isActive = (f) => this.state.currentFilter === f ? 'active' : '';
+        const isActive = (filter) => this.state.currentFilter === filter ? 'active' : '';
+        const categories = DataManager.getCategories();
 
         return `
             <div class="screen active" id="screen-experiments">
@@ -100,9 +103,9 @@ const App = {
                 
                 <div class="filter-pills" role="group" aria-label="Filter experiments">
                     <button class="pill ${isActive('ALL')}" data-filter="ALL" aria-pressed="${this.state.currentFilter === 'ALL'}">ALL</button>
-                    <button class="pill ${isActive('HEALTH')}" data-filter="HEALTH" aria-pressed="${this.state.currentFilter === 'HEALTH'}">HEALTH</button>
-                    <button class="pill ${isActive('FOCUS')}" data-filter="FOCUS" aria-pressed="${this.state.currentFilter === 'FOCUS'}">FOCUS</button>
-                    <button class="pill ${isActive('GROWTH')}" data-filter="GROWTH" aria-pressed="${this.state.currentFilter === 'GROWTH'}">GROWTH</button>
+                    ${categories.map(cat => `
+                        <button class="pill ${isActive(cat.toUpperCase())}" data-filter="${cat.toUpperCase()}" aria-pressed="${this.state.currentFilter === cat.toUpperCase()}">${cat.toUpperCase()}</button>
+                    `).join('')}
                 </div>
                 
                 <div id="experiments-list">
@@ -221,13 +224,26 @@ const App = {
     /**
      * Render Settings tab
      */
+    /**
+     * Render Settings Screen - with Updates section
+     */
     renderSettingsScreen() {
         const experiments = DataManager.getExperiments();
+        const version = this.state.appVersion || '1.0.0';
 
         return `
             <div class="screen active" id="screen-settings">
                 <div class="header">
                     <h1>Settings</h1>
+                </div>
+                
+                <div class="settings-group">
+                    <p class="settings-group-title">Updates</p>
+                    <div class="settings-row" style="cursor: pointer;" id="btn-check-updates">
+                        <div class="settings-icon" style="background: #E8F5E9;">🔄</div>
+                        <div class="settings-label">Check for Updates</div>
+                        <div class="settings-value">→</div>
+                    </div>
                 </div>
                 
                 <div class="settings-group">
@@ -263,7 +279,7 @@ const App = {
                     <div class="settings-row">
                         <div class="settings-icon" style="background: #F3E5F5;">ℹ️</div>
                         <div class="settings-label">Version</div>
-                        <div class="settings-value">1.0.0</div>
+                        <div class="settings-value">${version}</div>
                     </div>
                 </div>
             </div>
@@ -328,13 +344,13 @@ const App = {
                             <input class="form-input" id="create-title" name="title" placeholder="e.g., Meditate for 10 minutes" required>
                         </div>
                         <div class="form-group">
-                            <label class="form-label" id="create-category-label">Category</label>
-                            <div class="segmented-control" role="group" aria-labelledby="create-category-label">
-                                <button type="button" class="segmented-option active" data-category="Health">Health</button>
-                                <button type="button" class="segmented-option" data-category="Focus">Focus</button>
-                                <button type="button" class="segmented-option" data-category="Growth">Growth</button>
-                            </div>
-                        </div>
+                    <label class="form-label" id="create-category-label">Category</label>
+                    <div class="segmented-control" role="group" aria-labelledby="create-category-label">
+                        ${DataManager.getCategories().map((cat, i) => `
+                            <button type="button" class="segmented-option ${i === 0 ? 'active' : ''}" data-category="${cat}">${cat}</button>
+                        `).join('')}
+                    </div>
+                </div>        </div>
                         <div class="form-group">
                             <label class="form-label" id="create-freq-label">Frequency</label>
                             <div class="segmented-control" role="group" aria-labelledby="create-freq-label">
@@ -345,6 +361,10 @@ const App = {
                         <div class="form-group">
                             <label class="form-label" for="create-duration">Duration (days)</label>
                             <input class="form-input" id="create-duration" type="number" name="duration" value="30" min="7" max="365">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="create-time">Preferred Time (Optional)</label>
+                            <input class="form-input" id="create-time" type="time" name="scheduledTime">
                         </div>
                         <div class="form-group">
                             <label class="form-label" for="create-criteria">Success Criteria (Optional)</label>
@@ -406,6 +426,13 @@ const App = {
         app.addEventListener('click', (e) => {
             if (e.target.closest('#fab-add')) {
                 this.openModal('modal-create');
+            }
+        });
+
+        // Check for Updates button
+        app.addEventListener('click', (e) => {
+            if (e.target.closest('#btn-check-updates')) {
+                this.checkForUpdates();
             }
         });
 
@@ -570,6 +597,7 @@ const App = {
             durationDays: parseInt(data.get('duration')) || 30,
             frequency: freqOption?.dataset.freq || 'daily',
             category: categoryOption?.dataset.category || 'Health',
+            scheduledTime: data.get('scheduledTime') || null,
             startDate: new Date().toISOString()
         });
 
@@ -639,6 +667,60 @@ const App = {
         this.state.currentFilter = 'ALL';
         this.showToast(`Started: ${template.title}`);
         this.render();
+    },
+
+    /**
+     * Load app version from manifest
+     */
+    async loadAppVersion() {
+        try {
+            const response = await fetch('./manifest.json');
+            const manifest = await response.json();
+            this.state.appVersion = manifest.version || '1.0.0';
+        } catch {
+            this.state.appVersion = '1.0.0';
+        }
+    },
+
+    /**
+     * Setup Service Worker update listener
+     */
+    setupServiceWorker() {
+        if (!('serviceWorker' in navigator)) return;
+
+        // Listen for controller changes (new SW activated)
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            this.showToast('App updated! Reloading...');
+            setTimeout(() => window.location.reload(), 1000);
+        });
+    },
+
+    /**
+     * Check for service worker updates
+     */
+    async checkForUpdates() {
+        if (!('serviceWorker' in navigator)) {
+            this.showToast('Updates not supported');
+            return;
+        }
+
+        try {
+            const registration = await navigator.serviceWorker.getRegistration();
+            if (registration) {
+                this.showToast('Checking for updates...');
+                await registration.update();
+
+                if (registration.waiting) {
+                    // New SW is waiting, skip waiting to activate
+                    registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                } else {
+                    this.showToast('You\'re on the latest version!');
+                }
+            }
+        } catch (error) {
+            console.error('Update check failed:', error);
+            this.showToast('Update check failed');
+        }
     },
 
     /**
