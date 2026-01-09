@@ -235,6 +235,44 @@ const DataManager = {
      */
     getTemplates() {
         return TEMPLATES;
+    },
+
+    /**
+     * Get all categories (default + custom)
+     */
+    getCategories() {
+        const custom = JSON.parse(localStorage.getItem('experiments_categories') || '[]');
+        const defaultCategories = ['Health', 'Focus', 'Growth'];
+
+        // Merge and deduplicate
+        const allCategories = [...new Set([...defaultCategories, ...custom])];
+        return allCategories;
+    },
+
+    /**
+     * Add a custom category
+     */
+    addCategory(name) {
+        const custom = JSON.parse(localStorage.getItem('experiments_categories') || '[]');
+        const trimmed = name.trim();
+
+        if (!trimmed || custom.includes(trimmed)) {
+            return false;
+        }
+
+        custom.push(trimmed);
+        localStorage.setItem('experiments_categories', JSON.stringify(custom));
+        return true;
+    },
+
+    /**
+     * Delete a custom category
+     */
+    deleteCategory(name) {
+        const custom = JSON.parse(localStorage.getItem('experiments_categories') || '[]');
+        const filtered = custom.filter(c => c !== name);
+        localStorage.setItem('experiments_categories', JSON.stringify(filtered));
+        return true;
     }
 };
 

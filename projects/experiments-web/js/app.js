@@ -91,7 +91,8 @@ const App = {
         }
 
         // Helper to determine active pill
-        const isActive = (f) => this.state.currentFilter === f ? 'active' : '';
+        const isActive = (filter) => this.state.currentFilter === filter ? 'active' : '';
+        const categories = DataManager.getCategories();
 
         return `
             <div class="screen active" id="screen-experiments">
@@ -102,9 +103,9 @@ const App = {
                 
                 <div class="filter-pills" role="group" aria-label="Filter experiments">
                     <button class="pill ${isActive('ALL')}" data-filter="ALL" aria-pressed="${this.state.currentFilter === 'ALL'}">ALL</button>
-                    <button class="pill ${isActive('HEALTH')}" data-filter="HEALTH" aria-pressed="${this.state.currentFilter === 'HEALTH'}">HEALTH</button>
-                    <button class="pill ${isActive('FOCUS')}" data-filter="FOCUS" aria-pressed="${this.state.currentFilter === 'FOCUS'}">FOCUS</button>
-                    <button class="pill ${isActive('GROWTH')}" data-filter="GROWTH" aria-pressed="${this.state.currentFilter === 'GROWTH'}">GROWTH</button>
+                    ${categories.map(cat => `
+                        <button class="pill ${isActive(cat.toUpperCase())}" data-filter="${cat.toUpperCase()}" aria-pressed="${this.state.currentFilter === cat.toUpperCase()}">${cat.toUpperCase()}</button>
+                    `).join('')}
                 </div>
                 
                 <div id="experiments-list">
@@ -343,13 +344,13 @@ const App = {
                             <input class="form-input" id="create-title" name="title" placeholder="e.g., Meditate for 10 minutes" required>
                         </div>
                         <div class="form-group">
-                            <label class="form-label" id="create-category-label">Category</label>
-                            <div class="segmented-control" role="group" aria-labelledby="create-category-label">
-                                <button type="button" class="segmented-option active" data-category="Health">Health</button>
-                                <button type="button" class="segmented-option" data-category="Focus">Focus</button>
-                                <button type="button" class="segmented-option" data-category="Growth">Growth</button>
-                            </div>
-                        </div>
+                    <label class="form-label" id="create-category-label">Category</label>
+                    <div class="segmented-control" role="group" aria-labelledby="create-category-label">
+                        ${DataManager.getCategories().map((cat, i) => `
+                            <button type="button" class="segmented-option ${i === 0 ? 'active' : ''}" data-category="${cat}">${cat}</button>
+                        `).join('')}
+                    </div>
+                </div>        </div>
                         <div class="form-group">
                             <label class="form-label" id="create-freq-label">Frequency</label>
                             <div class="segmented-control" role="group" aria-labelledby="create-freq-label">
