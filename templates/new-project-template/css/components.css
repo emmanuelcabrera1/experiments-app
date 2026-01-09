@@ -1,0 +1,32 @@
+/* 
+  Project-Specific Components 
+  (Atomic Design: Molecules & Organisms)
+*/
+
+/* Example Molecule: Button */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 var(--space-lg);
+    background: var(--accent-color);
+    color: #000;
+    border: none;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform var(--duration-short) var(--ease-standard);
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px var(--accent-glow);
+}
+
+/* Example Organism: App Layout */
+.app-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: var(--space-xl) var(--space-md);
+    width: 100%;
+}

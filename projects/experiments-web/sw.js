@@ -46,6 +46,15 @@ self.addEventListener('install', (event) => {
 });
 
 /**
+ * Message event - handle commands from app
+ */
+self.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'SKIP_WAITING') {
+        self.skipWaiting();
+    }
+});
+
+/**
  * Activate event - clean up old caches
  */
 self.addEventListener('activate', (event) => {

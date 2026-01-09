@@ -20,6 +20,8 @@ const App = {
      * Initialize the app
      */
     init() {
+        this.loadAppVersion();
+        this.setupServiceWorker();
         this.render();
         this.bindEvents();
     },
@@ -221,13 +223,26 @@ const App = {
     /**
      * Render Settings tab
      */
+    /**
+     * Render Settings Screen - with Updates section
+     */
     renderSettingsScreen() {
         const experiments = DataManager.getExperiments();
+        const version = this.state.appVersion || '1.0.0';
 
         return `
             <div class="screen active" id="screen-settings">
                 <div class="header">
                     <h1>Settings</h1>
+                </div>
+                
+                <div class="settings-group">
+                    <p class="settings-group-title">Updates</p>
+                    <div class="settings-row" style="cursor: pointer;" id="btn-check-updates">
+                        <div class="settings-icon" style="background: #E8F5E9;">🔄</div>
+                        <div class="settings-label">Check for Updates</div>
+                        <div class="settings-value">→</div>
+                    </div>
                 </div>
                 
                 <div class="settings-group">
@@ -263,7 +278,7 @@ const App = {
                     <div class="settings-row">
                         <div class="settings-icon" style="background: #F3E5F5;">ℹ️</div>
                         <div class="settings-label">Version</div>
-                        <div class="settings-value">1.0.0</div>
+                        <div class="settings-value">${version}</div>
                     </div>
                 </div>
             </div>
@@ -406,6 +421,13 @@ const App = {
         app.addEventListener('click', (e) => {
             if (e.target.closest('#fab-add')) {
                 this.openModal('modal-create');
+            }
+        });
+
+        // Check for Updates button
+        app.addEventListener('click', (e) => {
+            if (e.target.closest('#btn-check-updates')) {
+                this.checkForUpdates();
             }
         });
 
@@ -639,6 +661,60 @@ const App = {
         this.state.currentFilter = 'ALL';
         this.showToast(`Started: ${template.title}`);
         this.render();
+    },
+
+    /**
+     * Load app version from manifest
+     */
+    async loadAppVersion() {
+        try {
+            const response = await fetch('./manifest.json');
+            const manifest = await response.json();
+            this.state.appVersion = manifest.version || '1.0.0';
+        } catch {
+            this.state.appVersion = '1.0.0';
+        }
+    },
+
+    /**
+     * Setup Service Worker update listener
+     */
+    setupServiceWorker() {
+        if (!('serviceWorker' in navigator)) return;
+
+        // Listen for controller changes (new SW activated)
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            this.showToast('App updated! Reloading...');
+            setTimeout(() => window.location.reload(), 1000);
+        });
+    },
+
+    /**
+     * Check for service worker updates
+     */
+    async checkForUpdates() {
+        if (!('serviceWorker' in navigator)) {
+            this.showToast('Updates not supported');
+            return;
+        }
+
+        try {
+            const registration = await navigator.serviceWorker.getRegistration();
+            if (registration) {
+                this.showToast('Checking for updates...');
+                await registration.update();
+
+                if (registration.waiting) {
+                    // New SW is waiting, skip waiting to activate
+                    registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                } else {
+                    this.showToast('You\'re on the latest version!');
+                }
+            }
+        } catch (error) {
+            console.error('Update check failed:', error);
+            this.showToast('Update check failed');
+        }
     },
 
     /**
