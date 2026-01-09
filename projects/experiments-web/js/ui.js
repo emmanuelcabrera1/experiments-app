@@ -3,6 +3,18 @@
  * Renders all UI elements
  */
 
+/**
+ * Escape HTML entities to prevent XSS attacks
+ * @param {string} str - Untrusted string
+ * @returns {string} - Safe HTML string
+ */
+function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
 const UI = {
 
     // SVG Icons
@@ -64,10 +76,10 @@ const UI = {
         const daysCompleted = StreakCalculator.daysCompleted(experiment);
 
         return `
-            <div class="experiment-row" data-id="${experiment.id}">
+            <div class="experiment-row" data-id="${escapeHtml(experiment.id)}">
                 ${this.progressRing(progress)}
                 <div class="experiment-info">
-                    <div class="experiment-title">${experiment.title}</div>
+                    <div class="experiment-title">${escapeHtml(experiment.title)}</div>
                     <div class="experiment-meta">${daysCompleted} days completed</div>
                 </div>
                 ${this.streakBadge(streak)}
@@ -99,13 +111,13 @@ const UI = {
         });
 
         return `
-            <div class="entry-row" data-id="${entry.id}">
+            <div class="entry-row" data-id="${escapeHtml(entry.id)}">
                 <div class="entry-check ${entry.isCompleted ? 'completed' : ''}">
                     ${entry.isCompleted ? this.icons.check : ''}
                 </div>
                 <div class="entry-content">
                     <div class="entry-date">${formatted}</div>
-                    ${entry.note ? `<div class="entry-note">${entry.note}</div>` : ''}
+                    ${entry.note ? `<div class="entry-note">${escapeHtml(entry.note)}</div>` : ''}
                 </div>
             </div>
         `;
@@ -116,10 +128,10 @@ const UI = {
      */
     templateCard(template) {
         return `
-            <div class="template-card" data-id="${template.id}">
-                <div class="template-icon">${template.icon}</div>
-                <div class="template-title">${template.title}</div>
-                <div class="template-meta">${template.durationDays} days • ${template.frequency}</div>
+            <div class="template-card" data-id="${escapeHtml(template.id)}">
+                <div class="template-icon">${escapeHtml(template.icon)}</div>
+                <div class="template-title">${escapeHtml(template.title)}</div>
+                <div class="template-meta">${template.durationDays} days • ${escapeHtml(template.frequency)}</div>
             </div>
         `;
     },
