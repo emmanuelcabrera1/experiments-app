@@ -98,11 +98,11 @@ const App = {
                     <p class="subheader">${dayName} ${dateStr}</p>
                 </div>
                 
-                <div class="filter-pills">
-                    <button class="pill ${isActive('ALL')}" data-filter="ALL">ALL</button>
-                    <button class="pill ${isActive('HEALTH')}" data-filter="HEALTH">HEALTH</button>
-                    <button class="pill ${isActive('FOCUS')}" data-filter="FOCUS">FOCUS</button>
-                    <button class="pill ${isActive('GROWTH')}" data-filter="GROWTH">GROWTH</button>
+                <div class="filter-pills" role="group" aria-label="Filter experiments">
+                    <button class="pill ${isActive('ALL')}" data-filter="ALL" aria-pressed="${this.state.currentFilter === 'ALL'}">ALL</button>
+                    <button class="pill ${isActive('HEALTH')}" data-filter="HEALTH" aria-pressed="${this.state.currentFilter === 'HEALTH'}">HEALTH</button>
+                    <button class="pill ${isActive('FOCUS')}" data-filter="FOCUS" aria-pressed="${this.state.currentFilter === 'FOCUS'}">FOCUS</button>
+                    <button class="pill ${isActive('GROWTH')}" data-filter="GROWTH" aria-pressed="${this.state.currentFilter === 'GROWTH'}">GROWTH</button>
                 </div>
                 
                 <div id="experiments-list">
@@ -281,9 +281,13 @@ const App = {
         ];
 
         return `
-            <nav class="tab-bar">
+            <nav class="tab-bar" role="tablist" aria-label="Main navigation">
                 ${tabs.map(tab => `
-                    <button class="tab-bar-item ${this.state.currentTab === tab.id ? 'active' : ''}" data-tab="${tab.id}">
+                    <button class="tab-bar-item ${this.state.currentTab === tab.id ? 'active' : ''}" 
+                            data-tab="${tab.id}" 
+                            role="tab" 
+                            aria-selected="${this.state.currentTab === tab.id}"
+                            aria-controls="screen-${tab.id}">
                         ${tab.icon}
                         <span>${tab.label}</span>
                     </button>
@@ -316,27 +320,35 @@ const App = {
                     </div>
                     <form id="form-create">
                         <div class="form-group">
-                            <label class="form-label">Purpose — Why?</label>
-                            <textarea class="form-input" name="purpose" placeholder="e.g., Reduce stress and feel calmer" required></textarea>
+                            <label class="form-label" for="create-purpose">Purpose — Why?</label>
+                            <textarea class="form-input" id="create-purpose" name="purpose" placeholder="e.g., Reduce stress and feel calmer" required></textarea>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Action — What?</label>
-                            <input class="form-input" name="title" placeholder="e.g., Meditate for 10 minutes" required>
+                            <label class="form-label" for="create-title">Action — What?</label>
+                            <input class="form-input" id="create-title" name="title" placeholder="e.g., Meditate for 10 minutes" required>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Frequency</label>
-                            <div class="segmented-control">
+                            <label class="form-label" id="create-category-label">Category</label>
+                            <div class="segmented-control" role="group" aria-labelledby="create-category-label">
+                                <button type="button" class="segmented-option active" data-category="Health">Health</button>
+                                <button type="button" class="segmented-option" data-category="Focus">Focus</button>
+                                <button type="button" class="segmented-option" data-category="Growth">Growth</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" id="create-freq-label">Frequency</label>
+                            <div class="segmented-control" role="group" aria-labelledby="create-freq-label">
                                 <button type="button" class="segmented-option active" data-freq="daily">Daily</button>
                                 <button type="button" class="segmented-option" data-freq="weekly">Weekly</button>
                             </div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Duration (days)</label>
-                            <input class="form-input" type="number" name="duration" value="30" min="7" max="365">
+                            <label class="form-label" for="create-duration">Duration (days)</label>
+                            <input class="form-input" id="create-duration" type="number" name="duration" value="30" min="7" max="365">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Success Criteria (Optional)</label>
-                            <input class="form-input" name="criteria" placeholder="e.g., Complete before 8 AM">
+                            <label class="form-label" for="create-criteria">Success Criteria (Optional)</label>
+                            <input class="form-input" id="create-criteria" name="criteria" placeholder="e.g., Complete before 8 AM">
                         </div>
                         <button type="submit" class="btn btn-primary">Start Experiment</button>
                     </form>
@@ -352,15 +364,15 @@ const App = {
                     </div>
                     <form id="form-checkin">
                         <div class="form-group">
-                            <label class="form-label">Status</label>
-                            <div class="segmented-control">
+                            <label class="form-label" id="checkin-status-label">Status</label>
+                            <div class="segmented-control" role="group" aria-labelledby="checkin-status-label">
                                 <button type="button" class="segmented-option active" data-status="completed">Completed ✓</button>
                                 <button type="button" class="segmented-option" data-status="missed">Missed ✗</button>
                             </div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Note (Optional)</label>
-                            <textarea class="form-input" name="note" placeholder="How did it go?"></textarea>
+                            <label class="form-label" for="checkin-note">Note (Optional)</label>
+                            <textarea class="form-input" id="checkin-note" name="note" placeholder="How did it go?"></textarea>
                         </div>
                         <button type="submit" class="btn btn-primary">Save</button>
                     </form>
@@ -426,7 +438,6 @@ const App = {
             if (row) {
                 this.state.currentExperiment = row.dataset.id;
                 this.render();
-                this.bindEvents();
             }
         });
 
@@ -435,7 +446,6 @@ const App = {
             if (e.target.closest('#btn-back')) {
                 this.state.currentExperiment = null;
                 this.render();
-                this.bindEvents();
             }
         });
 
@@ -457,18 +467,19 @@ const App = {
             }
         });
 
-        // Segmented control
+        // Segmented control (non-form) - FIXED: scope to parent control only
         app.addEventListener('click', (e) => {
             const option = e.target.closest('.segmented-option');
             if (option && !option.closest('form')) {
                 const section = option.dataset.section;
                 if (section) {
-                    // Detail view sections
-                    document.querySelectorAll('.segmented-option').forEach(o => o.classList.remove('active'));
+                    // Detail view sections - scope to closest segmented-control
+                    const control = option.closest('.segmented-control');
+                    control.querySelectorAll('.segmented-option').forEach(o => o.classList.remove('active'));
                     option.classList.add('active');
 
-                    document.getElementById('detail-section-entries').classList.toggle('hidden', section !== 'entries');
-                    document.getElementById('detail-section-calendar').classList.toggle('hidden', section !== 'calendar');
+                    document.getElementById('detail-section-entries')?.classList.toggle('hidden', section !== 'entries');
+                    document.getElementById('detail-section-calendar')?.classList.toggle('hidden', section !== 'calendar');
                 }
             }
         });
@@ -495,23 +506,31 @@ const App = {
             }
         });
 
-        // Create experiment form
-        const createForm = document.getElementById('form-create');
-        if (createForm) {
-            createForm.addEventListener('submit', (e) => {
+        // Form submissions - FIXED: Use event delegation for forms
+        app.addEventListener('submit', (e) => {
+            const form = e.target;
+            if (form.id === 'form-create') {
                 e.preventDefault();
-                this.handleCreateExperiment(e.target);
-            });
-        }
+                this.handleCreateExperiment(form);
+            } else if (form.id === 'form-checkin') {
+                e.preventDefault();
+                this.handleCheckin(form);
+            }
+        });
 
-        // Check-in form
-        const checkinForm = document.getElementById('form-checkin');
-        if (checkinForm) {
-            checkinForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                this.handleCheckin(e.target);
-            });
-        }
+        // Calendar navigation - FIXED: Add missing calendar nav handlers
+        app.addEventListener('click', (e) => {
+            const navBtn = e.target.closest('.calendar-nav[data-dir]');
+            if (navBtn) {
+                const dir = parseInt(navBtn.dataset.dir);
+                this.state.calendarMonth = new Date(
+                    this.state.calendarMonth.getFullYear(),
+                    this.state.calendarMonth.getMonth() + dir,
+                    1
+                );
+                this.render();
+            }
+        });
     },
 
     /**
@@ -537,11 +556,12 @@ const App = {
     },
 
     /**
-     * Handle create experiment
+     * Handle create experiment - FIXED: Include category from selector
      */
     handleCreateExperiment(form) {
         const data = new FormData(form);
         const freqOption = form.querySelector('[data-freq].active');
+        const categoryOption = form.querySelector('[data-category].active');
 
         DataManager.createExperiment({
             title: data.get('title'),
@@ -549,35 +569,60 @@ const App = {
             successCriteria: data.get('criteria') || null,
             durationDays: parseInt(data.get('duration')) || 30,
             frequency: freqOption?.dataset.freq || 'daily',
+            category: categoryOption?.dataset.category || 'Health',
             startDate: new Date().toISOString()
         });
 
         this.closeModal('modal-create');
         form.reset();
+        // Reset segmented controls to default state
+        form.querySelectorAll('.segmented-control').forEach(control => {
+            control.querySelectorAll('.segmented-option').forEach((opt, i) => {
+                opt.classList.toggle('active', i === 0);
+            });
+        });
+        this.showToast('Experiment created!');
         this.render();
     },
 
     /**
-     * Handle check-in
+     * Handle check-in - with toast feedback
      */
     handleCheckin(form) {
         const data = new FormData(form);
         const statusOption = form.querySelector('[data-status].active');
         const isCompleted = statusOption?.dataset.status === 'completed';
+        const today = StreakCalculator.toDateString(new Date());
+
+        // Check if already checked in today
+        const exp = DataManager.getExperiment(this.state.currentExperiment);
+        const existingEntry = exp?.entries?.find(e => e.date === today);
 
         DataManager.addEntry(this.state.currentExperiment, {
-            date: StreakCalculator.toDateString(new Date()),
+            date: today,
             isCompleted: isCompleted,
             note: data.get('note') || null
         });
 
         this.closeModal('modal-checkin');
         form.reset();
+        // Reset segmented controls
+        form.querySelectorAll('.segmented-control').forEach(control => {
+            control.querySelectorAll('.segmented-option').forEach((opt, i) => {
+                opt.classList.toggle('active', i === 0);
+            });
+        });
+
+        if (existingEntry) {
+            this.showToast('Entry updated!');
+        } else {
+            this.showToast(isCompleted ? 'Great job! 🎉' : 'Entry saved');
+        }
         this.render();
     },
 
     /**
-     * Create experiment from template
+     * Create experiment from template - with toast feedback
      */
     createFromTemplate(template) {
         DataManager.createExperiment({
@@ -586,13 +631,41 @@ const App = {
             successCriteria: template.successCriteria,
             durationDays: template.durationDays,
             frequency: template.frequency,
-            category: template.category, // FIXED: Include category for filtering
+            category: template.category,
             startDate: new Date().toISOString()
         });
 
         this.state.currentTab = 'experiments';
-        this.state.currentFilter = 'ALL'; // Reset filter to show new experiment
+        this.state.currentFilter = 'ALL';
+        this.showToast(`Started: ${template.title}`);
         this.render();
+    },
+
+    /**
+     * Show toast notification
+     */
+    showToast(message) {
+        // Remove existing toast if any
+        const existing = document.querySelector('.toast');
+        if (existing) existing.remove();
+
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = message;
+        toast.setAttribute('role', 'status');
+        toast.setAttribute('aria-live', 'polite');
+        document.body.appendChild(toast);
+
+        // Trigger animation
+        requestAnimationFrame(() => {
+            toast.classList.add('visible');
+        });
+
+        // Remove after delay
+        setTimeout(() => {
+            toast.classList.remove('visible');
+            setTimeout(() => toast.remove(), 300);
+        }, 2500);
     }
 };
 
