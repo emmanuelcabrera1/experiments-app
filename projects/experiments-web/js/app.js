@@ -21,6 +21,7 @@ const App = {
      */
     init() {
         this.loadAppVersion();
+        this.loadTheme();
         this.setupServiceWorker();
         this.render();
         this.bindEvents();
@@ -250,6 +251,19 @@ const App = {
                 </div>
                 
                 <div class="settings-group">
+                    <p class="settings-group-title">Appearance</p>
+                    <div class="settings-row">
+                        <div class="settings-icon" style="background: var(--inactive-bg);">🎨</div>
+                        <div class="settings-label">Theme</div>
+                        <div class="segmented-control" role="group" style="width: auto;">
+                            <button type="button" class="segmented-option ${this.state.theme === 'system' ? 'active' : ''}" data-theme-opt="system">Auto</button>
+                            <button type="button" class="segmented-option ${this.state.theme === 'light' ? 'active' : ''}" data-theme-opt="light">Light</button>
+                            <button type="button" class="segmented-option ${this.state.theme === 'dark' ? 'active' : ''}" data-theme-opt="dark">Dark</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-group">
                     <p class="settings-group-title">Account</p>
                     <div class="settings-row">
                         <div class="settings-icon" style="background: var(--inactive-bg);">👤</div>
@@ -456,6 +470,14 @@ const App = {
         app.addEventListener('click', (e) => {
             if (e.target.closest('#btn-check-updates')) {
                 this.checkForUpdates();
+            }
+        });
+
+        // Theme selector
+        app.addEventListener('click', (e) => {
+            const themeBtn = e.target.closest('[data-theme-opt]');
+            if (themeBtn) {
+                this.setTheme(themeBtn.dataset.themeOpt);
             }
         });
 
@@ -793,6 +815,51 @@ const App = {
         this.state.currentFilter = 'ALL';
         this.showToast(`Started: ${template.title}`);
         this.render();
+    },
+
+    /**
+     * Load theme from storage
+     */
+    loadTheme() {
+        this.state.theme = localStorage.getItem('theme') || 'system';
+        this.applyTheme();
+
+        // Listen for system changes
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+            if (this.state.theme === 'system') {
+                this.applyTheme();
+            }
+        });
+    },
+
+    /**
+     * Set theme
+     */
+    setTheme(theme) {
+        this.state.theme = theme;
+        localStorage.setItem('theme', theme);
+        this.applyTheme();
+        this.render(); // Re-render to update setting toggle
+    },
+
+    /**
+     * Apply theme to document
+     */
+    applyTheme() {
+        const root = document.documentElement;
+        let isDark = this.state.theme === 'dark';
+
+        if (this.state.theme === 'system') {
+            isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        }
+
+        if (isDark) {
+            root.setAttribute('data-theme', 'dark');
+            document.querySelector("meta[name='theme-color']").setAttribute("content", "#000000");
+        } else {
+            root.removeAttribute('data-theme');
+            document.querySelector("meta[name='theme-color']").setAttribute("content", "#FAFAFA");
+        }
     },
 
     /**
