@@ -141,6 +141,9 @@ const App = {
                         ${UI.icons.back}
                     </button>
                     <h2 style="flex: 1;">${exp.title}</h2>
+                    <button id="btn-edit" aria-label="Edit experiment" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                        ${UI.icons.edit}
+                    </button>
                 </div>
                 
                 <div class="card" style="text-align: center; padding: var(--space-xl);">
@@ -331,10 +334,11 @@ const App = {
             <div class="modal-overlay" id="modal-create">
                 <div class="modal-sheet">
                     <div class="modal-header">
-                        <h2>New Experiment</h2>
+                        <h2 id="modal-create-title">New Experiment</h2>
                         <button class="modal-close" aria-label="Close modal" data-close="modal-create">${UI.icons.x}</button>
                     </div>
                     <form id="form-create">
+                        <input type="hidden" name="id" id="create-id">
                         <div class="form-group">
                             <label class="form-label" for="create-purpose">Purpose — Why?</label>
                             <textarea class="form-input" id="create-purpose" name="purpose" placeholder="e.g., Reduce stress and feel calmer" required></textarea>
@@ -370,7 +374,10 @@ const App = {
                             <label class="form-label" for="create-criteria">Success Criteria (Optional)</label>
                             <input class="form-input" id="create-criteria" name="criteria" placeholder="e.g., Complete before 8 AM">
                         </div>
-                        <button type="submit" class="btn btn-primary">Start Experiment</button>
+                        <div class="form-actions" style="display: flex; gap: 8px; flex-direction: column;">
+                            <button type="submit" class="btn btn-primary">Start Experiment</button>
+                            <button type="button" id="btn-delete" class="btn" style="background: #FFEBEE; color: #D32F2F; display: none;">Delete Experiment</button>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -449,6 +456,27 @@ const App = {
         app.addEventListener('click', (e) => {
             if (e.target.closest('#btn-check-updates')) {
                 this.checkForUpdates();
+            }
+        });
+
+        // Edit button
+        app.addEventListener('click', (e) => {
+            if (e.target.closest('#btn-edit')) {
+                this.handleEditExperiment();
+            }
+        });
+
+        // Delete button
+        app.addEventListener('click', (e) => {
+            if (e.target.closest('#btn-delete')) {
+                if (confirm('Are you sure you want to delete this experiment? This cannot be undone.')) {
+                    const id = document.getElementById('create-id').value;
+                    DataManager.deleteExperiment(id);
+                    this.state.currentExperiment = null;
+                    this.closeModal('modal-create');
+                    this.render();
+                    this.showToast('Experiment deleted');
+                }
             }
         });
 
@@ -620,7 +648,8 @@ const App = {
         const freqOption = form.querySelector('[data-freq].active');
         const categoryOption = form.querySelector('[data-category].active');
 
-        DataManager.createExperiment({
+        const id = data.get('id');
+        const experimentData = {
             title: data.get('title'),
             purpose: data.get('purpose'),
             successCriteria: data.get('criteria') || null,
@@ -628,11 +657,25 @@ const App = {
             frequency: freqOption?.dataset.freq || 'daily',
             category: categoryOption?.dataset.category || 'Health',
             scheduledTime: data.get('scheduledTime') || null,
-            startDate: new Date().toISOString()
-        });
+        };
+
+        if (id) {
+            // Update existing
+            DataManager.updateExperiment(id, experimentData);
+            this.showToast('Experiment updated');
+            this.state.currentExperiment = id; // Ensure we stay on detail view
+        } else {
+            // Create new
+            DataManager.createExperiment({
+                ...experimentData,
+                startDate: new Date().toISOString()
+            });
+            this.showToast('Experiment created!');
+        }
 
         this.closeModal('modal-create');
         form.reset();
+        this.resetCreateForm(form); // Helper to reset UI state
         // Reset segmented controls to default state
         form.querySelectorAll('.segmented-control').forEach(control => {
             control.querySelectorAll('.segmented-option').forEach((opt, i) => {
@@ -685,6 +728,51 @@ const App = {
             this.showToast(isCompleted ? 'Great job! 🎉' : 'Entry saved');
         }
         this.render();
+    },
+
+    /**
+     * Reset create form UI
+     */
+    resetCreateForm(form) {
+        document.getElementById('modal-create-title').textContent = 'New Experiment';
+        document.getElementById('create-id').value = '';
+        document.getElementById('btn-delete').style.display = 'none';
+
+        // Reset segmented controls to default state
+        form.querySelectorAll('.segmented-control').forEach(control => {
+            control.querySelectorAll('.segmented-option').forEach((opt, i) => {
+                opt.classList.toggle('active', i === 0);
+            });
+        });
+    },
+
+    /**
+     * Handle Edit Experiment
+     */
+    handleEditExperiment() {
+        const exp = DataManager.getExperiment(this.state.currentExperiment);
+        if (!exp) return;
+
+        this.openModal('modal-create');
+
+        // Populate form
+        const form = document.getElementById('form-create');
+        document.getElementById('modal-create-title').textContent = 'Edit Experiment';
+        document.getElementById('create-id').value = exp.id;
+        document.getElementById('btn-delete').style.display = 'block';
+
+        form.elements['title'].value = exp.title;
+        form.elements['purpose'].value = exp.purpose;
+        form.elements['create-duration'].value = exp.durationDays;
+        form.elements['create-time'].value = exp.scheduledTime || '';
+        if (exp.successCriteria) form.elements['criteria'].value = exp.successCriteria;
+
+        // Set segmented controls
+        const categoryBtn = form.querySelector(`[data-category="${exp.category}"]`);
+        if (categoryBtn) categoryBtn.click(); // Trigger click to update state (simple way)
+
+        const freqBtn = form.querySelector(`[data-freq="${exp.frequency}"]`);
+        if (freqBtn) freqBtn.click();
     },
 
     /**
