@@ -363,6 +363,10 @@ const App = {
                             <input class="form-input" id="create-duration" type="number" name="duration" value="30" min="7" max="365">
                         </div>
                         <div class="form-group">
+                            <label class="form-label" for="create-time">Preferred Time (Optional)</label>
+                            <input class="form-input" id="create-time" type="time" name="scheduledTime">
+                        </div>
+                        <div class="form-group">
                             <label class="form-label" for="create-criteria">Success Criteria (Optional)</label>
                             <input class="form-input" id="create-criteria" name="criteria" placeholder="e.g., Complete before 8 AM">
                         </div>
@@ -593,6 +597,7 @@ const App = {
             durationDays: parseInt(data.get('duration')) || 30,
             frequency: freqOption?.dataset.freq || 'daily',
             category: categoryOption?.dataset.category || 'Health',
+            scheduledTime: data.get('scheduledTime') || null,
             startDate: new Date().toISOString()
         });
 
