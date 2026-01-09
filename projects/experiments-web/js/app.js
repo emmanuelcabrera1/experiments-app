@@ -720,13 +720,6 @@ const App = {
         this.closeModal('modal-create');
         form.reset();
         this.resetCreateForm(form); // Helper to reset UI state
-        // Reset segmented controls to default state
-        form.querySelectorAll('.segmented-control').forEach(control => {
-            control.querySelectorAll('.segmented-option').forEach((opt, i) => {
-                opt.classList.toggle('active', i === 0);
-            });
-        });
-        this.showToast('Experiment created!');
         this.render();
     },
 
@@ -1014,87 +1007,6 @@ const App = {
         const lastElement = focusableElements[focusableElements.length - 1];
 
         modal.addEventListener('keydown', function (e) {
-            const isTabPressed = e.key === 'Tab' || e.keyCode === 9;
-
-            if (!isTabPressed) {
-                return;
-            }
-
-            if (e.shiftKey) { // if shift key pressed for shift + tab combination
-                if (document.activeElement === firstElement) {
-                    lastElement.focus();
-                    e.preventDefault();
-                }
-            } else { // if tab key is pressed
-                if (document.activeElement === lastElement) { // if focused has reached to last element then focus first element
-                    firstElement.focus();
-                    e.preventDefault();
-                }
-            }
-        });
-
-        // Focus first element
-        setTimeout(() => firstElement.focus(), 50);
-    },
-
-    /**
-     * Show Confirmation Dialog
-     */
-    confirmAction(title, message, onConfirm) {
-        const modal = document.getElementById('modal-confirm');
-        const titleEl = document.getElementById('confirm-title');
-        const msgEl = document.getElementById('confirm-message');
-        const cancelBtn = document.getElementById('confirm-cancel');
-        const okBtn = document.getElementById('confirm-ok');
-
-        if (!modal) return;
-
-        titleEl.textContent = title;
-        msgEl.textContent = message;
-
-        // Clone buttons to remove old listeners
-        const newCancel = cancelBtn.cloneNode(true);
-        const newOk = okBtn.cloneNode(true);
-        cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
-        okBtn.parentNode.replaceChild(newOk, okBtn);
-
-        newCancel.textContent = 'Cancel';
-        newOk.textContent = 'Confirm';
-
-        newCancel.addEventListener('click', () => {
-            modal.classList.remove('active');
-        });
-
-        newOk.addEventListener('click', () => {
-            modal.classList.remove('active');
-            onConfirm();
-        });
-
-        this.openModal('modal-confirm');
-    },
-
-    /**
-     * Focus Trap for Modals (Accessibility)
-     */
-    trapFocus(modal) {
-        const focusableElements = modal.querySelectorAll(
-            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
-        if (focusableElements.length === 0) return;
-
-        const firstElement = focusableElements[0];
-        const lastElement = focusableElements[focusableElements.length - 1];
-
-        // Remove previous listener needs careful handling, simplified by cloning body or just accepting stack
-        // For simplicity in this PWA, we'll assume modal is transient.
-        // Better: store handler reference. But binding new one is acceptable for now if we clone or remove.
-        // Let's just focus loop using a named function bound to this specific modal instance logic?
-        // Actually, the previous implementation attempt had the logic inside.
-
-        // We'll use a simple implementation that doesn't leak too much
-        modal.addEventListener('keydown', (e) => {
-            if (!modal.classList.contains('active')) return; // Guard
-
             const isTabPressed = e.key === 'Tab' || e.keyCode === 9;
 
             if (!isTabPressed) {
