@@ -157,6 +157,33 @@ button:focus-visible,
     transition: all 0.2s ease;
 }
 
+.entry-reflection-badge {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    background: var(--inactive-bg);
+    padding: 2px 8px;
+    border-radius: 99px;
+    margin-top: 6px;
+    display: inline-block;
+}
+
+/* ========================================
+   CONFIRM MODAL
+======================================== */
+.confirm-modal-content {
+    text-align: center;
+}
+
+.confirm-actions {
+    display: flex;
+    gap: var(--space-md);
+    margin-top: var(--space-lg);
+}
+
+.confirm-actions .btn {
+    flex: 1;
+}
+
 .pill.active {
     background: var(--active-bg);
     color: var(--active-text);
