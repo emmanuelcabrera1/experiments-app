@@ -7,23 +7,23 @@
 const CACHE_VERSION = 'v1.0.0';
 const CACHE_NAME = `experiments-${CACHE_VERSION}`;
 
-// Assets to cache on install
+// Assets to cache on install (relative paths for GitHub Pages subdirectory support)
 const STATIC_ASSETS = [
-    '/',
-    '/index.html',
-    '/css/tokens.css',
-    '/css/base.css',
-    '/css/components.css',
-    '/js/data.js',
-    '/js/ui.js',
-    '/js/app.js',
-    '/manifest.json',
-    '/assets/icon-192.png',
-    '/assets/icon-512.png'
+    './',
+    './index.html',
+    './css/tokens.css',
+    './css/base.css',
+    './css/components.css',
+    './js/data.js',
+    './js/ui.js',
+    './js/app.js',
+    './manifest.json',
+    './assets/icon-192.png',
+    './assets/icon-512.png'
 ];
 
 // Offline fallback page
-const OFFLINE_PAGE = '/index.html';
+const OFFLINE_PAGE = './index.html';
 
 /**
  * Install event - cache static assets
