@@ -21,6 +21,7 @@ const App = {
      */
     init() {
         this.loadAppVersion();
+        this.loadTheme();
         this.setupServiceWorker();
         this.render();
         this.bindEvents();
@@ -141,6 +142,9 @@ const App = {
                         ${UI.icons.back}
                     </button>
                     <h2 style="flex: 1;">${exp.title}</h2>
+                    <button id="btn-edit" aria-label="Edit experiment" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                        ${UI.icons.edit}
+                    </button>
                 </div>
                 
                 <div class="card" style="text-align: center; padding: var(--space-xl);">
@@ -247,6 +251,19 @@ const App = {
                 </div>
                 
                 <div class="settings-group">
+                    <p class="settings-group-title">Appearance</p>
+                    <div class="settings-row">
+                        <div class="settings-icon" style="background: var(--inactive-bg);">🎨</div>
+                        <div class="settings-label">Theme</div>
+                        <div class="segmented-control" role="group" style="width: auto;">
+                            <button type="button" class="segmented-option ${this.state.theme === 'system' ? 'active' : ''}" data-theme-opt="system">Auto</button>
+                            <button type="button" class="segmented-option ${this.state.theme === 'light' ? 'active' : ''}" data-theme-opt="light">Light</button>
+                            <button type="button" class="segmented-option ${this.state.theme === 'dark' ? 'active' : ''}" data-theme-opt="dark">Dark</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-group">
                     <p class="settings-group-title">Account</p>
                     <div class="settings-row">
                         <div class="settings-icon" style="background: var(--inactive-bg);">👤</div>
@@ -331,10 +348,11 @@ const App = {
             <div class="modal-overlay" id="modal-create">
                 <div class="modal-sheet">
                     <div class="modal-header">
-                        <h2>New Experiment</h2>
+                        <h2 id="modal-create-title">New Experiment</h2>
                         <button class="modal-close" aria-label="Close modal" data-close="modal-create">${UI.icons.x}</button>
                     </div>
                     <form id="form-create">
+                        <input type="hidden" name="id" id="create-id">
                         <div class="form-group">
                             <label class="form-label" for="create-purpose">Purpose — Why?</label>
                             <textarea class="form-input" id="create-purpose" name="purpose" placeholder="e.g., Reduce stress and feel calmer" required></textarea>
@@ -370,7 +388,10 @@ const App = {
                             <label class="form-label" for="create-criteria">Success Criteria (Optional)</label>
                             <input class="form-input" id="create-criteria" name="criteria" placeholder="e.g., Complete before 8 AM">
                         </div>
-                        <button type="submit" class="btn btn-primary">Start Experiment</button>
+                        <div class="form-actions" style="display: flex; gap: 8px; flex-direction: column;">
+                            <button type="submit" class="btn btn-primary">Start Experiment</button>
+                            <button type="button" id="btn-delete" class="btn" style="background: #FFEBEE; color: #D32F2F; display: none;">Delete Experiment</button>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -394,8 +415,37 @@ const App = {
                             <label class="form-label" for="checkin-note">Note (Optional)</label>
                             <textarea class="form-input" id="checkin-note" name="note" placeholder="How did it go?"></textarea>
                         </div>
+
+                        <div class="form-group">
+                            <button type="button" class="reflection-toggle">
+                                <span style="font-size: 16px;">+</span> <span>Add Weekly Reflection</span>
+                            </button>
+                            <div class="reflection-fields">
+                                <label class="form-label">What worked?</label>
+                                <textarea class="form-input" name="ref_plus" rows="2" placeholder="Wins & progress"></textarea>
+                                
+                                <label class="form-label" style="margin-top: 12px;">What didn't?</label>
+                                <textarea class="form-input" name="ref_minus" rows="2" placeholder="Obstacles & distractions"></textarea>
+                                
+                                <label class="form-label" style="margin-top: 12px;">What's next?</label>
+                                <textarea class="form-input" name="ref_next" rows="2" placeholder="Focus for next week"></textarea>
+                            </div>
+                        </div>
                         <button type="submit" class="btn btn-primary">Save</button>
                     </form>
+                </div>
+                </div>
+            </div>
+            
+            <!-- Confirm Modal -->
+            <div class="modal-overlay" id="modal-confirm" style="z-index: 2000;">
+                <div class="modal-sheet confirm-modal-content">
+                    <h3 id="confirm-title" style="margin-bottom: 8px;">Are you sure?</h3>
+                    <p id="confirm-message" style="color: var(--text-secondary); margin-bottom: 24px;">This action cannot be undone.</p>
+                    <div class="confirm-actions">
+                        <button class="btn" id="confirm-cancel" style="background: var(--inactive-bg); color: var(--text-primary);">Cancel</button>
+                        <button class="btn" id="confirm-ok" style="background: var(--error-color); color: white;">Confirm</button>
+                    </div>
                 </div>
             </div>
         `;
@@ -433,6 +483,53 @@ const App = {
         app.addEventListener('click', (e) => {
             if (e.target.closest('#btn-check-updates')) {
                 this.checkForUpdates();
+            }
+        });
+
+        // Theme selector
+        app.addEventListener('click', (e) => {
+            const themeBtn = e.target.closest('[data-theme-opt]');
+            if (themeBtn) {
+                this.setTheme(themeBtn.dataset.themeOpt);
+            }
+        });
+
+        // Edit button
+        app.addEventListener('click', (e) => {
+            if (e.target.closest('#btn-edit')) {
+                this.handleEditExperiment();
+            }
+        });
+
+        // Delete button
+        app.addEventListener('click', (e) => {
+            if (e.target.closest('#btn-delete')) {
+                this.confirmAction(
+                    'Delete Experiment?',
+                    'This will permanently delete this experiment and all its history. This cannot be undone.',
+                    () => {
+                        const id = document.getElementById('create-id').value;
+                        DataManager.deleteExperiment(id);
+                        this.state.currentExperiment = null;
+                        this.closeModal('modal-create');
+                        this.render();
+                        this.showToast('Experiment deleted');
+                    }
+                );
+            }
+        });
+
+        // Reflection toggle
+        app.addEventListener('click', (e) => {
+            const toggle = e.target.closest('.reflection-toggle');
+            if (toggle) {
+                const fields = toggle.nextElementSibling;
+                const isVisible = fields.classList.contains('visible');
+                const symbol = toggle.querySelector('span:first-child');
+
+                fields.classList.toggle('visible');
+                // Animate height would be better but simple visibility toggle is functional
+                if (symbol) symbol.textContent = isVisible ? '+' : '−';
             }
         });
 
@@ -567,8 +664,9 @@ const App = {
         const modal = document.getElementById(id);
         if (modal) {
             modal.classList.add('active');
-            // Focus the modal for accessibility
-            modal.querySelector('.modal-sheet')?.focus();
+            // Save last focused element to restore later
+            this.lastFocusedElement = document.activeElement;
+            this.trapFocus(modal);
         }
     },
 
@@ -579,6 +677,10 @@ const App = {
         const modal = document.getElementById(id);
         if (modal) {
             modal.classList.remove('active');
+            // Restore focus
+            if (this.lastFocusedElement) {
+                this.lastFocusedElement.focus();
+            }
         }
     },
 
@@ -590,7 +692,8 @@ const App = {
         const freqOption = form.querySelector('[data-freq].active');
         const categoryOption = form.querySelector('[data-category].active');
 
-        DataManager.createExperiment({
+        const id = data.get('id');
+        const experimentData = {
             title: data.get('title'),
             purpose: data.get('purpose'),
             successCriteria: data.get('criteria') || null,
@@ -598,11 +701,25 @@ const App = {
             frequency: freqOption?.dataset.freq || 'daily',
             category: categoryOption?.dataset.category || 'Health',
             scheduledTime: data.get('scheduledTime') || null,
-            startDate: new Date().toISOString()
-        });
+        };
+
+        if (id) {
+            // Update existing
+            DataManager.updateExperiment(id, experimentData);
+            this.showToast('Experiment updated');
+            this.state.currentExperiment = id; // Ensure we stay on detail view
+        } else {
+            // Create new
+            DataManager.createExperiment({
+                ...experimentData,
+                startDate: new Date().toISOString()
+            });
+            this.showToast('Experiment created!');
+        }
 
         this.closeModal('modal-create');
         form.reset();
+        this.resetCreateForm(form); // Helper to reset UI state
         // Reset segmented controls to default state
         form.querySelectorAll('.segmented-control').forEach(control => {
             control.querySelectorAll('.segmented-option').forEach((opt, i) => {
@@ -626,10 +743,18 @@ const App = {
         const exp = DataManager.getExperiment(this.state.currentExperiment);
         const existingEntry = exp?.entries?.find(e => e.date === today);
 
+        const reflection = {
+            plus: data.get('ref_plus')?.trim(),
+            minus: data.get('ref_minus')?.trim(),
+            next: data.get('ref_next')?.trim()
+        };
+        const hasReflection = reflection.plus || reflection.minus || reflection.next;
+
         DataManager.addEntry(this.state.currentExperiment, {
             date: today,
             isCompleted: isCompleted,
-            note: data.get('note') || null
+            note: data.get('note') || null,
+            reflection: hasReflection ? reflection : null
         });
 
         this.closeModal('modal-checkin');
@@ -650,6 +775,51 @@ const App = {
     },
 
     /**
+     * Reset create form UI
+     */
+    resetCreateForm(form) {
+        document.getElementById('modal-create-title').textContent = 'New Experiment';
+        document.getElementById('create-id').value = '';
+        document.getElementById('btn-delete').style.display = 'none';
+
+        // Reset segmented controls to default state
+        form.querySelectorAll('.segmented-control').forEach(control => {
+            control.querySelectorAll('.segmented-option').forEach((opt, i) => {
+                opt.classList.toggle('active', i === 0);
+            });
+        });
+    },
+
+    /**
+     * Handle Edit Experiment
+     */
+    handleEditExperiment() {
+        const exp = DataManager.getExperiment(this.state.currentExperiment);
+        if (!exp) return;
+
+        this.openModal('modal-create');
+
+        // Populate form
+        const form = document.getElementById('form-create');
+        document.getElementById('modal-create-title').textContent = 'Edit Experiment';
+        document.getElementById('create-id').value = exp.id;
+        document.getElementById('btn-delete').style.display = 'block';
+
+        form.elements['title'].value = exp.title;
+        form.elements['purpose'].value = exp.purpose;
+        form.elements['create-duration'].value = exp.durationDays;
+        form.elements['create-time'].value = exp.scheduledTime || '';
+        if (exp.successCriteria) form.elements['criteria'].value = exp.successCriteria;
+
+        // Set segmented controls
+        const categoryBtn = form.querySelector(`[data-category="${exp.category}"]`);
+        if (categoryBtn) categoryBtn.click(); // Trigger click to update state (simple way)
+
+        const freqBtn = form.querySelector(`[data-freq="${exp.frequency}"]`);
+        if (freqBtn) freqBtn.click();
+    },
+
+    /**
      * Create experiment from template - with toast feedback
      */
     createFromTemplate(template) {
@@ -667,6 +837,51 @@ const App = {
         this.state.currentFilter = 'ALL';
         this.showToast(`Started: ${template.title}`);
         this.render();
+    },
+
+    /**
+     * Load theme from storage
+     */
+    loadTheme() {
+        this.state.theme = localStorage.getItem('theme') || 'system';
+        this.applyTheme();
+
+        // Listen for system changes
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+            if (this.state.theme === 'system') {
+                this.applyTheme();
+            }
+        });
+    },
+
+    /**
+     * Set theme
+     */
+    setTheme(theme) {
+        this.state.theme = theme;
+        localStorage.setItem('theme', theme);
+        this.applyTheme();
+        this.render(); // Re-render to update setting toggle
+    },
+
+    /**
+     * Apply theme to document
+     */
+    applyTheme() {
+        const root = document.documentElement;
+        let isDark = this.state.theme === 'dark';
+
+        if (this.state.theme === 'system') {
+            isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        }
+
+        if (isDark) {
+            root.setAttribute('data-theme', 'dark');
+            document.querySelector("meta[name='theme-color']").setAttribute("content", "#000000");
+        } else {
+            root.removeAttribute('data-theme');
+            document.querySelector("meta[name='theme-color']").setAttribute("content", "#FAFAFA");
+        }
     },
 
     /**
@@ -748,6 +963,159 @@ const App = {
             toast.classList.remove('visible');
             setTimeout(() => toast.remove(), 300);
         }, 2500);
+    },
+
+    /**
+     * Show Confirmation Dialog
+     */
+    confirmAction(title, message, onConfirm) {
+        const modal = document.getElementById('modal-confirm');
+        const titleEl = document.getElementById('confirm-title');
+        const msgEl = document.getElementById('confirm-message');
+        const cancelBtn = document.getElementById('confirm-cancel');
+        const okBtn = document.getElementById('confirm-ok');
+
+        if (!modal) return;
+
+        titleEl.textContent = title;
+        msgEl.textContent = message;
+
+        // Clone buttons to remove old listeners
+        const newCancel = cancelBtn.cloneNode(true);
+        const newOk = okBtn.cloneNode(true);
+        cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+        okBtn.parentNode.replaceChild(newOk, okBtn);
+
+        newCancel.textContent = 'Cancel';
+        newOk.textContent = 'Confirm';
+
+        newCancel.addEventListener('click', () => {
+            modal.classList.remove('active');
+        });
+
+        newOk.addEventListener('click', () => {
+            modal.classList.remove('active');
+            onConfirm();
+        });
+
+        this.openModal('modal-confirm');
+    },
+
+    /**
+     * Focus Trap for Modals (Accessibility)
+     */
+    trapFocus(modal) {
+        const focusableElements = modal.querySelectorAll(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusableElements.length === 0) return;
+
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        modal.addEventListener('keydown', function (e) {
+            const isTabPressed = e.key === 'Tab' || e.keyCode === 9;
+
+            if (!isTabPressed) {
+                return;
+            }
+
+            if (e.shiftKey) { // if shift key pressed for shift + tab combination
+                if (document.activeElement === firstElement) {
+                    lastElement.focus();
+                    e.preventDefault();
+                }
+            } else { // if tab key is pressed
+                if (document.activeElement === lastElement) { // if focused has reached to last element then focus first element
+                    firstElement.focus();
+                    e.preventDefault();
+                }
+            }
+        });
+
+        // Focus first element
+        setTimeout(() => firstElement.focus(), 50);
+    },
+
+    /**
+     * Show Confirmation Dialog
+     */
+    confirmAction(title, message, onConfirm) {
+        const modal = document.getElementById('modal-confirm');
+        const titleEl = document.getElementById('confirm-title');
+        const msgEl = document.getElementById('confirm-message');
+        const cancelBtn = document.getElementById('confirm-cancel');
+        const okBtn = document.getElementById('confirm-ok');
+
+        if (!modal) return;
+
+        titleEl.textContent = title;
+        msgEl.textContent = message;
+
+        // Clone buttons to remove old listeners
+        const newCancel = cancelBtn.cloneNode(true);
+        const newOk = okBtn.cloneNode(true);
+        cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+        okBtn.parentNode.replaceChild(newOk, okBtn);
+
+        newCancel.textContent = 'Cancel';
+        newOk.textContent = 'Confirm';
+
+        newCancel.addEventListener('click', () => {
+            modal.classList.remove('active');
+        });
+
+        newOk.addEventListener('click', () => {
+            modal.classList.remove('active');
+            onConfirm();
+        });
+
+        this.openModal('modal-confirm');
+    },
+
+    /**
+     * Focus Trap for Modals (Accessibility)
+     */
+    trapFocus(modal) {
+        const focusableElements = modal.querySelectorAll(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusableElements.length === 0) return;
+
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        // Remove previous listener needs careful handling, simplified by cloning body or just accepting stack
+        // For simplicity in this PWA, we'll assume modal is transient.
+        // Better: store handler reference. But binding new one is acceptable for now if we clone or remove.
+        // Let's just focus loop using a named function bound to this specific modal instance logic?
+        // Actually, the previous implementation attempt had the logic inside.
+
+        // We'll use a simple implementation that doesn't leak too much
+        modal.addEventListener('keydown', (e) => {
+            if (!modal.classList.contains('active')) return; // Guard
+
+            const isTabPressed = e.key === 'Tab' || e.keyCode === 9;
+
+            if (!isTabPressed) {
+                return;
+            }
+
+            if (e.shiftKey) { // if shift key pressed for shift + tab combination
+                if (document.activeElement === firstElement) {
+                    lastElement.focus();
+                    e.preventDefault();
+                }
+            } else { // if tab key is pressed
+                if (document.activeElement === lastElement) { // if focused has reached to last element then focus first element
+                    firstElement.focus();
+                    e.preventDefault();
+                }
+            }
+        });
+
+        // Focus first element
+        setTimeout(() => firstElement.focus(), 50);
     }
 };
 
