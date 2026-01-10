@@ -236,8 +236,6 @@ const App = {
         const version = this.state.appVersion || '1.0.0';
 
         return `
-            <div class="screen active" id="screen-settings">
-            <!-- Settings Screen -->
             <div class="screen ${this.state.currentTab === 'settings' ? 'active' : ''}" id="screen-settings">
                 <header class="app-header">
                     <h1>Settings</h1>
