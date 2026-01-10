@@ -236,7 +236,7 @@ Add to CSS (at the top, after body style):
   --color-primary: #f8f9fa;
 
   /* 30% - Secondary/Accents */
-  --color-secondary: #4a90e2;
+  --color-secondary: #2672C7;
 
   /* 10% - Highlights/CTAs */
   --color-accent: #e74c3c;
@@ -745,7 +745,7 @@ Copy these components and customize the text/colors for your needs. Each include
   }
 
   .nav-links a:hover {
-    color: #4a90e2; /* Change this to your brand color */
+    color: #2672C7; /* Change this to your brand color */
   }
 
   /* Mobile Menu */
@@ -783,7 +783,7 @@ Copy these components and customize the text/colors for your needs. Each include
 <style>
   /* Primary Button - Main actions */
   .btn-primary {
-    background: #4a90e2; /* Change to your brand color */
+    background: #2672C7; /* Change to your brand color */
     color: white;
     padding: 12px 28px;
     border: none;
@@ -803,9 +803,9 @@ Copy these components and customize the text/colors for your needs. Each include
   /* Secondary Button - Less important actions */
   .btn-secondary {
     background: transparent;
-    color: #4a90e2; /* Change to your brand color */
+    color: #2672C7; /* Change to your brand color */
     padding: 12px 28px;
-    border: 2px solid #4a90e2;
+    border: 2px solid #2672C7;
     border-radius: 6px;
     font-size: 16px;
     font-weight: 600;
@@ -814,7 +814,7 @@ Copy these components and customize the text/colors for your needs. Each include
   }
 
   .btn-secondary:hover {
-    background: #4a90e2;
+    background: #2672C7;
     color: white;
   }
 
@@ -855,7 +855,7 @@ Copy these components and customize the text/colors for your needs. Each include
   /* Text Button - Minimal emphasis */
   .btn-text {
     background: transparent;
-    color: #4a90e2;
+    color: #2672C7;
     padding: 8px 16px;
     border: none;
     font-size: 16px;
@@ -914,8 +914,8 @@ Copy these components and customize the text/colors for your needs. Each include
 
   .form-input:focus {
     outline: none;
-    border-color: #4a90e2; /* Change to your brand color */
-    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+    border-color: #2672C7; /* Change to your brand color */
+    box-shadow: 0 0 0 3px rgba(38, 114, 199, 0.1);
   }
 
   .form-input::placeholder {
@@ -948,7 +948,7 @@ Copy these components and customize the text/colors for your needs. Each include
 
   .form-textarea:focus {
     outline: none;
-    border-color: #4a90e2;
+    border-color: #2672C7;
   }
 </style>
 
@@ -1040,7 +1040,7 @@ Copy these components and customize the text/colors for your needs. Each include
   }
 
   .card-link {
-    color: #4a90e2;
+    color: #2672C7;
     text-decoration: none;
     font-weight: 600;
     font-size: 14px;
@@ -1503,7 +1503,7 @@ Captions:    12px
   --color-background: #f8f9fa;
 
   /* 30% - Secondary/supporting colors */
-  --color-secondary: #4a90e2;
+  --color-secondary: #2672C7;
   --color-text: #333333;
 
   /* 10% - Accent for CTAs and highlights */
@@ -1818,7 +1818,7 @@ Use: WebAIM Contrast Checker (online tool)
 /* Color system for actions */
 :root {
   --action-primary: #e74c3c; /* Main actions (Submit, Buy, Save) */
-  --action-secondary: #4a90e2; /* Secondary actions (Learn More, View) */
+  --action-secondary: #2672C7; /* Secondary actions (Learn More, View) */
   --action-success: #2ecc71; /* Success states (Saved, Complete) */
   --action-danger: #e74c3c; /* Destructive actions (Delete, Cancel) */
 }
@@ -1910,7 +1910,7 @@ Use: WebAIM Contrast Checker (online tool)
 
 /* CSS Variables - easy theming */
 :root {
-  --primary-color: #4a90e2;
+  --primary-color: #2672C7;
   --spacing-unit: 8px;
 }
 
@@ -2138,7 +2138,7 @@ Once you've mastered Tier 1, these 20 principles will elevate your designs to pr
 
 /* Links look like links */
 a {
-  color: #4a90e2;
+  color: #2672C7;
   text-decoration: underline;
 }
 
@@ -2558,7 +2558,7 @@ If it fails these tests → Remove it
   }
 
   summary:hover {
-    color: #4a90e2;
+    color: #2672C7;
   }
 
   .advanced-content {
@@ -2857,7 +2857,7 @@ _(See Section 8: Templates & Starting Points for complete templates)_
 
 ```css
 .button {
-  background: #4a90e2;
+  background: #2672C7;
   transform: translateY(0);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth easing */
@@ -2865,7 +2865,7 @@ _(See Section 8: Templates & Starting Points for complete templates)_
 
 .button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.4);
+  box-shadow: 0 4px 12px rgba(38, 114, 199, 0.4);
 }
 
 .button:active {
@@ -2899,7 +2899,7 @@ _(See Section 8: Templates & Starting Points for complete templates)_
 ```css
 .loading-spinner {
   border: 3px solid #f3f3f3;
-  border-top: 3px solid #4a90e2;
+  border-top: 3px solid #2672C7;
   border-radius: 50%;
   width: 40px;
   height: 40px;
@@ -3582,7 +3582,7 @@ body {
 ```css
 :root {
   --color-60: #f8f9fa; /* Backgrounds */
-  --color-30: #4a90e2; /* Headers, secondary */
+    --color-30: #2672C7; /* Headers, secondary */
   --color-10: #e74c3c; /* Buttons, accents */
 }
 ```
@@ -3697,13 +3697,13 @@ Use TinyPNG.com or Squoosh.app before uploading
   padding: 12px 28px;
   border-radius: 6px;
   cursor: pointer;
-  background: #4a90e2;
+  background: #2672C7;
   color: white;
   border: none;
   font-weight: 600;
 
   /* Shadows suggest depth */
-  box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
+  box-shadow: 0 2px 8px rgba(38, 114, 199, 0.3);
 
   /* Hover feedback */
   transition: all 0.2s ease;
@@ -3711,7 +3711,7 @@ Use TinyPNG.com or Squoosh.app before uploading
 
 .button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.4);
+  box-shadow: 0 4px 12px rgba(38, 114, 199, 0.4);
 }
 
 .button:active {
@@ -3878,7 +3878,7 @@ Copy this complete template and customize:
     <style>
       /* ----- CHANGE THESE COLORS ----- */
       :root {
-        --primary: #4a90e2;
+        --primary: #2672C7;
         --accent: #e74c3c;
         --dark: #1a1a1a;
         --gray: #666;
@@ -4217,7 +4217,7 @@ Copy this complete template and customize:
       input:focus,
       textarea:focus {
         outline: none;
-        border-color: #4a90e2;
+        border-color: #2672C7;
       }
 
       textarea {
@@ -4228,7 +4228,7 @@ Copy this complete template and customize:
       .btn-submit {
         width: 100%;
         padding: 14px;
-        background: #4a90e2;
+        background: #2672C7;
         color: white;
         border: none;
         border-radius: 6px;

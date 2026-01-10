@@ -7,7 +7,7 @@
     <style>
       /* ----- CHANGE THESE COLORS ----- */
       :root {
-        --primary: #4a90e2;
+        --primary: #2672C7;
         --accent: #e74c3c;
         --dark: #1a1a1a;
         --gray: #666;
@@ -25,6 +25,11 @@
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
         line-height: 1.6;
         color: var(--dark);
+      }
+
+      :focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 2px;
       }
 
       .container {
