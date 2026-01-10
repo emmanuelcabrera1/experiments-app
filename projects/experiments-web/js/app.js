@@ -237,67 +237,55 @@ const App = {
 
         return `
             <div class="screen active" id="screen-settings">
-                <div class="header">
+            <!-- Settings Screen -->
+            <div class="screen ${this.state.currentTab === 'settings' ? 'active' : ''}" id="screen-settings">
+                <header class="app-header">
                     <h1>Settings</h1>
-                </div>
-                
                 </header>
                 <div class="content-scrollable">
-                    <div class="card">
-                        <h3 class="card-title">Appearance</h3>
-                        <div class="form-group">
-                            <label class="form-label">Theme</label>
-                            <div class="segmented-control">
-                                <button type="button" class="segmented-option ${this.state.theme === 'system' ? 'active' : ''}" data-theme-opt="system">System</button>
+                    <div class="settings-group">
+                        <p class="settings-group-title">Updates</p>
+                        <div class="settings-row" style="cursor: pointer;" id="btn-check-updates">
+                            <div class="settings-icon" style="background: #E8F5E9;">🔄</div>
+                            <div class="settings-label">Check for Updates</div>
+                            <div class="settings-value">v${this.state.appVersion}</div>
+                        </div>
+                    </div>
+
+                    <div class="settings-group">
+                        <p class="settings-group-title">Appearance</p>
+                        <div class="settings-row">
+                            <div class="settings-icon" style="background: var(--inactive-bg);">🎨</div>
+                            <div class="settings-label">Theme</div>
+                            <div class="segmented-control" role="group" style="width: auto;">
+                                <button type="button" class="segmented-option ${this.state.theme === 'system' ? 'active' : ''}" data-theme-opt="system">Auto</button>
                                 <button type="button" class="segmented-option ${this.state.theme === 'light' ? 'active' : ''}" data-theme-opt="light">Light</button>
                                 <button type="button" class="segmented-option ${this.state.theme === 'dark' ? 'active' : ''}" data-theme-opt="dark">Dark</button>
                             </div>
                         </div>
                     </div>
-
-                    <div class="card">
-                        <h3 class="card-title">About</h3>
-                        <p class="text-secondary" style="margin-bottom: 16px;">
-                            Experiments v${this.state.appVersion}
-                        </p>
-                        <button class="btn" id="btn-check-updates" style="width: 100%;">Check for Updates</button>
+                    
+                    <div class="settings-group">
+                        <p class="settings-group-title">Account</p>
+                        <div class="settings-row">
+                            <div class="settings-icon" style="background: var(--inactive-bg);">👤</div>
+                            <div class="settings-label">Experimenter</div>
+                            <div class="settings-value">Free</div>
+                        </div>
                     </div>
-
-                    <!-- Debug Console -->
-                    <div class="card" style="background: #1a1a1a; color: #00ff00; font-family: monospace; padding: 12px;">
-                        <h3 class="card-title" style="color: #fff; display: flex; justify-content: space-between;">
-                            <span>Debug Console</span>
-                            <button onclick="document.getElementById('debug-log').innerHTML=''" style="background:none; border:none; color: #fff; font-size: 12px;">Clear</button>
-                        </h3>
-                        <div id="debug-log" style="font-size: 11px; max-height: 200px; overflow-y: auto; white-space: pre-wrap;"></div>
-                    </div>
-                </div>
-            </div>    
-                <div class="settings-group">
-                    <p class="settings-group-title">Data</p>
-                    <div class="settings-row">
-                        <div class="settings-icon" style="background: #E8F5E9;">📊</div>
-                        <div class="settings-label">Active Experiments</div>
-                        <div class="settings-value">${experiments.length}</div>
-                    </div>
-                    <div class="settings-row">
-                        <div class="settings-icon" style="background: #FFF3E0;">💾</div>
-                        <div class="settings-label">Storage</div>
-                        <div class="settings-value">Local</div>
-                    </div>
-                </div>
-                
-                <div class="settings-group">
-                    <p class="settings-group-title">About</p>
-                    <div class="settings-row">
-                        <div class="settings-icon" style="background: #E3F2FD;">📖</div>
-                        <div class="settings-label">Tiny Experiments Framework</div>
-                        <div class="settings-value">→</div>
-                    </div>
-                    <div class="settings-row">
-                        <div class="settings-icon" style="background: #F3E5F5;">ℹ️</div>
-                        <div class="settings-label">Version</div>
-                        <div class="settings-value">${version}</div>
+                    
+                    <div class="settings-group">
+                        <p class="settings-group-title">Data</p>
+                        <div class="settings-row">
+                            <div class="settings-icon" style="background: #E8F5E9;">📊</div>
+                            <div class="settings-label">Active Experiments</div>
+                            <div class="settings-value">${experiments.length}</div>
+                        </div>
+                        <div class="settings-row">
+                            <div class="settings-icon" style="background: #FFF3E0;">💾</div>
+                            <div class="settings-label">Storage</div>
+                            <div class="settings-value">Local</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -927,16 +915,10 @@ const App = {
     },
 
     /**
-     * Log to visual console
+     * Log to console (Debug console removed for production)
      */
     log(msg) {
-        console.log(msg);
-        const logEl = document.getElementById('debug-log');
-        if (logEl) {
-            const time = new Date().toLocaleTimeString().split(' ')[0];
-            logEl.innerHTML += `[${time}] ${msg}\n`;
-            logEl.scrollTop = logEl.scrollHeight;
-        }
+        console.log(msg); // Standard console only
     },
 
     /**
