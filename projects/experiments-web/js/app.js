@@ -976,8 +976,18 @@ const App = {
             const registration = await navigator.serviceWorker.getRegistration();
 
             if (!registration) {
-                this.log('SW: No registration found');
-                return;
+                this.log('SW: No registration found. Attempting to restore...');
+                // Self-healing: Try to register again
+                try {
+                    const swPath = new URL('./sw.js?v=v1.0.4-DEBUG', window.location.href).href;
+                    registration = await navigator.serviceWorker.register(swPath);
+                    this.log('SW: Registration restored! Relying on initial install.');
+                    this.showToast('Connection restored. Please restart app.');
+                    return;
+                } catch (regError) {
+                    this.log(`SW: Result: ${regError.message}`);
+                    return;
+                }
             }
 
             this.showToast('Checking for updates...');
@@ -1004,11 +1014,21 @@ const App = {
             await registration.update();
             this.log('SW: Update check complete');
 
+            this.log('SW: Calling registration.update()');
+            await registration.update();
+            this.log('SW: Update check complete');
+
+            // Check waiting again after update
             if (registration.waiting) {
-                this.log('SW: Found existing waiting worker. Activating...');
+                this.log('SW: Found waiting worker. Activating...');
                 registration.waiting.postMessage({ type: 'SKIP_WAITING' });
             } else {
-                this.log('SW: No waiting worker found immediately.');
+                // Force check if controller is different
+                if (navigator.serviceWorker.controller && registration.active) {
+                    this.log('SW: Active worker present. State: ' + registration.active.state);
+                }
+                this.log('SW: No waiting worker found.');
+                this.showToast('You are on the latest version');
             }
         } catch (error) {
             console.error('Update check failed:', error);
