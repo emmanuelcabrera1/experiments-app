@@ -934,7 +934,7 @@ const App = {
         // Listen for controller changes (new SW activated)
         navigator.serviceWorker.addEventListener('controllerchange', () => {
             this.showToast('App updated! Reloading...');
-            setTimeout(() => window.location.reload(), 1000);
+            setTimeout(() => window.location.href = window.location.href, 500);
         });
     },
 

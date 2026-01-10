@@ -47,7 +47,7 @@
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 // Use relative path for GitHub Pages subdirectory support
-                const swPath = new URL('./sw.js', window.location.href).href;
+                const swPath = new URL('./sw.js?v=' + Date.now(), window.location.href).href;
                 navigator.serviceWorker.register(swPath)
                     .then((registration) => {
                         console.log('[App] Service Worker registered:', registration.scope);
