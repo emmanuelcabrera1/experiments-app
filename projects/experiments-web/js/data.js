@@ -352,10 +352,10 @@ const StreakCalculator = {
      * Calculate progress percentage
      */
     progress(experiment) {
-        const start = new Date(experiment.startDate);
-        const now = new Date();
-        const elapsed = Math.floor((now - start) / (1000 * 60 * 60 * 24));
-        return Math.min(Math.max(elapsed / experiment.durationDays, 0), 1);
+        // Change to actual completion progress (Days Completed / Duration)
+        // This feels more rewarding and "advances" as you do things.
+        const completed = this.daysCompleted(experiment);
+        return Math.min(Math.max(completed / experiment.durationDays, 0), 1);
     },
 
     /**

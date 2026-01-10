@@ -367,8 +367,9 @@ const App = {
                         ${DataManager.getCategories().map((cat, i) => `
                             <button type="button" class="segmented-option ${i === 0 ? 'active' : ''}" data-category="${cat}">${cat}</button>
                         `).join('')}
+                        <button type="button" class="segmented-option" id="btn-add-category" style="flex: 0 0 auto; padding: 0 12px; font-size: 18px;">+</button>
                     </div>
-                </div>        </div>
+                </div>
                         <div class="form-group">
                             <label class="form-label" id="create-freq-label">Frequency</label>
                             <div class="segmented-control" role="group" aria-labelledby="create-freq-label">
@@ -445,6 +446,19 @@ const App = {
                     <div class="confirm-actions">
                         <button class="btn" id="confirm-cancel" style="background: var(--inactive-bg); color: var(--text-primary);">Cancel</button>
                         <button class="btn" id="confirm-ok" style="background: var(--error-color); color: white;">Confirm</button>
+                    </div>
+                </div>
+            </div>
+            <!-- Prompt Modal -->
+            <div class="modal-overlay" id="modal-prompt" style="z-index: 2001;">
+                <div class="modal-sheet">
+                    <h3 id="prompt-title" style="margin-bottom: 16px;">Enter Value</h3>
+                    <div class="form-group">
+                        <input class="form-input" id="prompt-input" type="text" placeholder="Name">
+                    </div>
+                    <div class="form-actions" style="display: flex; gap: 16px;">
+                        <button class="btn btn-secondary" id="prompt-cancel" style="flex: 1;">Cancel</button>
+                        <button class="btn btn-primary" id="prompt-ok" style="flex: 1;">Save</button>
                     </div>
                 </div>
             </div>
@@ -653,6 +667,27 @@ const App = {
                     1
                 );
                 this.render();
+            }
+        });
+
+        // Add Category Button
+        app.addEventListener('click', (e) => {
+            if (e.target.closest('#btn-add-category')) {
+                this.promptAction('New Category Name', (name) => {
+                    if (name && DataManager.addCategory(name)) {
+                        const container = document.querySelector('#form-create .segmented-control[aria-labelledby="create-category-label"]');
+                        if (container) {
+                            const cats = DataManager.getCategories();
+                            const html = cats.map((cat) => `
+                                <button type="button" class="segmented-option ${cat === name ? 'active' : ''}" data-category="${cat}">${cat}</button>
+                            `).join('') + `<button type="button" class="segmented-option" id="btn-add-category" style="flex: 0 0 auto; padding: 0 12px; font-size: 18px;">+</button>`;
+                            container.innerHTML = html;
+                        }
+                        this.showToast(`Category "${name}" added`);
+                    } else {
+                        this.showToast('Invalid or duplicate category');
+                    }
+                });
             }
         });
     },
@@ -916,13 +951,32 @@ const App = {
             const registration = await navigator.serviceWorker.getRegistration();
             if (registration) {
                 this.showToast('Checking for updates...');
+
+                // Listen for updates found during check
+                const installWorker = (worker) => {
+                    worker.addEventListener('statechange', () => {
+                        if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+                            worker.postMessage({ type: 'SKIP_WAITING' });
+                        }
+                    });
+                };
+
+                registration.addEventListener('updatefound', () => {
+                    installWorker(registration.installing);
+                });
+
                 await registration.update();
 
                 if (registration.waiting) {
-                    // New SW is waiting, skip waiting to activate
+                    // Already waiting
                     registration.waiting.postMessage({ type: 'SKIP_WAITING' });
                 } else {
-                    this.showToast('You\'re on the latest version!');
+                    // Check didn't find immediate waiting worker, verify if strictly latest
+                    // If no updatefound fired, we assume latest.
+                    // We can't easily know if updatefound IS GOING to fire, 
+                    // but we can show a delayed message if nothing happens?
+                    // For now, just wait a bit or show 'No updates found' if safe.
+                    // Simple approach: current logic updates if waiting.
                 }
             }
         } catch (error) {
@@ -992,6 +1046,43 @@ const App = {
         });
 
         this.openModal('modal-confirm');
+    },
+
+    /**
+     * Show Prompt Dialog
+     */
+    promptAction(title, onSave) {
+        const modal = document.getElementById('modal-prompt');
+        const titleEl = document.getElementById('prompt-title');
+        const inputEl = document.getElementById('prompt-input');
+        const cancelBtn = document.getElementById('prompt-cancel');
+        const okBtn = document.getElementById('prompt-ok');
+
+        if (!modal) return;
+
+        titleEl.textContent = title;
+        inputEl.value = '';
+
+        // Clone buttons
+        const newCancel = cancelBtn.cloneNode(true);
+        const newOk = okBtn.cloneNode(true);
+        cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+        okBtn.parentNode.replaceChild(newOk, okBtn);
+
+        newCancel.addEventListener('click', () => {
+            modal.classList.remove('active');
+        });
+
+        newOk.addEventListener('click', () => {
+            const val = inputEl.value.trim();
+            if (val) {
+                modal.classList.remove('active');
+                onSave(val);
+            }
+        });
+
+        this.openModal('modal-prompt');
+        setTimeout(() => inputEl.focus(), 100);
     },
 
     /**

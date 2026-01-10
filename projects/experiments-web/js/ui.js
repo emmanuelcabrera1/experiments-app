@@ -121,8 +121,14 @@ const UI = {
                 </div>
                 <div class="entry-content">
                     <div class="entry-date">${formatted}</div>
-                    ${entry.note ? `<div class="entry-note">${escapeHtml(entry.note)}</div>` : ''}
-                    ${entry.reflection ? `<div class="entry-reflection-badge">✨ Reflection</div>` : ''}
+                    ${entry.note ? `<div class="entry-note" style="white-space: pre-wrap; overflow: visible;">${escapeHtml(entry.note)}</div>` : ''}
+                    ${entry.reflection ? `
+                        <div class="entry-reflection-card" style="margin-top: 8px; font-size: 13px; background: var(--inactive-bg); padding: 8px; border-radius: 8px;">
+                            ${entry.reflection.plus ? `<div><strong>+</strong> ${escapeHtml(entry.reflection.plus)}</div>` : ''}
+                            ${entry.reflection.minus ? `<div><strong>−</strong> ${escapeHtml(entry.reflection.minus)}</div>` : ''}
+                            ${entry.reflection.next ? `<div><strong>→</strong> ${escapeHtml(entry.reflection.next)}</div>` : ''}
+                        </div>
+                    ` : ''}
                 </div>
             </div>
         `;
