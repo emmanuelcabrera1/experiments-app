@@ -25,6 +25,90 @@ const App = {
         this.setupServiceWorker();
         this.render();
         this.bindEvents();
+
+        // Check for weekly summary on Mondays
+        setTimeout(() => this.checkWeeklySummary(), 500);
+    },
+
+    /**
+     * Check if we should show the weekly summary
+     */
+    checkWeeklySummary() {
+        if (SummaryManager.shouldShowWeeklySummary()) {
+            const experiments = DataManager.getExperiments();
+            const lastWeekStart = SummaryManager.getWeekStart(new Date());
+            lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+
+            const summary = SummaryManager.generateWeeklySummary(experiments, lastWeekStart);
+            this.showWeeklySummaryModal(summary);
+        }
+    },
+
+    /**
+     * Show weekly summary modal with content
+     */
+    showWeeklySummaryModal(summary) {
+        const content = document.getElementById('weekly-summary-content');
+        if (!content) return;
+
+        // Calculate totals from experiments array
+        const totalCompleted = summary.experiments.reduce((sum, e) => sum + e.completed + e.minimum, 0);
+        const longestStreak = Math.max(...summary.experiments.map(e => e.streak), 0);
+
+        content.innerHTML = `
+            <div style="text-align: center; margin-bottom: 24px;">
+                <div style="font-size: 48px; margin-bottom: 8px;">🎯</div>
+                <h3 style="margin-bottom: 4px;">${summary.overallScore}% Completion</h3>
+                <p style="color: var(--text-secondary);">Week of ${new Date(summary.weekOf).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px;">
+                <div style="text-align: center; padding: 12px; background: var(--inactive-bg); border-radius: 12px;">
+                    <div style="font-size: 24px; font-weight: 700; color: var(--primary-color);">${totalCompleted}</div>
+                    <div style="font-size: 12px; color: var(--text-tertiary);">Check-ins</div>
+                </div>
+                <div style="text-align: center; padding: 12px; background: var(--inactive-bg); border-radius: 12px;">
+                    <div style="font-size: 24px; font-weight: 700; color: #F59E0B;">${longestStreak}</div>
+                    <div style="font-size: 12px; color: var(--text-tertiary);">Best Streak</div>
+                </div>
+                <div style="text-align: center; padding: 12px; background: var(--inactive-bg); border-radius: 12px;">
+                    <div style="font-size: 24px; font-weight: 700; color: #10B981;">${summary.stats.perfectWeeks}</div>
+                    <div style="font-size: 12px; color: var(--text-tertiary);">Perfect</div>
+                </div>
+            </div>
+
+            ${summary.experiments.length > 0 ? `
+                <div style="margin-bottom: 16px;">
+                    <p style="font-weight: 600; margin-bottom: 8px;">Experiment Progress</p>
+                    ${summary.experiments.map(exp => `
+                        <div style="display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--inactive-bg);">
+                            <div style="width: 40px; text-align: center; font-size: 16px;">
+                                ${exp.completed === 7 ? '🌟' : exp.completed >= 5 ? '✅' : exp.completed >= 3 ? '📈' : '💪'}
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 500;">${escapeHtml(exp.title)}</div>
+                                <div style="font-size: 12px; color: var(--text-tertiary);">${exp.completed}/7 days</div>
+                            </div>
+                            <div style="font-weight: 600; color: ${exp.completed >= 5 ? 'var(--primary-color)' : 'var(--text-secondary)'};">
+                                ${exp.completionRate}%
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            ` : ''}
+
+            ${summary.topInsight ? `
+                <div style="background: #EDE9FE; padding: 12px 16px; border-radius: 12px;">
+                    <p style="font-weight: 600; color: #7C3AED; margin-bottom: 8px;">💡 Top Insight</p>
+                    <p style="font-size: 14px; color: #5B21B6;">${escapeHtml(summary.topInsight)}</p>
+                </div>
+            ` : ''}
+        `;
+
+        // Save that we showed this summary
+        SummaryManager.saveWeeklySummary(summary);
+
+        this.openModal('modal-weekly-summary');
     },
 
     /**
@@ -56,6 +140,8 @@ const App = {
                 return this.renderExperimentsScreen();
             case 'gallery':
                 return this.renderGalleryScreen();
+            case 'insights':
+                return this.renderInsightsScreen();
             case 'settings':
                 return this.renderSettingsScreen();
             default:
@@ -169,7 +255,9 @@ const App = {
                             <div class="stat-label">Left</div>
                         </div>
                     </div>
-                    
+
+                    ${this.renderStreakStatusBanner(exp)}
+
                     <button class="btn btn-primary" id="btn-checkin" style="margin-top: var(--space-lg);">
                         Check In
                     </button>
@@ -226,8 +314,132 @@ const App = {
     },
 
     /**
-     * Render Settings tab
+     * Render Insights Screen - patterns, correlations, recommendations
      */
+    renderInsightsScreen() {
+        const experiments = DataManager.getExperiments();
+        const moodTrend = MoodTracker.getMoodTrend(7);
+        const todayMood = MoodTracker.getMoodForDate(StreakCalculator.toDateString(new Date()));
+        const recommendations = InsightsEngine.getRecommendations(experiments);
+        const correlations = MoodTracker.getAllCorrelations(experiments);
+        const weeklyInsights = InsightsEngine.generateWeeklyInsights(experiments);
+
+        // Mood tracking section
+        const moodSection = `
+            <div class="card" style="margin-bottom: var(--space-lg);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
+                    <h3 style="margin: 0;">Today's Mood</h3>
+                    ${todayMood ? `<span style="font-size: 24px;">${MoodTracker.getMoodEmoji(todayMood.mood)}</span>` : ''}
+                </div>
+                ${!todayMood ? `
+                    <p style="color: var(--text-secondary); font-size: var(--text-sm); margin-bottom: var(--space-md);">How are you feeling?</p>
+                    <div class="mood-picker" style="display: flex; justify-content: space-between; gap: var(--space-sm);">
+                        ${MoodTracker.MOODS.map(m => `
+                            <button class="mood-btn" data-mood="${m.value}" style="flex: 1; padding: var(--space-md); font-size: 24px; background: var(--inactive-bg); border-radius: var(--radius-md); text-align: center;">
+                                ${m.emoji}
+                            </button>
+                        `).join('')}
+                    </div>
+                ` : `
+                    <div style="display: flex; gap: var(--space-lg); align-items: center;">
+                        <div>
+                            <div style="font-size: var(--text-sm); color: var(--text-secondary);">Mood</div>
+                            <div style="font-size: var(--text-lg); font-weight: var(--weight-semibold);">${todayMood.mood}/5</div>
+                        </div>
+                        <div>
+                            <div style="font-size: var(--text-sm); color: var(--text-secondary);">Energy</div>
+                            <div style="font-size: var(--text-lg); font-weight: var(--weight-semibold);">${todayMood.energy}/5</div>
+                        </div>
+                        <div style="flex: 1; text-align: right;">
+                            <div style="font-size: var(--text-sm); color: var(--text-secondary);">7-day trend</div>
+                            <div style="font-size: var(--text-lg);">${moodTrend.trend === 'improving' ? '📈 Improving' : moodTrend.trend === 'declining' ? '📉 Declining' : '➡️ Stable'}</div>
+                        </div>
+                    </div>
+                `}
+            </div>
+        `;
+
+        // Weekly insights section
+        let insightsSection = '';
+        if (weeklyInsights.length > 0) {
+            insightsSection = `
+                <div style="margin-bottom: var(--space-lg);">
+                    <h3 style="margin-bottom: var(--space-md);">This Week</h3>
+                    ${weeklyInsights.map(insight => `
+                        <div class="card" style="margin-bottom: var(--space-sm); display: flex; gap: var(--space-md); align-items: center;">
+                            <span style="font-size: 24px;">${insight.emoji}</span>
+                            <div>
+                                <div style="font-weight: var(--weight-semibold);">${insight.title}</div>
+                                <div style="font-size: var(--text-sm); color: var(--text-secondary);">${insight.message}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        // Recommendations section
+        let recommendationsSection = '';
+        if (recommendations.length > 0) {
+            recommendationsSection = `
+                <div style="margin-bottom: var(--space-lg);">
+                    <h3 style="margin-bottom: var(--space-md);">Recommendations</h3>
+                    ${recommendations.slice(0, 3).map(rec => `
+                        <div class="card" style="margin-bottom: var(--space-sm); border-left: 3px solid ${rec.priority === 1 ? 'var(--error-color)' : rec.priority === 2 ? '#FFA500' : 'var(--text-tertiary)'};">
+                            <div style="font-weight: var(--weight-semibold);">${rec.experimentTitle}</div>
+                            <div style="font-size: var(--text-sm); color: var(--text-secondary); margin: var(--space-xs) 0;">${rec.message}</div>
+                            <div style="font-size: var(--text-sm); color: var(--text-primary);">💡 ${rec.action}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        // Correlations section
+        let correlationsSection = '';
+        if (correlations.length > 0) {
+            correlationsSection = `
+                <div style="margin-bottom: var(--space-lg);">
+                    <h3 style="margin-bottom: var(--space-md);">Mood Correlations</h3>
+                    ${correlations.slice(0, 3).map(cor => `
+                        <div class="card" style="margin-bottom: var(--space-sm);">
+                            <div style="font-weight: var(--weight-semibold);">${cor.experimentTitle}</div>
+                            <div style="font-size: var(--text-sm); color: var(--text-secondary);">${cor.insight}</div>
+                            <div style="display: flex; gap: var(--space-lg); margin-top: var(--space-sm);">
+                                <div style="font-size: var(--text-sm);">
+                                    <span style="color: var(--success-color);">✓</span> ${cor.avgMoodWithCompletion}/5 avg
+                                </div>
+                                <div style="font-size: var(--text-sm);">
+                                    <span style="color: var(--text-tertiary);">✗</span> ${cor.avgMoodWithoutCompletion}/5 avg
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        // Empty state
+        const hasData = experiments.length > 0;
+        const emptyState = !hasData ? `
+            <div class="empty-state">
+                <h3>No Data Yet</h3>
+                <p>Start tracking experiments and moods to see insights here.</p>
+            </div>
+        ` : '';
+
+        return `
+            <div class="screen active" id="screen-insights">
+                <div class="header">
+                    <h1>Insights</h1>
+                    <p class="subheader">Patterns & Recommendations</p>
+                </div>
+                ${moodSection}
+                ${hasData ? insightsSection + recommendationsSection + correlationsSection : emptyState}
+            </div>
+        `;
+    },
+
     /**
      * Render Settings Screen - with Updates section
      */
@@ -285,9 +497,152 @@ const App = {
                             <div class="settings-value">Local</div>
                         </div>
                     </div>
+
+                    <div class="settings-group">
+                        <p class="settings-group-title">Accountability Partners</p>
+                        <div class="settings-row" style="cursor: pointer;" id="btn-copy-share-code">
+                            <div class="settings-icon" style="background: #E3F2FD;">🔗</div>
+                            <div class="settings-label">My Share Code</div>
+                            <div class="settings-value">${PartnersManager.getMyShareCode()}</div>
+                        </div>
+                        <div class="settings-row" style="cursor: pointer;" id="btn-share-progress">
+                            <div class="settings-icon" style="background: #F3E5F5;">📤</div>
+                            <div class="settings-label">Share Progress</div>
+                            <div class="settings-chevron">${UI.icons.chevronRight}</div>
+                        </div>
+                        <div class="settings-row" style="cursor: pointer;" id="btn-add-partner">
+                            <div class="settings-icon" style="background: #E8F5E9;">➕</div>
+                            <div class="settings-label">Add Partner</div>
+                            <div class="settings-chevron">${UI.icons.chevronRight}</div>
+                        </div>
+                        ${this.renderPartnersList()}
+                    </div>
+
+                    <div class="settings-group">
+                        <p class="settings-group-title">Challenges</p>
+                        <div class="settings-row" style="cursor: pointer;" id="btn-create-challenge">
+                            <div class="settings-icon" style="background: #FFF8E1;">🏆</div>
+                            <div class="settings-label">Start Challenge</div>
+                            <div class="settings-chevron">${UI.icons.chevronRight}</div>
+                        </div>
+                        ${this.renderChallengesList()}
+                    </div>
                 </div>
             </div>
         `;
+    },
+
+    /**
+     * Render partners list in Settings
+     */
+    renderPartnersList() {
+        const partners = PartnersManager.getPartners();
+        if (partners.length === 0) return '';
+
+        return partners.map(p => {
+            const status = PartnersManager.getPartnerStatus(p);
+            return `
+                <div class="settings-row" style="padding: 12px 16px;">
+                    <div class="settings-icon" style="background: var(--inactive-bg);">${status.emoji}</div>
+                    <div style="flex: 1;">
+                        <div class="settings-label">${escapeHtml(p.name)}</div>
+                        <div style="font-size: 12px; color: var(--text-tertiary);">${status.message}</div>
+                    </div>
+                    <button class="btn-remove-partner" data-partner-id="${p.id}" data-partner-name="${escapeHtml(p.name)}"
+                            style="background: none; border: none; color: var(--error-color); padding: 8px; cursor: pointer;">
+                        ${UI.icons.x}
+                    </button>
+                </div>
+            `;
+        }).join('');
+    },
+
+    /**
+     * Render challenges list in Settings
+     */
+    renderChallengesList() {
+        const challenges = ChallengesManager.getActiveChallenges();
+        if (challenges.length === 0) return '';
+
+        return challenges.map(c => {
+            const summary = ChallengesManager.getProgressSummary(c.id);
+            const leader = summary.leaderboard[0];
+            return `
+                <div class="settings-row" style="padding: 12px 16px;">
+                    <div class="settings-icon" style="background: #FFF8E1;">🏃</div>
+                    <div style="flex: 1;">
+                        <div class="settings-label">${escapeHtml(c.name)}</div>
+                        <div style="font-size: 12px; color: var(--text-tertiary);">
+                            ${summary.daysRemaining} days left • Leader: ${leader ? escapeHtml(leader.name) : 'N/A'}
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-weight: 600; color: var(--primary-color);">${summary.percentComplete}%</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    },
+
+    /**
+     * Render streak status banner with skip day option
+     */
+    renderStreakStatusBanner(exp) {
+        const streakStatus = StreakCalculator.getStreakStatus(exp);
+        const earnedSkipDays = StreakCalculator.calculateEarnedSkipDays(exp);
+        const usedSkipDays = (exp.entries || []).filter(e => e.type === 'skipped').length;
+        const availableSkipDays = earnedSkipDays - usedSkipDays;
+        const canUseSkipDay = StreakCalculator.canUseSkipDay(exp);
+        const isAtRisk = StreakCalculator.isStreakAtRisk(exp);
+        const inGracePeriod = StreakCalculator.isInGracePeriod(exp);
+
+        let bannerHtml = '';
+
+        // Show streak at risk warning
+        if (isAtRisk && !inGracePeriod) {
+            bannerHtml += `
+                <div style="background: #FFF3E0; color: #E65100; padding: 12px 16px; border-radius: 12px; margin-top: 16px; display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 20px;">⚠️</span>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600;">Streak at risk!</div>
+                        <div style="font-size: 13px; opacity: 0.8;">Check in today to maintain your streak</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Show grace period banner
+        if (inGracePeriod) {
+            bannerHtml += `
+                <div style="background: #E3F2FD; color: #1565C0; padding: 12px 16px; border-radius: 12px; margin-top: 16px; display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 20px;">🛡️</span>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600;">Grace Period Active</div>
+                        <div style="font-size: 13px; opacity: 0.8;">Your streak is protected - check in when ready</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Show skip day option
+        if (availableSkipDays > 0) {
+            bannerHtml += `
+                <div style="background: var(--inactive-bg); padding: 12px 16px; border-radius: 12px; margin-top: 16px; display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 20px;">🎯</span>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 500;">Skip Days Available</div>
+                        <div style="font-size: 13px; color: var(--text-tertiary);">${availableSkipDays} of ${earnedSkipDays} remaining</div>
+                    </div>
+                    ${canUseSkipDay ? `
+                        <button id="btn-use-skip-day" class="btn" style="background: var(--primary-color); color: white; padding: 8px 16px; font-size: 14px;">
+                            Use Skip Day
+                        </button>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        return bannerHtml;
     },
 
     /**
@@ -295,8 +650,9 @@ const App = {
      */
     renderTabBar() {
         const tabs = [
-            { id: 'experiments', label: 'Experiments', icon: UI.icons.flask },
+            { id: 'experiments', label: 'Lab', icon: UI.icons.flask },
             { id: 'gallery', label: 'Gallery', icon: UI.icons.sparkles },
+            { id: 'insights', label: 'Insights', icon: UI.icons.chart },
             { id: 'settings', label: 'Settings', icon: UI.icons.settings }
         ];
 
@@ -489,6 +845,112 @@ const App = {
                     </form>
                 </div>
             </div>
+
+            <!-- Energy Picker Modal -->
+            <div class="modal-overlay" id="modal-energy" style="z-index: 2002;">
+                <div class="modal-sheet" style="text-align: center;">
+                    <h3 style="margin-bottom: 8px;">How's your energy?</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 24px;">Select your energy level</p>
+                    <div class="mood-grid" style="display: flex; gap: 8px; justify-content: center; margin-bottom: 24px;">
+                        ${MoodTracker.ENERGY_LEVELS.map(e => `
+                            <button class="mood-btn energy-btn" data-energy="${e.value}" style="display: flex; flex-direction: column; align-items: center; padding: 12px; background: var(--inactive-bg); border: none; border-radius: 12px; cursor: pointer; min-width: 50px;">
+                                <span style="font-size: 24px;">${e.emoji}</span>
+                                <span style="font-size: 10px; color: var(--text-secondary); margin-top: 4px;">${e.label}</span>
+                            </button>
+                        `).join('')}
+                    </div>
+                    <button class="btn btn-secondary" data-close="modal-energy" style="width: 100%;">Cancel</button>
+                </div>
+            </div>
+
+            <!-- Weekly Summary Modal -->
+            <div class="modal-overlay" id="modal-weekly-summary">
+                <div class="modal-sheet">
+                    <div class="modal-header">
+                        <h2>Weekly Summary</h2>
+                        <button class="modal-close" aria-label="Close modal" data-close="modal-weekly-summary">${UI.icons.x}</button>
+                    </div>
+                    <div id="weekly-summary-content">
+                        <!-- Populated dynamically -->
+                    </div>
+                    <div class="form-actions" style="margin-top: 16px;">
+                        <button class="btn btn-primary" data-close="modal-weekly-summary" style="width: 100%;">Got it!</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recovery Modal -->
+            <div class="modal-overlay" id="modal-recovery">
+                <div class="modal-sheet">
+                    <div class="modal-header">
+                        <h2>Get Back on Track</h2>
+                        <button class="modal-close" aria-label="Close modal" data-close="modal-recovery">${UI.icons.x}</button>
+                    </div>
+                    <p style="color: var(--text-secondary); margin-bottom: 16px;">We noticed you missed a few days. No worries - here are some options:</p>
+                    <div id="recovery-options">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Partner Modal -->
+            <div class="modal-overlay" id="modal-add-partner">
+                <div class="modal-sheet">
+                    <div class="modal-header">
+                        <h2>Add Partner</h2>
+                        <button class="modal-close" aria-label="Close modal" data-close="modal-add-partner">${UI.icons.x}</button>
+                    </div>
+                    <form id="form-add-partner">
+                        <div class="form-group">
+                            <label class="form-label" for="partner-name">Partner Name</label>
+                            <input class="form-input" id="partner-name" name="name" placeholder="e.g., Sarah" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="partner-code">Their Share Code</label>
+                            <input class="form-input" id="partner-code" name="code" placeholder="e.g., ABC123" required maxlength="6" style="text-transform: uppercase;">
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary" style="width: 100%;">Add Partner</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Create Challenge Modal -->
+            <div class="modal-overlay" id="modal-create-challenge">
+                <div class="modal-sheet">
+                    <div class="modal-header">
+                        <h2>Start Challenge</h2>
+                        <button class="modal-close" aria-label="Close modal" data-close="modal-create-challenge">${UI.icons.x}</button>
+                    </div>
+                    <form id="form-create-challenge">
+                        <div class="form-group">
+                            <label class="form-label" for="challenge-name">Challenge Name</label>
+                            <input class="form-input" id="challenge-name" name="name" placeholder="e.g., January Wellness Challenge" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="challenge-template">Template</label>
+                            <select class="form-input" id="challenge-template" name="template" required>
+                                <option value="">Select a template...</option>
+                                ${ExperimentsData.templates.map(t => `<option value="${t.id}">${t.title}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="challenge-duration">Duration (days)</label>
+                            <input class="form-input" id="challenge-duration" name="duration" type="number" value="30" min="7" max="90" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Invite Partners</label>
+                            <div id="challenge-partners-list" style="margin-top: 8px;">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary" style="width: 100%;">Start Challenge</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         `;
     },
 
@@ -671,6 +1133,30 @@ const App = {
             }
         });
 
+        // Mood button click - log mood
+        app.addEventListener('click', (e) => {
+            const moodBtn = e.target.closest('.mood-btn[data-mood]');
+            if (moodBtn) {
+                const mood = parseInt(moodBtn.dataset.mood);
+                this.state.pendingMood = mood;
+                // Show energy picker modal
+                this.openModal('modal-energy');
+            }
+        });
+
+        // Energy button click - complete mood logging
+        app.addEventListener('click', (e) => {
+            const energyBtn = e.target.closest('.energy-btn[data-energy]');
+            if (energyBtn) {
+                const energy = parseInt(energyBtn.dataset.energy);
+                const mood = this.state.pendingMood || 3;
+                MoodTracker.logMood(new Date(), mood, energy);
+                this.closeModal('modal-energy');
+                this.showToast('Mood logged!');
+                this.render();
+            }
+        });
+
         // Form submissions - FIXED: Use event delegation for forms
         app.addEventListener('submit', (e) => {
             const form = e.target;
@@ -750,6 +1236,150 @@ const App = {
                         this.showToast('Entry deleted');
                     }
                 );
+            }
+        });
+
+        // Add Partner form submission
+        app.addEventListener('submit', (e) => {
+            const form = e.target;
+            if (form.id === 'form-add-partner') {
+                e.preventDefault();
+                const name = form.querySelector('#partner-name').value.trim();
+                const code = form.querySelector('#partner-code').value.trim().toUpperCase();
+
+                if (name && code) {
+                    const result = PartnersManager.addPartner(name, code);
+                    if (result.success) {
+                        this.closeModal('modal-add-partner');
+                        form.reset();
+                        this.render();
+                        this.showToast(`${name} added as partner!`);
+                    } else {
+                        this.showToast(result.error || 'Failed to add partner');
+                    }
+                }
+            }
+        });
+
+        // Create Challenge form submission
+        app.addEventListener('submit', (e) => {
+            const form = e.target;
+            if (form.id === 'form-create-challenge') {
+                e.preventDefault();
+                const name = form.querySelector('#challenge-name').value.trim();
+                const templateId = form.querySelector('#challenge-template').value;
+                const duration = parseInt(form.querySelector('#challenge-duration').value);
+
+                // Get selected partners
+                const partnerCheckboxes = form.querySelectorAll('input[name="challenge-partner"]:checked');
+                const participants = Array.from(partnerCheckboxes).map(cb => ({
+                    id: cb.value,
+                    name: cb.dataset.name
+                }));
+
+                if (name && templateId && duration) {
+                    const today = StreakCalculator.toDateString(new Date());
+                    ChallengesManager.createChallenge(templateId, name, today, duration, participants);
+                    this.closeModal('modal-create-challenge');
+                    form.reset();
+                    this.render();
+                    this.showToast('Challenge started!');
+                }
+            }
+        });
+
+        // Open Add Partner modal
+        app.addEventListener('click', (e) => {
+            if (e.target.closest('#btn-add-partner')) {
+                this.openModal('modal-add-partner');
+            }
+        });
+
+        // Open Create Challenge modal
+        app.addEventListener('click', (e) => {
+            if (e.target.closest('#btn-create-challenge')) {
+                // Populate partners list in modal
+                const listContainer = document.getElementById('challenge-partners-list');
+                if (listContainer) {
+                    const partners = PartnersManager.getPartners();
+                    if (partners.length === 0) {
+                        listContainer.innerHTML = '<p style="color: var(--text-tertiary); font-size: 14px;">No partners added yet. Add partners in Settings first.</p>';
+                    } else {
+                        listContainer.innerHTML = partners.map(p => `
+                            <label style="display: flex; align-items: center; gap: 8px; padding: 8px 0; cursor: pointer;">
+                                <input type="checkbox" name="challenge-partner" value="${p.id}" data-name="${p.name}">
+                                <span>${p.name}</span>
+                            </label>
+                        `).join('');
+                    }
+                }
+                this.openModal('modal-create-challenge');
+            }
+        });
+
+        // Copy share code
+        app.addEventListener('click', (e) => {
+            if (e.target.closest('#btn-copy-share-code')) {
+                const code = PartnersManager.getMyShareCode();
+                navigator.clipboard.writeText(code).then(() => {
+                    this.showToast('Share code copied!');
+                }).catch(() => {
+                    this.showToast('Failed to copy');
+                });
+            }
+        });
+
+        // Share progress
+        app.addEventListener('click', (e) => {
+            if (e.target.closest('#btn-share-progress')) {
+                const experiments = DataManager.loadExperiments();
+                const shareText = PartnersManager.generateShareText(experiments);
+
+                if (navigator.share) {
+                    navigator.share({ text: shareText }).catch(() => {});
+                } else {
+                    navigator.clipboard.writeText(shareText).then(() => {
+                        this.showToast('Progress copied to clipboard!');
+                    }).catch(() => {
+                        this.showToast('Failed to copy');
+                    });
+                }
+            }
+        });
+
+        // Remove partner
+        app.addEventListener('click', (e) => {
+            const removeBtn = e.target.closest('.btn-remove-partner');
+            if (removeBtn) {
+                const partnerId = removeBtn.dataset.partnerId;
+                const partnerName = removeBtn.dataset.partnerName;
+                this.confirmAction(
+                    'Remove Partner?',
+                    `Are you sure you want to remove ${partnerName}?`,
+                    () => {
+                        PartnersManager.removePartner(partnerId);
+                        this.render();
+                        this.showToast('Partner removed');
+                    }
+                );
+            }
+        });
+
+        // Use skip day
+        app.addEventListener('click', (e) => {
+            if (e.target.closest('#btn-use-skip-day')) {
+                const exp = DataManager.loadExperiments().find(x => x.id === this.state.currentExperiment);
+                if (exp && StreakCalculator.canUseSkipDay(exp)) {
+                    const today = StreakCalculator.toDateString(new Date());
+                    DataManager.addEntry(exp.id, {
+                        date: today,
+                        type: 'skipped',
+                        isCompleted: false,
+                        note: 'Skip day used'
+                    });
+                    this.render();
+                    this.showToast('Skip day used - streak protected!');
+                }
             }
         });
     },
