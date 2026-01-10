@@ -122,6 +122,15 @@ const StreakCalculator = {
     },
 
     /**
+     * Calculate days remaining
+     */
+    daysRemaining(experiment) {
+        const completed = this.daysCompleted(experiment);
+        const target = experiment.durationDays || 30;
+        return Math.max(0, target - completed);
+    },
+
+    /**
      * Calculate earned skip days (1 per 7 consecutive completions)
      */
     calculateEarnedSkipDays(experiment) {

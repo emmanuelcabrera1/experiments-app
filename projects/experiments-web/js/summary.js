@@ -44,22 +44,29 @@ const SummaryManager = {
     },
 
     /**
-     * Get week start date (Sunday)
+     * Get week start date (Sunday) - returns Date object
      */
     getWeekStart(date) {
         const d = new Date(date);
         const day = d.getDay();
         d.setDate(d.getDate() - day);
-        return StreakCalculator.toDateString(d);
+        d.setHours(0, 0, 0, 0);
+        return d;
+    },
+
+    /**
+     * Get week start as string
+     */
+    getWeekStartString(date) {
+        return StreakCalculator.toDateString(this.getWeekStart(date));
     },
 
     /**
      * Generate weekly summary
      */
     generateWeeklySummary(experiments, weekStart = null) {
-        const start = weekStart || this.getWeekStart(new Date());
-        const startDate = new Date(start);
-        const endDate = new Date(start);
+        const startDate = weekStart ? new Date(weekStart) : this.getWeekStart(new Date());
+        const endDate = new Date(startDate);
         endDate.setDate(endDate.getDate() + 6);
 
         const experimentSummaries = experiments
@@ -150,9 +157,10 @@ const SummaryManager = {
             topInsight = `Solid week overall with ${overallScore}% completion across all experiments.`;
         }
 
+        const weekOfString = StreakCalculator.toDateString(startDate);
         return {
-            id: 'summary_' + start,
-            weekOf: start,
+            id: 'summary_' + weekOfString,
+            weekOf: weekOfString,
             weekEnd: StreakCalculator.toDateString(endDate),
             generatedAt: new Date().toISOString(),
             experiments: experimentSummaries,
@@ -215,7 +223,7 @@ const SummaryManager = {
         if (day !== 0 || hour < 18) return false;
 
         // Check if already shown this week
-        const thisWeekStart = this.getWeekStart(now);
+        const thisWeekStart = this.getWeekStartString(now);
         const existing = this.getSummary(thisWeekStart);
 
         if (existing && existing.shownAt) {
