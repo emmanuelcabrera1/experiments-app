@@ -480,8 +480,14 @@ button:focus-visible,
     background: var(--inactive-bg);
     border-radius: var(--radius-md);
     font-size: var(--text-base);
+    font-family: var(--font-main);
+    color: var(--text-primary);
     border: 2px solid transparent;
     transition: border-color 0.2s ease;
+}
+
+.form-input::placeholder {
+    color: var(--text-tertiary);
 }
 
 .form-input:focus {
@@ -630,6 +636,12 @@ textarea.form-input {
     background: var(--surface-color);
     border-radius: var(--radius-lg);
     margin-bottom: var(--space-sm);
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.entry-row:active {
+    transform: scale(0.98);
 }
 
 .entry-check {

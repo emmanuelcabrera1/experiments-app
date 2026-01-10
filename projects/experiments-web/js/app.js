@@ -237,9 +237,9 @@ const App = {
 
         return `
             <div class="screen ${this.state.currentTab === 'settings' ? 'active' : ''}" id="screen-settings">
-                <header class="app-header">
+                <div class="header">
                     <h1>Settings</h1>
-                </header>
+                </div>
                 <div class="content-scrollable">
                     <div class="settings-group">
                         <p class="settings-group-title">Updates</p>
@@ -341,12 +341,12 @@ const App = {
                     <form id="form-create">
                         <input type="hidden" name="id" id="create-id">
                         <div class="form-group">
-                            <label class="form-label" for="create-purpose">Purpose — Why?</label>
-                            <textarea class="form-input" id="create-purpose" name="purpose" placeholder="e.g., Reduce stress and feel calmer" required></textarea>
-                        </div>
-                        <div class="form-group">
                             <label class="form-label" for="create-title">Action — What?</label>
                             <input class="form-input" id="create-title" name="title" placeholder="e.g., Meditate for 10 minutes" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="create-purpose">Purpose — Why?</label>
+                            <textarea class="form-input" id="create-purpose" name="purpose" placeholder="e.g., Reduce stress and feel calmer" required></textarea>
                         </div>
                         <div class="form-group">
                     <label class="form-label" id="create-category-label">Category</label>
@@ -422,9 +422,8 @@ const App = {
                         <button type="submit" class="btn btn-primary">Save</button>
                     </form>
                 </div>
-                </div>
             </div>
-            
+
             <!-- Confirm Modal -->
             <div class="modal-overlay" id="modal-confirm" style="z-index: 2000;">
                 <div class="modal-sheet confirm-modal-content">
@@ -447,6 +446,47 @@ const App = {
                         <button class="btn btn-secondary" id="prompt-cancel" style="flex: 1;">Cancel</button>
                         <button class="btn btn-primary" id="prompt-ok" style="flex: 1;">Save</button>
                     </div>
+                </div>
+            </div>
+
+            <!-- Edit Entry Modal -->
+            <div class="modal-overlay" id="modal-edit-entry">
+                <div class="modal-sheet">
+                    <div class="modal-header">
+                        <h2>Edit Entry</h2>
+                        <button class="modal-close" aria-label="Close modal" data-close="modal-edit-entry">${UI.icons.x}</button>
+                    </div>
+                    <form id="form-edit-entry">
+                        <input type="hidden" name="entryId" id="edit-entry-id">
+                        <div class="form-group">
+                            <label class="form-label" id="edit-entry-status-label">Status</label>
+                            <div class="segmented-control" role="group" aria-labelledby="edit-entry-status-label">
+                                <button type="button" class="segmented-option active" data-status="completed">Completed ✓</button>
+                                <button type="button" class="segmented-option" data-status="missed">Missed ✗</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="edit-entry-note">Note</label>
+                            <textarea class="form-input" id="edit-entry-note" name="note" placeholder="How did it go?"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Reflection (Optional)</label>
+                            <div style="margin-top: 8px;">
+                                <label class="form-label" style="font-size: 12px; margin-bottom: 4px;">What worked?</label>
+                                <textarea class="form-input" id="edit-entry-ref-plus" name="ref_plus" rows="2" placeholder="Wins & progress"></textarea>
+
+                                <label class="form-label" style="font-size: 12px; margin-top: 12px; margin-bottom: 4px;">What didn't?</label>
+                                <textarea class="form-input" id="edit-entry-ref-minus" name="ref_minus" rows="2" placeholder="Obstacles & distractions"></textarea>
+
+                                <label class="form-label" style="font-size: 12px; margin-top: 12px; margin-bottom: 4px;">What's next?</label>
+                                <textarea class="form-input" id="edit-entry-ref-next" name="ref_next" rows="2" placeholder="Focus for next week"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-actions" style="display: flex; gap: 8px; flex-direction: column;">
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                            <button type="button" id="btn-delete-entry" class="btn" style="background: #FFEBEE; color: #D32F2F;">Delete Entry</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         `;
@@ -675,6 +715,41 @@ const App = {
                         this.showToast('Invalid or duplicate category');
                     }
                 });
+            }
+        });
+
+        // Entry row click - Edit entry
+        app.addEventListener('click', (e) => {
+            const row = e.target.closest('.entry-row');
+            if (row && this.state.currentExperiment) {
+                const entryId = row.dataset.id;
+                this.handleEditEntry(entryId);
+            }
+        });
+
+        // Edit entry form submission
+        app.addEventListener('submit', (e) => {
+            const form = e.target;
+            if (form.id === 'form-edit-entry') {
+                e.preventDefault();
+                this.handleSaveEntry(form);
+            }
+        });
+
+        // Delete entry button
+        app.addEventListener('click', (e) => {
+            if (e.target.closest('#btn-delete-entry')) {
+                this.confirmAction(
+                    'Delete Entry?',
+                    'This will permanently delete this entry. This cannot be undone.',
+                    () => {
+                        const entryId = document.getElementById('edit-entry-id').value;
+                        DataManager.deleteEntry(this.state.currentExperiment, entryId);
+                        this.closeModal('modal-edit-entry');
+                        this.render();
+                        this.showToast('Entry deleted');
+                    }
+                );
             }
         });
     },
@@ -1138,6 +1213,71 @@ const App = {
 
         // Focus first element
         setTimeout(() => firstElement.focus(), 50);
+    },
+
+    /**
+     * Handle Edit Entry - populate and open edit entry modal
+     */
+    handleEditEntry(entryId) {
+        const exp = DataManager.getExperiment(this.state.currentExperiment);
+        if (!exp) return;
+
+        const entry = exp.entries.find(e => e.id === entryId);
+        if (!entry) return;
+
+        this.openModal('modal-edit-entry');
+
+        // Populate form
+        const form = document.getElementById('form-edit-entry');
+        document.getElementById('edit-entry-id').value = entry.id;
+        document.getElementById('edit-entry-note').value = entry.note || '';
+
+        // Set status segmented control
+        const statusBtns = form.querySelectorAll('[data-status]');
+        statusBtns.forEach(btn => {
+            btn.classList.toggle('active',
+                (entry.isCompleted && btn.dataset.status === 'completed') ||
+                (!entry.isCompleted && btn.dataset.status === 'missed')
+            );
+        });
+
+        // Set reflection fields
+        if (entry.reflection) {
+            document.getElementById('edit-entry-ref-plus').value = entry.reflection.plus || '';
+            document.getElementById('edit-entry-ref-minus').value = entry.reflection.minus || '';
+            document.getElementById('edit-entry-ref-next').value = entry.reflection.next || '';
+        } else {
+            document.getElementById('edit-entry-ref-plus').value = '';
+            document.getElementById('edit-entry-ref-minus').value = '';
+            document.getElementById('edit-entry-ref-next').value = '';
+        }
+    },
+
+    /**
+     * Handle Save Entry - save edited entry
+     */
+    handleSaveEntry(form) {
+        const data = new FormData(form);
+        const entryId = data.get('entryId');
+        const statusOption = form.querySelector('[data-status].active');
+        const isCompleted = statusOption?.dataset.status === 'completed';
+
+        const reflection = {
+            plus: data.get('ref_plus')?.trim(),
+            minus: data.get('ref_minus')?.trim(),
+            next: data.get('ref_next')?.trim()
+        };
+        const hasReflection = reflection.plus || reflection.minus || reflection.next;
+
+        DataManager.updateEntry(this.state.currentExperiment, entryId, {
+            isCompleted: isCompleted,
+            note: data.get('note') || null,
+            reflection: hasReflection ? reflection : null
+        });
+
+        this.closeModal('modal-edit-entry');
+        this.showToast('Entry updated');
+        this.render();
     }
 };
 
