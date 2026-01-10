@@ -9,10 +9,16 @@
     --glass-border: rgba(255, 255, 255, 0.8);
     --glass-shadow: 0 20px 40px rgba(0, 0, 0, 0.04);
     --text-color: #1D1D1F;
-    --text-secondary: #86868B;
+    --text-secondary: #636366;
+    /* Fixed contrast: was #86868B, now 4.5:1+ */
     --accent-color: #34C759;
     --separator-color: rgba(0, 0, 0, 0.05);
     --trigger-color: #D1D1D6;
+    /* iOS Safe Areas */
+    --safe-area-top: env(safe-area-inset-top, 0px);
+    --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-area-left: env(safe-area-inset-left, 0px);
+    --safe-area-right: env(safe-area-inset-right, 0px);
 }
 
 /* Accessibility */
@@ -33,6 +39,26 @@
     outline-offset: 2px;
 }
 
+/* Skip Link */
+.skip-link {
+    position: absolute;
+    top: -100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--accent-color);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    z-index: 1000;
+    text-decoration: none;
+    font-weight: 500;
+    transition: top 0.2s;
+}
+
+.skip-link:focus {
+    top: calc(var(--safe-area-top) + 10px);
+}
+
 
 /* Base Reset */
 * {
@@ -45,17 +71,24 @@ body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     background: var(--bg-color);
     color: var(--text-color);
-    min-height: 100vh;
+    min-height: 100dvh;
+    /* Fixed: was 100vh */
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
+    /* iOS Safe Areas */
+    padding-top: var(--safe-area-top);
+    padding-bottom: var(--safe-area-bottom);
+    padding-left: var(--safe-area-left);
+    padding-right: var(--safe-area-right);
 }
 
 /* App Container */
 .app-container {
     width: 100%;
-    height: 100vh;
+    height: 100dvh;
+    /* Fixed: was 100vh */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -169,10 +202,12 @@ body {
 
 /* Checkbox */
 .checkbox {
-    width: 24px;
-    height: 24px;
-    min-width: 24px;
-    border: 2px solid #E5E5EA;
+    width: 44px;
+    /* 44pt touch target for accessibility */
+    height: 44px;
+    min-width: 44px;
+    border: none;
+    /* Invisible outer tap area */
     border-radius: 50%;
     background: transparent;
     cursor: pointer;
@@ -180,14 +215,26 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+    position: relative;
 }
 
-.checkbox:hover {
+/* Visual checkbox (24px circle - original design) */
+.checkbox::before {
+    content: '';
+    width: 24px;
+    height: 24px;
+    border: 2px solid #E5E5EA;
+    border-radius: 50%;
+    background: transparent;
+    transition: all 0.2s;
+}
+
+.checkbox:hover::before {
     border-color: #C7C7CC;
     background: rgba(52, 199, 89, 0.1);
 }
 
-.checkbox.checked {
+.checkbox.checked::before {
     background: var(--accent-color);
     border-color: var(--accent-color);
 }
@@ -197,6 +244,7 @@ body {
     color: white;
     font-size: 14px;
     font-weight: bold;
+    position: absolute;
 }
 
 /* Task Text */
@@ -310,9 +358,10 @@ body {
 
 /* Delete Button */
 .delete-btn {
-    width: 28px;
-    height: 28px;
-    min-width: 28px;
+    width: 44px;
+    /* Fixed: was 28px, now meets 44pt minimum */
+    height: 44px;
+    min-width: 44px;
     border: none;
     border-radius: 50%;
     background: rgba(255, 59, 48, 0.1);
@@ -444,19 +493,35 @@ body {
 /* Bottom Menu Trigger */
 .bottom-menu-trigger {
     position: fixed;
-    bottom: 12px;
+    bottom: calc(var(--safe-area-bottom) + 12px);
     left: 50%;
     transform: translateX(-50%);
+    width: 44px;
+    /* Fixed: was 40px */
+    height: 44px;
+    /* Fixed: was 5px, now meets 44pt minimum */
+    background: transparent;
+    border-radius: 22px;
+    cursor: pointer;
+    z-index: 100;
+    transition: background 0.2s;
+    /* Visual handle inside */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bottom-menu-trigger::before {
+    content: '';
     width: 40px;
     height: 5px;
     background: var(--trigger-color);
     border-radius: 10px;
-    cursor: pointer;
-    z-index: 100;
     transition: background 0.2s;
 }
 
-.bottom-menu-trigger:hover {
+.bottom-menu-trigger:hover::before,
+.bottom-menu-trigger:focus::before {
     background: #A8A8AD;
 }
 
@@ -605,4 +670,17 @@ body {
     border-radius: 12px;
     margin: -8px;
     padding: 28px 8px;
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }

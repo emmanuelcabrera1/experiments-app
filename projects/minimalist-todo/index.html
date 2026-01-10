@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Today - Focus</title>
 
     <!-- Inter Font -->
@@ -17,6 +17,9 @@
 </head>
 
 <body>
+    <!-- Skip link for accessibility -->
+    <a href="#today-list" class="skip-link">Skip to main content</a>
+
     <div class="app-container">
         <!-- Layer 1: Today (Focus View) -->
         <div id="view-layer-1" class="view-layer view-active">
@@ -32,8 +35,8 @@
         <div id="view-layer-2" class="view-layer view-hidden">
             <div class="glass-card">
                 <div class="nav-header">
-                    <button class="back-btn" onclick="switchLayer(1)">
-                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <button class="back-btn" onclick="switchLayer(1)" aria-label="Go back to Today view">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                             <path d="M12 16L6 10L12 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
                         </svg>
                     </button>
@@ -49,8 +52,8 @@
         <div id="view-layer-3" class="view-layer view-hidden">
             <div class="glass-card">
                 <div class="nav-header">
-                    <button class="back-btn" onclick="switchLayer(2)">
-                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <button class="back-btn" onclick="switchLayer(2)" aria-label="Go back to My Lists">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                             <path d="M12 16L6 10L12 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
                         </svg>
                     </button>
@@ -70,19 +73,19 @@
             <div class="menu-handle"></div>
             <div class="menu-content">
                 <button class="menu-item" onclick="switchLayer(1); toggleMenu();">
-                    <span class="menu-icon">📅</span>
+                    <span class="menu-icon" aria-hidden="true">📅</span>
                     <span class="menu-label">Today</span>
                 </button>
                 <button class="menu-item" onclick="switchLayer(2); toggleMenu();">
-                    <span class="menu-icon">📋</span>
+                    <span class="menu-icon" aria-hidden="true">📋</span>
                     <span class="menu-label">My Lists</span>
                 </button>
                 <button class="menu-item" onclick="refreshApp(); toggleMenu();">
-                    <span class="menu-icon">🔄</span>
+                    <span class="menu-icon" aria-hidden="true">🔄</span>
                     <span class="menu-label">Refresh</span>
                 </button>
-                <button class="menu-item" onclick="resetData();">
-                    <span class="menu-icon">🔁</span>
+                <button class="menu-item" id="reset-data-btn">
+                    <span class="menu-icon" aria-hidden="true">🔁</span>
                     <span class="menu-label">Reset Data</span>
                 </button>
             </div>
@@ -152,13 +155,26 @@
         function toggleMenu() {
             isMenuOpen = !isMenuOpen;
             const menu = document.getElementById('bottom-menu');
+            const trigger = document.querySelector('.bottom-menu-trigger');
 
             if (isMenuOpen) {
                 menu.classList.add('open');
+                // Focus first menu item for keyboard accessibility
+                const firstMenuItem = menu.querySelector('.menu-item');
+                if (firstMenuItem) firstMenuItem.focus();
             } else {
                 menu.classList.remove('open');
+                // Return focus to trigger
+                if (trigger) trigger.focus();
             }
         }
+
+        // Keyboard trap: Escape closes menu
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && isMenuOpen) {
+                toggleMenu();
+            }
+        });
 
         function refreshApp() {
             console.log('[App] Manual refresh triggered - reloading page...');
@@ -166,13 +182,25 @@
         }
 
         function resetData() {
+            if (!confirm('Are you sure you want to reset all data? This cannot be undone.')) {
+                return;
+            }
             console.log('[App] Resetting data to initial state...');
             // Clear all localStorage
             localStorage.removeItem(STORAGE_KEYS.TASKS);
             localStorage.removeItem(STORAGE_KEYS.GROUPS);
             // Reload to initialize with INITIAL_TASKS and INITIAL_GROUPS
+            toggleMenu();
             window.location.reload();
         }
+
+        // Wire up reset button with confirmation
+        document.addEventListener('DOMContentLoaded', () => {
+            const resetBtn = document.getElementById('reset-data-btn');
+            if (resetBtn) {
+                resetBtn.addEventListener('click', resetData);
+            }
+        });
 
         // AUTO-REFRESH: Refresh when user returns to the tab/app
         document.addEventListener('visibilitychange', () => {
@@ -321,6 +349,12 @@
             const group = groups.find(g => g.id === task.groupId);
             const groupName = group ? group.name : 'Unknown';
 
+            const handleDelete = () => {
+                if (confirm(`Delete "${task.text}"?`)) {
+                    onDelete(task.id);
+                }
+            };
+
             return (
                 <div className={`task-item ${task.completed ? 'completed' : ''}`}>
                     <div
@@ -329,19 +363,22 @@
                         role="checkbox"
                         aria-checked={task.completed}
                         tabIndex={0}
-                        onKeyPress={(e) => e.key === 'Enter' && onToggle(task.id)}
+                        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), onToggle(task.id))}
                     />
                     <div
                         className="task-text task-navigable"
                         onClick={() => onNavigateToGroup(task)}
-                        style={{ cursor: 'pointer' }}
+                        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onNavigateToGroup(task)}
+                        tabIndex={0}
+                        role="button"
+                        aria-label={`View ${task.text} in ${groupName}`}
                     >
                         <div>{task.text}</div>
                         <span className="task-group-label">{groupName}</span>
                     </div>
                     <button
                         className="delete-btn"
-                        onClick={() => onDelete(task.id)}
+                        onClick={handleDelete}
                         aria-label={`Delete task: ${task.text}`}
                     >
                         ×
@@ -352,22 +389,29 @@
 
         // Group Item Component
         function GroupItem({ group, onDelete, onClick }) {
+            const handleDelete = (e) => {
+                e.stopPropagation();
+                if (confirm(`Delete list "${group.name}" and all its tasks?`)) {
+                    onDelete(group.id);
+                }
+            };
+
             return (
                 <div className="group-item">
                     <div
                         className="group-content"
                         onClick={() => onClick(group.id, group.name)}
-                        style={{ cursor: 'pointer', flex: 1 }}
+                        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onClick(group.id, group.name)}
+                        tabIndex={0}
+                        role="button"
+                        aria-label={`View ${group.name} list`}
                     >
                         <div className="group-name">{group.name}</div>
                         <div className="group-count">{group.count} {group.count === 1 ? 'task' : 'tasks'}</div>
                     </div>
                     <button
                         className="delete-btn"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onDelete(group.id);
-                        }}
+                        onClick={handleDelete}
                         aria-label={`Delete group: ${group.name}`}
                     >
                         ×
@@ -486,6 +530,12 @@
                 setIsEditing(true);
             };
 
+            const handleDelete = () => {
+                if (confirm(`Delete "${task.text}" and all its subtasks?`)) {
+                    onDelete(task.id);
+                }
+            };
+
             return (
                 <div className={`task-item ${task.completed ? 'completed' : ''} ${isSelected ? 'show-arrows' : ''}`}>
                     <div
@@ -494,7 +544,7 @@
                         role="checkbox"
                         aria-checked={task.completed}
                         tabIndex={0}
-                        onKeyPress={(e) => e.key === 'Enter' && onToggle(task.id)}
+                        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), onToggle(task.id))}
                     />
                     {isEditing ? (
                         <input
@@ -511,6 +561,10 @@
                         <div
                             className="task-text task-editable"
                             onClick={handleTextClick}
+                            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleTextClick()}
+                            tabIndex={0}
+                            role="button"
+                            aria-label={`Select ${task.text} for actions`}
                         >
                             {task.text}
                         </div>
@@ -564,7 +618,7 @@
                     </button>
                     <button
                         className="delete-btn"
-                        onClick={() => onDelete(task.id)}
+                        onClick={handleDelete}
                         aria-label={`Delete task: ${task.text}`}
                     >
                         ×

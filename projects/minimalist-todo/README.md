@@ -28,9 +28,8 @@ Simply open `index.html` in your browser. No installation or build process neede
 ## Project Structure
 ```
 minimalist-todo/
-├── index.html    # Main HTML with React CDN
-├── style.css     # Glassmorphism styles
-├── app.js        # React components and state management
+├── index.html    # Main HTML with React CDN and inline app logic
+├── style.css     # Glassmorphism styles with accessibility
 └── README.md     # This file
 ```
 
