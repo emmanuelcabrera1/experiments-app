@@ -932,7 +932,7 @@ const App = {
                             <label class="form-label" for="challenge-template">Template</label>
                             <select class="form-input" id="challenge-template" name="template" required>
                                 <option value="">Select a template...</option>
-                                ${ExperimentsData.templates.map(t => `<option value="${t.id}">${t.title}</option>`).join('')}
+                                ${DataManager.getTemplates().map(t => `<option value="${t.id}">${t.title}</option>`).join('')}
                             </select>
                         </div>
                         <div class="form-group">
