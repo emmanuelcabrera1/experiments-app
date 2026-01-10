@@ -971,69 +971,56 @@ const App = {
             return;
         }
 
-        try {
-            this.log('SW: Getting registration...');
-            const registration = await navigator.serviceWorker.getRegistration();
+        this.showToast('Checking for updates...');
+        this.log('SW: Forced update check started...');
 
-            if (!registration) {
-                this.log('SW: No registration found. Attempting to restore...');
-                // Self-healing: Try to register again
-                try {
-                    const swPath = new URL('./sw.js?v=v1.0.4-DEBUG', window.location.href).href;
-                    registration = await navigator.serviceWorker.register(swPath);
-                    this.log('SW: Registration restored! Relying on initial install.');
-                    this.showToast('Connection restored. Please restart app.');
-                    return;
-                } catch (regError) {
-                    this.log(`SW: Result: ${regError.message}`);
-                    return;
-                }
+        try {
+            // Unregister existing to be clean (optional but safer for "Refresh" feel)
+            // const regs = await navigator.serviceWorker.getRegistrations();
+            // for(let reg of regs) { await reg.unregister(); }
+
+            // Force re-register with timestamp to bypass Safari Cache
+            const swUrl = `./sw.js?v=${Date.now()}`;
+            this.log(`SW: Registering ${swUrl}`);
+
+            const registration = await navigator.serviceWorker.register(swUrl);
+            this.log('SW: Registration successful. Checking state...');
+
+            // If a new worker is found, logic is handled by setupServiceWorker's registration.onupdatefound
+            // But we can also manually check here:
+            if (registration.installing) {
+                this.log('SW: Installing worker detected.');
+                // We rely on the updatefound listener setup below or in setupServiceWorker
+            } else if (registration.waiting) {
+                this.log('SW: Waiting worker found. Activating instantly.');
+                registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+            } else if (registration.active) {
+                this.log('SW: Active worker. No immediate update found (or already active).');
+                // If we re-registered and got same byte-content, it might just be active.
+                // We will force reload if user pushed button, just in case? 
+                // User said "Only thing button need to do is refresh".
+                // Asking user to reload manually is safer if no update found.
+                this.showToast('You are up to date.');
             }
 
-            this.showToast('Checking for updates...');
-            this.log('SW: Checking for updates...');
-
-            // Listen for updates found during check
-            const installWorker = (worker) => {
-                this.log(`SW: New worker found. State: ${worker.state}`);
-                worker.addEventListener('statechange', () => {
-                    this.log(`SW: Worker state change: ${worker.state}`);
-                    if (worker.state === 'installed') { // Installed means 'waiting' in SW lifecycle terms
-                        this.log('SW: Worker installed. Sending SKIP_WAITING');
-                        worker.postMessage({ type: 'SKIP_WAITING' });
+            // Hook into updatefound for this specific new registration
+            registration.addEventListener('updatefound', () => {
+                const newWorker = registration.installing;
+                this.log('SW: Update found! Installing...');
+                newWorker.addEventListener('statechange', () => {
+                    if (newWorker.state === 'installed') {
+                        this.log('SW: Installed. SKIP_WAITING');
+                        newWorker.postMessage({ type: 'SKIP_WAITING' });
                     }
                 });
-            };
-
-            registration.addEventListener('updatefound', () => {
-                this.log('SW: Update found event fired');
-                installWorker(registration.installing);
             });
 
-            this.log('SW: Calling registration.update()');
-            await registration.update();
-            this.log('SW: Update check complete');
-
-            this.log('SW: Calling registration.update()');
-            await registration.update();
-            this.log('SW: Update check complete');
-
-            // Check waiting again after update
-            if (registration.waiting) {
-                this.log('SW: Found waiting worker. Activating...');
-                registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-            } else {
-                // Force check if controller is different
-                if (navigator.serviceWorker.controller && registration.active) {
-                    this.log('SW: Active worker present. State: ' + registration.active.state);
-                }
-                this.log('SW: No waiting worker found.');
-                this.showToast('You are on the latest version');
-            }
         } catch (error) {
-            console.error('Update check failed:', error);
+            console.error('Force update failed:', error);
             this.log(`SW: Error: ${error.message}`);
-            this.showToast('Update check failed');
+            this.showToast('Update failed. Try restarting app.');
+            // Fallback: Force reload anyway?
+            setTimeout(() => window.location.href = window.location.href, 2000);
         }
     },
 
