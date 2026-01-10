@@ -5,12 +5,13 @@
 
 const DB_KEY = 'experiments_db';
 
-// Default templates
+// Default templates - organized by category
 const TEMPLATES = [
+    // HEALTH
     {
         id: 'meditation-30',
         title: '30 Days of Meditation',
-        purpose: 'Reduce stress and improve focus',
+        purpose: 'Reduce stress and improve mental clarity',
         successCriteria: 'Meditate for at least 10 minutes each day',
         durationDays: 30,
         frequency: 'daily',
@@ -18,40 +19,10 @@ const TEMPLATES = [
         icon: '🧘'
     },
     {
-        id: 'no-social-7',
-        title: '7-Day Digital Detox',
-        purpose: 'Reclaim time and attention',
-        successCriteria: 'No social media apps for 7 days',
-        durationDays: 7,
-        frequency: 'daily',
-        category: 'Focus',
-        icon: '📵'
-    },
-    {
-        id: 'reading-30',
-        title: 'Read 30 Minutes Daily',
-        purpose: 'Build a consistent reading habit',
-        successCriteria: 'Read for 30 minutes before bed',
-        durationDays: 30,
-        frequency: 'daily',
-        category: 'Growth',
-        icon: '📚'
-    },
-    {
-        id: 'gratitude-21',
-        title: '21-Day Gratitude Journal',
-        purpose: 'Shift perspective toward positivity',
-        successCriteria: 'Write 3 things grateful for each day',
-        durationDays: 21,
-        frequency: 'daily',
-        category: 'Relationships',
-        icon: '💝'
-    },
-    {
         id: 'cold-shower-14',
         title: 'Cold Shower Challenge',
-        purpose: 'Build mental resilience',
-        successCriteria: 'End shower with 30 seconds cold',
+        purpose: 'Build mental resilience and boost energy',
+        successCriteria: 'End shower with 30 seconds cold water',
         durationDays: 14,
         frequency: 'daily',
         category: 'Health',
@@ -59,13 +30,247 @@ const TEMPLATES = [
     },
     {
         id: 'walking-30',
-        title: '30-Minute Daily Walk',
-        purpose: 'Improve physical health',
-        successCriteria: 'Walk without phone distractions',
+        title: '10,000 Steps Daily',
+        purpose: 'Improve cardiovascular health and energy levels',
+        successCriteria: 'Reach 10,000 steps before bedtime',
         durationDays: 30,
         frequency: 'daily',
         category: 'Health',
         icon: '🚶'
+    },
+    {
+        id: 'sleep-schedule-21',
+        title: 'Sleep by 10pm Challenge',
+        purpose: 'Improve sleep quality and morning energy',
+        successCriteria: 'Be in bed with lights off by 10pm',
+        durationDays: 21,
+        frequency: 'daily',
+        category: 'Health',
+        icon: '😴'
+    },
+
+    // WORK
+    {
+        id: 'deep-work-30',
+        title: 'Deep Work Sessions',
+        purpose: 'Increase productivity and focus at work',
+        successCriteria: 'Complete 2 hours of uninterrupted deep work',
+        durationDays: 30,
+        frequency: 'daily',
+        category: 'Work',
+        icon: '💻'
+    },
+    {
+        id: 'inbox-zero-14',
+        title: 'Inbox Zero Challenge',
+        purpose: 'Reduce email stress and improve organization',
+        successCriteria: 'Process all emails to zero by end of day',
+        durationDays: 14,
+        frequency: 'daily',
+        category: 'Work',
+        icon: '📧'
+    },
+    {
+        id: 'no-meeting-mornings-21',
+        title: 'No-Meeting Mornings',
+        purpose: 'Protect creative time for important work',
+        successCriteria: 'Keep mornings meeting-free until noon',
+        durationDays: 21,
+        frequency: 'daily',
+        category: 'Work',
+        icon: '🚫'
+    },
+
+    // PARENTING
+    {
+        id: 'quality-time-30',
+        title: 'Daily Quality Time',
+        purpose: 'Strengthen bond with your children',
+        successCriteria: 'Spend 30 minutes of undivided attention with kids',
+        durationDays: 30,
+        frequency: 'daily',
+        category: 'Parenting',
+        icon: '👨‍👧'
+    },
+    {
+        id: 'bedtime-stories-21',
+        title: 'Bedtime Story Routine',
+        purpose: 'Create meaningful bedtime rituals',
+        successCriteria: 'Read a story together before bed',
+        durationDays: 21,
+        frequency: 'daily',
+        category: 'Parenting',
+        icon: '📖'
+    },
+    {
+        id: 'patience-practice-14',
+        title: 'Patience Practice',
+        purpose: 'Respond calmly in challenging moments',
+        successCriteria: 'Pause and breathe before reacting to frustration',
+        durationDays: 14,
+        frequency: 'daily',
+        category: 'Parenting',
+        icon: '🧘‍♂️'
+    },
+
+    // RELATIONSHIPS
+    {
+        id: 'date-night-12',
+        title: 'Weekly Date Night',
+        purpose: 'Nurture your romantic relationship',
+        successCriteria: 'Have a dedicated date (home or out)',
+        durationDays: 84,
+        frequency: 'weekly',
+        category: 'Relationships',
+        icon: '💑'
+    },
+    {
+        id: 'gratitude-partner-30',
+        title: 'Daily Partner Appreciation',
+        purpose: 'Express gratitude and strengthen connection',
+        successCriteria: 'Tell your partner one thing you appreciate about them',
+        durationDays: 30,
+        frequency: 'daily',
+        category: 'Relationships',
+        icon: '💝'
+    },
+    {
+        id: 'active-listening-21',
+        title: 'Active Listening Practice',
+        purpose: 'Improve communication in relationships',
+        successCriteria: 'Practice listening without interrupting in one conversation',
+        durationDays: 21,
+        frequency: 'daily',
+        category: 'Relationships',
+        icon: '👂'
+    },
+
+    // LEARNING
+    {
+        id: 'reading-30',
+        title: 'Read 30 Minutes Daily',
+        purpose: 'Expand knowledge and build reading habit',
+        successCriteria: 'Read for 30 minutes (books, not social media)',
+        durationDays: 30,
+        frequency: 'daily',
+        category: 'Learning',
+        icon: '📚'
+    },
+    {
+        id: 'language-learning-30',
+        title: 'Daily Language Practice',
+        purpose: 'Learn or improve a new language',
+        successCriteria: 'Complete one language lesson or 15 min practice',
+        durationDays: 30,
+        frequency: 'daily',
+        category: 'Learning',
+        icon: '🗣️'
+    },
+    {
+        id: 'skill-building-21',
+        title: 'New Skill Challenge',
+        purpose: 'Develop a new professional or personal skill',
+        successCriteria: 'Practice or study the new skill for 30 minutes',
+        durationDays: 21,
+        frequency: 'daily',
+        category: 'Learning',
+        icon: '🎯'
+    },
+
+    // HOBBIES
+    {
+        id: 'creative-practice-30',
+        title: 'Daily Creative Practice',
+        purpose: 'Nurture creativity and self-expression',
+        successCriteria: 'Spend 20 minutes on creative activity (art, music, writing)',
+        durationDays: 30,
+        frequency: 'daily',
+        category: 'Hobbies',
+        icon: '🎨'
+    },
+    {
+        id: 'hobby-exploration-8',
+        title: 'Try 8 New Hobbies',
+        purpose: 'Discover new interests and passions',
+        successCriteria: 'Try a different hobby each week',
+        durationDays: 56,
+        frequency: 'weekly',
+        category: 'Hobbies',
+        icon: '🔍'
+    },
+    {
+        id: 'digital-detox-7',
+        title: '7-Day Digital Detox',
+        purpose: 'Reclaim time for offline hobbies',
+        successCriteria: 'No social media or streaming after 7pm',
+        durationDays: 7,
+        frequency: 'daily',
+        category: 'Hobbies',
+        icon: '📵'
+    },
+
+    // EMOTIONS
+    {
+        id: 'journaling-30',
+        title: 'Daily Journaling',
+        purpose: 'Process emotions and gain self-awareness',
+        successCriteria: 'Write in journal for at least 10 minutes',
+        durationDays: 30,
+        frequency: 'daily',
+        category: 'Emotions',
+        icon: '📝'
+    },
+    {
+        id: 'gratitude-21',
+        title: '21-Day Gratitude Practice',
+        purpose: 'Shift perspective toward positivity',
+        successCriteria: 'Write 3 things you are grateful for',
+        durationDays: 21,
+        frequency: 'daily',
+        category: 'Emotions',
+        icon: '🙏'
+    },
+    {
+        id: 'mindfulness-14',
+        title: 'Mindfulness Moments',
+        purpose: 'Reduce anxiety and increase presence',
+        successCriteria: 'Take 3 mindful breathing breaks throughout the day',
+        durationDays: 14,
+        frequency: 'daily',
+        category: 'Emotions',
+        icon: '🌿'
+    },
+
+    // MONEY
+    {
+        id: 'no-spend-7',
+        title: 'No-Spend Week',
+        purpose: 'Reset spending habits and save money',
+        successCriteria: 'No discretionary purchases (only essentials)',
+        durationDays: 7,
+        frequency: 'daily',
+        category: 'Money',
+        icon: '💰'
+    },
+    {
+        id: 'expense-tracking-30',
+        title: 'Daily Expense Tracking',
+        purpose: 'Gain awareness of spending patterns',
+        successCriteria: 'Log every expense at end of day',
+        durationDays: 30,
+        frequency: 'daily',
+        category: 'Money',
+        icon: '📊'
+    },
+    {
+        id: 'savings-streak-30',
+        title: 'Daily Savings Challenge',
+        purpose: 'Build a savings habit',
+        successCriteria: 'Transfer any amount to savings account',
+        durationDays: 30,
+        frequency: 'daily',
+        category: 'Money',
+        icon: '🐷'
     }
 ];
 
@@ -186,6 +391,41 @@ const DataManager = {
     },
 
     /**
+     * Update an existing entry
+     */
+    updateEntry(experimentId, entryId, updates) {
+        const data = this.load();
+        const exp = data.experiments.find(e => e.id === experimentId);
+        if (exp) {
+            const entryIndex = exp.entries.findIndex(e => e.id === entryId);
+            if (entryIndex !== -1) {
+                exp.entries[entryIndex] = {
+                    ...exp.entries[entryIndex],
+                    ...updates,
+                    updatedAt: new Date().toISOString()
+                };
+                this.save(data);
+                return exp.entries[entryIndex];
+            }
+        }
+        return null;
+    },
+
+    /**
+     * Delete an entry
+     */
+    deleteEntry(experimentId, entryId) {
+        const data = this.load();
+        const exp = data.experiments.find(e => e.id === experimentId);
+        if (exp) {
+            exp.entries = exp.entries.filter(e => e.id !== entryId);
+            this.save(data);
+            return true;
+        }
+        return false;
+    },
+
+    /**
      * Add a reflection
      */
     addReflection(experimentId, reflection) {
@@ -242,7 +482,7 @@ const DataManager = {
      */
     getCategories() {
         const custom = JSON.parse(localStorage.getItem('experiments_categories') || '[]');
-        const defaultCategories = ['Health', 'Focus', 'Growth'];
+        const defaultCategories = ['Health', 'Work', 'Parenting', 'Relationships', 'Learning', 'Hobbies', 'Emotions', 'Money'];
 
         // Merge and deduplicate
         const allCategories = [...new Set([...defaultCategories, ...custom])];
