@@ -241,37 +241,38 @@ const App = {
                     <h1>Settings</h1>
                 </div>
                 
-                <div class="settings-group">
-                    <p class="settings-group-title">Updates</p>
-                    <div class="settings-row" style="cursor: pointer;" id="btn-check-updates">
-                        <div class="settings-icon" style="background: #E8F5E9;">🔄</div>
-                        <div class="settings-label">Check for Updates</div>
-                        <div class="settings-value">→</div>
-                    </div>
-                </div>
-                
-                <div class="settings-group">
-                    <p class="settings-group-title">Appearance</p>
-                    <div class="settings-row">
-                        <div class="settings-icon" style="background: var(--inactive-bg);">🎨</div>
-                        <div class="settings-label">Theme</div>
-                        <div class="segmented-control" role="group" style="width: auto;">
-                            <button type="button" class="segmented-option ${this.state.theme === 'system' ? 'active' : ''}" data-theme-opt="system">Auto</button>
-                            <button type="button" class="segmented-option ${this.state.theme === 'light' ? 'active' : ''}" data-theme-opt="light">Light</button>
-                            <button type="button" class="segmented-option ${this.state.theme === 'dark' ? 'active' : ''}" data-theme-opt="dark">Dark</button>
+                </header>
+                <div class="content-scrollable">
+                    <div class="card">
+                        <h3 class="card-title">Appearance</h3>
+                        <div class="form-group">
+                            <label class="form-label">Theme</label>
+                            <div class="segmented-control">
+                                <button type="button" class="segmented-option ${this.state.theme === 'system' ? 'active' : ''}" data-theme-opt="system">System</button>
+                                <button type="button" class="segmented-option ${this.state.theme === 'light' ? 'active' : ''}" data-theme-opt="light">Light</button>
+                                <button type="button" class="segmented-option ${this.state.theme === 'dark' ? 'active' : ''}" data-theme-opt="dark">Dark</button>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="settings-group">
-                    <p class="settings-group-title">Account</p>
-                    <div class="settings-row">
-                        <div class="settings-icon" style="background: var(--inactive-bg);">👤</div>
-                        <div class="settings-label">Experimenter</div>
-                        <div class="settings-value">Free</div>
+                    <div class="card">
+                        <h3 class="card-title">About</h3>
+                        <p class="text-secondary" style="margin-bottom: 16px;">
+                            Experiments v${this.state.appVersion}
+                        </p>
+                        <button class="btn" id="btn-check-updates" style="width: 100%;">Check for Updates</button>
+                    </div>
+
+                    <!-- Debug Console -->
+                    <div class="card" style="background: #1a1a1a; color: #00ff00; font-family: monospace; padding: 12px;">
+                        <h3 class="card-title" style="color: #fff; display: flex; justify-content: space-between;">
+                            <span>Debug Console</span>
+                            <button onclick="document.getElementById('debug-log').innerHTML=''" style="background:none; border:none; color: #fff; font-size: 12px;">Clear</button>
+                        </h3>
+                        <div id="debug-log" style="font-size: 11px; max-height: 200px; overflow-y: auto; white-space: pre-wrap;"></div>
                     </div>
                 </div>
-                
+            </div>    
                 <div class="settings-group">
                     <p class="settings-group-title">Data</p>
                     <div class="settings-row">
@@ -926,13 +927,36 @@ const App = {
     },
 
     /**
+     * Log to visual console
+     */
+    log(msg) {
+        console.log(msg);
+        const logEl = document.getElementById('debug-log');
+        if (logEl) {
+            const time = new Date().toLocaleTimeString().split(' ')[0];
+            logEl.innerHTML += `[${time}] ${msg}\n`;
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+    },
+
+    /**
      * Setup Service Worker update listener
      */
     setupServiceWorker() {
-        if (!('serviceWorker' in navigator)) return;
+        if (!('serviceWorker' in navigator)) {
+            this.log('SW: Not supported');
+            return;
+        }
+
+        // Log initial state
+        navigator.serviceWorker.ready.then(reg => {
+            this.log(`SW: Ready. Scope: ${reg.scope}`);
+            this.log(`SW: Controller state: ${navigator.serviceWorker.controller ? navigator.serviceWorker.controller.state : 'none'}`);
+        });
 
         // Listen for controller changes (new SW activated)
         navigator.serviceWorker.addEventListener('controllerchange', () => {
+            this.log('SW: Controller changed! Reloading...');
             this.showToast('App updated! Reloading...');
             setTimeout(() => window.location.href = window.location.href, 500);
         });
@@ -948,39 +972,47 @@ const App = {
         }
 
         try {
+            this.log('SW: Getting registration...');
             const registration = await navigator.serviceWorker.getRegistration();
-            if (registration) {
-                this.showToast('Checking for updates...');
 
-                // Listen for updates found during check
-                const installWorker = (worker) => {
-                    worker.addEventListener('statechange', () => {
-                        if (worker.state === 'installed' && navigator.serviceWorker.controller) {
-                            worker.postMessage({ type: 'SKIP_WAITING' });
-                        }
-                    });
-                };
+            if (!registration) {
+                this.log('SW: No registration found');
+                return;
+            }
 
-                registration.addEventListener('updatefound', () => {
-                    installWorker(registration.installing);
+            this.showToast('Checking for updates...');
+            this.log('SW: Checking for updates...');
+
+            // Listen for updates found during check
+            const installWorker = (worker) => {
+                this.log(`SW: New worker found. State: ${worker.state}`);
+                worker.addEventListener('statechange', () => {
+                    this.log(`SW: Worker state change: ${worker.state}`);
+                    if (worker.state === 'installed') { // Installed means 'waiting' in SW lifecycle terms
+                        this.log('SW: Worker installed. Sending SKIP_WAITING');
+                        worker.postMessage({ type: 'SKIP_WAITING' });
+                    }
                 });
+            };
 
-                await registration.update();
+            registration.addEventListener('updatefound', () => {
+                this.log('SW: Update found event fired');
+                installWorker(registration.installing);
+            });
 
-                if (registration.waiting) {
-                    // Already waiting
-                    registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-                } else {
-                    // Check didn't find immediate waiting worker, verify if strictly latest
-                    // If no updatefound fired, we assume latest.
-                    // We can't easily know if updatefound IS GOING to fire, 
-                    // but we can show a delayed message if nothing happens?
-                    // For now, just wait a bit or show 'No updates found' if safe.
-                    // Simple approach: current logic updates if waiting.
-                }
+            this.log('SW: Calling registration.update()');
+            await registration.update();
+            this.log('SW: Update check complete');
+
+            if (registration.waiting) {
+                this.log('SW: Found existing waiting worker. Activating...');
+                registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+            } else {
+                this.log('SW: No waiting worker found immediately.');
             }
         } catch (error) {
             console.error('Update check failed:', error);
+            this.log(`SW: Error: ${error.message}`);
             this.showToast('Update check failed');
         }
     },
