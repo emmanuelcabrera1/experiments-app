@@ -1382,29 +1382,53 @@ const App = {
             const elapsed = Date.now() - startTime;
             const velocity = Math.abs(currentX) / elapsed;
 
-            const isRevealed = row.dataset.revealed === 'open';
+            // Check if revealed (support both 'open' legacy and directional 'left'/'right')
+            const isRevealed = row.dataset.revealed === 'open' || row.dataset.revealed === 'right' || row.dataset.revealed === 'left';
 
-            // SIMPLIFIED LOGIC: Right to open, Left to close
+            // Handle swipe based on direction and state
             if (isRevealed) {
-                // Already open - check if swipe left to close
-                if (currentX < -COMMIT_THRESHOLD || (currentX < 0 && velocity > VELOCITY_THRESHOLD)) {
-                    // Close: swipe left
+                // Already open - check if we should close
+                const isRightOpen = row.dataset.revealed === 'right' || row.dataset.revealed === 'open'; // Support legacy 'open'
+                const isLeftOpen = row.dataset.revealed === 'left';
+
+                let shouldClose = false;
+
+                if (isRightOpen) {
+                    // Open to right (positive), need negative delta to close
+                    shouldClose = currentX < -COMMIT_THRESHOLD || (currentX < 0 && velocity > VELOCITY_THRESHOLD);
+                } else if (isLeftOpen) {
+                    // Open to left (negative), need positive delta to close
+                    shouldClose = currentX > COMMIT_THRESHOLD || (currentX > 0 && velocity > VELOCITY_THRESHOLD);
+                }
+
+                if (shouldClose) {
+                    // Close
                     row.classList.remove('swiping');
                     row.style.transform = '';
                     delete row.dataset.revealed;
                     triggerHaptic('medium');
                 } else {
-                    // Not enough movement - stay open
+                    // Stay open (restore position)
                     row.classList.remove('swiping');
-                    row.style.transform = `translateX(${BUTTONS_WIDTH}px)`;
+                    if (isRightOpen) {
+                        row.style.transform = `translateX(${BUTTONS_WIDTH}px)`;
+                    } else {
+                        row.style.transform = `translateX(-${BUTTONS_WIDTH}px)`;
+                    }
                 }
             } else {
-                // Not open - check if swipe right to open
+                // Not open - check if swipe to open
                 if (currentX > COMMIT_THRESHOLD || (currentX > 0 && velocity > VELOCITY_THRESHOLD)) {
-                    // Open: swipe right reveals all 4 buttons
+                    // Swipe Right -> Open Left Actions
                     row.classList.remove('swiping');
                     row.style.transform = `translateX(${BUTTONS_WIDTH}px)`;
-                    row.dataset.revealed = 'open';
+                    row.dataset.revealed = 'right';
+                    triggerHaptic('medium');
+                } else if (currentX < -COMMIT_THRESHOLD || (currentX < 0 && velocity > VELOCITY_THRESHOLD)) {
+                    // Swipe Left -> Open Right Actions
+                    row.classList.remove('swiping');
+                    row.style.transform = `translateX(-${BUTTONS_WIDTH}px)`;
+                    row.dataset.revealed = 'left';
                     triggerHaptic('medium');
                 } else {
                     // Not enough movement - stay closed
