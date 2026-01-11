@@ -86,13 +86,29 @@ const UI = {
         const timeDisplay = experiment.scheduledTime ? `⏰ ${experiment.scheduledTime}` : '';
 
         return `
-            <div class="swipe-container" data-swipe-id="${escapeHtml(experiment.id)}" 
-                 aria-label="Swipe left to delete, right to archive">
-                <div class="swipe-action swipe-action-archive">
-                    <span class="swipe-action-icon">📦</span>
+            <div class="swipe-container" data-swipe-id="${escapeHtml(experiment.id)}"
+                 aria-label="Swipe to reveal actions">
+                <!-- Left swipe reveals these buttons on the right -->
+                <div class="swipe-actions-right">
+                    <button class="swipe-btn swipe-btn-archive" data-action="archive" aria-label="Archive experiment">
+                        <span class="swipe-btn-icon">📦</span>
+                        <span class="swipe-btn-label">Archive</span>
+                    </button>
+                    <button class="swipe-btn swipe-btn-delete" data-action="delete" aria-label="Delete experiment">
+                        <span class="swipe-btn-icon">🗑️</span>
+                        <span class="swipe-btn-label">Delete</span>
+                    </button>
                 </div>
-                <div class="swipe-action swipe-action-delete">
-                    <span class="swipe-action-icon">🗑️</span>
+                <!-- Right swipe reveals these buttons on the left -->
+                <div class="swipe-actions-left">
+                    <button class="swipe-btn swipe-btn-edit" data-action="edit" aria-label="Edit experiment">
+                        <span class="swipe-btn-icon">✏️</span>
+                        <span class="swipe-btn-label">Edit</span>
+                    </button>
+                    <button class="swipe-btn swipe-btn-complete" data-action="complete" aria-label="Mark as complete">
+                        <span class="swipe-btn-icon">✓</span>
+                        <span class="swipe-btn-label">Done</span>
+                    </button>
                 </div>
                 <div class="experiment-row" data-id="${escapeHtml(experiment.id)}">
                     ${this.progressRing(progress)}
