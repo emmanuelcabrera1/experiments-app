@@ -115,6 +115,23 @@ const App = {
      * Main render function
      */
     render() {
+        // Capture focus before re-render
+        const activeEl = document.activeElement;
+        let focusedSelector = null;
+        if (activeEl && activeEl !== document.body) {
+            // Try to find a unique selector
+            if (activeEl.id) {
+                focusedSelector = `#${activeEl.id}`;
+            } else if (activeEl.dataset.filter) {
+                focusedSelector = `[data-filter="${activeEl.dataset.filter}"]`;
+            } else if (activeEl.dataset.tab) {
+                focusedSelector = `[data-tab="${activeEl.dataset.tab}"]`;
+            } else if (activeEl.dataset.swipeId) {
+                // Focus is inside a list item, maybe restore to the row itself?
+                // The swipe container is destroyed, so we might lose sub-focus.
+            }
+        }
+
         const app = document.getElementById('app');
         app.innerHTML = `
             <main role="main">
@@ -125,6 +142,14 @@ const App = {
             ${this.renderModals()}
             <div id="aria-live-region" class="sr-only" aria-live="polite" aria-atomic="true"></div>
         `;
+
+        // Restore focus
+        if (focusedSelector) {
+            const el = document.querySelector(focusedSelector);
+            if (el) {
+                el.focus();
+            }
+        }
     },
 
     /**
@@ -1565,6 +1590,13 @@ const App = {
         const modal = document.getElementById(id);
         if (modal) {
             modal.classList.remove('active');
+
+            // Handle cancel callback for confirm modal
+            if (id === 'modal-confirm' && this.onConfirmCancel) {
+                this.onConfirmCancel();
+                this.onConfirmCancel = null;
+            }
+
             // Restore focus
             if (this.lastFocusedElement) {
                 this.lastFocusedElement.focus();
@@ -1732,28 +1764,33 @@ const App = {
         row.style.transform = 'translateX(-100%)';
         row.style.transition = 'transform 0.25s ease-out';
 
-        // Confirm after animation
+        // Confirm after animation using custom modal
         setTimeout(() => {
-            if (confirm(`Delete "${experiment.title}"? This cannot be undone.`)) {
-                // Collapse container
-                container.style.height = container.offsetHeight + 'px';
-                container.style.overflow = 'hidden';
-                requestAnimationFrame(() => {
-                    container.style.transition = 'height 0.3s ease, opacity 0.3s ease';
-                    container.style.height = '0';
-                    container.style.opacity = '0';
-                });
+            this.confirmAction(
+                'Delete Experiment?',
+                `Delete "${experiment.title}"? This cannot be undone.`,
+                () => {
+                    // Confirmed: Collapse container
+                    container.style.height = container.offsetHeight + 'px';
+                    container.style.overflow = 'hidden';
+                    requestAnimationFrame(() => {
+                        container.style.transition = 'height 0.3s ease, opacity 0.3s ease';
+                        container.style.height = '0';
+                        container.style.opacity = '0';
+                    });
 
-                setTimeout(() => {
-                    DataManager.deleteExperiment(experimentId);
-                    this.showToast('Experiment deleted');
-                    this.render();
-                }, 300);
-            } else {
-                // Cancel - snap back
-                row.classList.remove('swiping');
-                row.style.transform = '';
-            }
+                    setTimeout(() => {
+                        DataManager.deleteExperiment(experimentId);
+                        this.showToast('Experiment deleted');
+                        this.render();
+                    }, 300);
+                },
+                () => {
+                    // Cancelled: Snap back
+                    row.classList.remove('swiping');
+                    row.style.transform = '';
+                }
+            );
         }, 250);
     },
 
@@ -2017,7 +2054,7 @@ const App = {
     /**
      * Show Confirmation Dialog
      */
-    confirmAction(title, message, onConfirm) {
+    confirmAction(title, message, onConfirm, onCancel = null) {
         const modal = document.getElementById('modal-confirm');
         const titleEl = document.getElementById('confirm-title');
         const msgEl = document.getElementById('confirm-message');
@@ -2025,6 +2062,8 @@ const App = {
         const okBtn = document.getElementById('confirm-ok');
 
         if (!modal) return;
+
+        this.onConfirmCancel = onCancel;
 
         titleEl.textContent = title;
         msgEl.textContent = message;
@@ -2039,10 +2078,11 @@ const App = {
         newOk.textContent = 'Confirm';
 
         newCancel.addEventListener('click', () => {
-            modal.classList.remove('active');
+            this.closeModal('modal-confirm');
         });
 
         newOk.addEventListener('click', () => {
+            this.onConfirmCancel = null; // Prevent cancel callback
             modal.classList.remove('active');
             onConfirm();
         });
