@@ -705,14 +705,16 @@ const App = {
                             <textarea class="form-input" id="create-purpose" name="purpose" placeholder="e.g., Reduce stress and feel calmer" required></textarea>
                         </div>
                         <div class="form-group">
-                    <label class="form-label" id="create-category-label">Category</label>
-                    <div class="segmented-control" role="group" aria-labelledby="create-category-label">
-                        ${DataManager.getCategories().map((cat, i) => `
-                            <button type="button" class="segmented-option ${i === 0 ? 'active' : ''}" data-category="${cat}">${cat}</button>
-                        `).join('')}
-                        <button type="button" class="segmented-option" id="btn-add-category" style="flex: 0 0 auto; padding: 0 12px; font-size: 18px;">+</button>
-                    </div>
-                </div>
+                            <label class="form-label" id="create-category-label">Category</label>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <div class="segmented-control" role="group" aria-labelledby="create-category-label" style="flex: 1; overflow-x: auto; flex-wrap: nowrap;">
+                                    ${DataManager.getCategories().map((cat, i) => `
+                                        <button type="button" class="segmented-option ${i === 0 ? 'active' : ''}" data-category="${cat}" style="flex-shrink: 0;">${cat}</button>
+                                    `).join('')}
+                                </div>
+                                <button type="button" class="segmented-option" id="btn-add-category" style="flex-shrink: 0; width: 44px; height: 44px; padding: 0; border-radius: var(--radius-md); background: var(--inactive-bg);">+</button>
+                            </div>
+                        </div>
                         <div class="form-group">
                             <label class="form-label" id="create-freq-label">Frequency</label>
                             <div class="segmented-control" role="group" aria-labelledby="create-freq-label">
@@ -1192,8 +1194,8 @@ const App = {
                         if (container) {
                             const cats = DataManager.getCategories();
                             const html = cats.map((cat) => `
-                                <button type="button" class="segmented-option ${cat === name ? 'active' : ''}" data-category="${cat}">${cat}</button>
-                            `).join('') + `<button type="button" class="segmented-option" id="btn-add-category" style="flex: 0 0 auto; padding: 0 12px; font-size: 18px;">+</button>`;
+                                <button type="button" class="segmented-option ${cat === name ? 'active' : ''}" data-category="${cat}" style="flex-shrink: 0;">${cat}</button>
+                            `).join('');
                             container.innerHTML = html;
                         }
                         this.showToast(`Category "${name}" added`);
