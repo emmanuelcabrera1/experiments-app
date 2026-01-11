@@ -1274,10 +1274,10 @@ const App = {
         };
 
         const PEEK_THRESHOLD = 30;        // Start showing buttons
-        const COMMIT_THRESHOLD = 80;      // Lock buttons open (increased for smoother feel)
+        const COMMIT_THRESHOLD = 60;      // Lock buttons open (easier to trigger)
         const BUTTONS_WIDTH = 152;        // 2 buttons × 60px + gaps + padding
         const DIRECTION_LOCK_THRESHOLD = 15;
-        const VELOCITY_THRESHOLD = 0.2;   // Auto-open if fast swipe (lower = less sensitive)
+        const VELOCITY_THRESHOLD = 0.25;  // Auto-open if fast swipe (more responsive)
 
         // Haptic feedback helper
         const triggerHaptic = (style = 'medium') => {
@@ -1460,6 +1460,13 @@ const App = {
 
         // Dismiss swipe on tap outside
         app.addEventListener('click', (e) => {
+            // CRITICAL: Don't close if we just finished a swipe gesture
+            // (click event fires after touchend)
+            if (this.swipeState && this.swipeState.didSwipe) {
+                this.swipeState.didSwipe = false;
+                return;
+            }
+
             // Check if click is on experiment row itself (not buttons)
             const row = e.target.closest('.experiment-row');
             if (row && row.dataset.revealed) {
