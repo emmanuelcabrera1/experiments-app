@@ -516,6 +516,11 @@ const App = {
                             <div class="settings-label">Active Experiments</div>
                             <div class="settings-value">${experiments.length}</div>
                         </div>
+                        <div class="settings-row" style="cursor: pointer;" id="btn-view-archive">
+                            <div class="settings-icon" style="background: #FFF3E0;">📦</div>
+                            <div class="settings-label">View Archived</div>
+                            <div class="settings-chevron">${UI.icons.chevronRight}</div>
+                        </div>
                         <div class="settings-row">
                             <div class="settings-icon" style="background: #FFF3E0;">💾</div>
                             <div class="settings-label">Storage</div>
@@ -976,7 +981,45 @@ const App = {
                     </form>
                 </div>
             </div>
+
+            <!-- Archived Experiments Modal -->
+            <div class="modal-overlay" id="modal-archived">
+                <div class="modal-sheet">
+                    <div class="modal-header">
+                        <h2>Archived Experiments</h2>
+                        <button class="modal-close" aria-label="Close modal" data-close="modal-archived">${UI.icons.x}</button>
+                    </div>
+                    <div class="modal-content">
+                        ${this.renderArchivedList()}
+                    </div>
+                </div>
+            </div>
         `;
+    },
+
+    /**
+     * Render archived experiments list
+     */
+    renderArchivedList() {
+        const data = DataManager.load();
+        const archivedExps = data.experiments.filter(e => e.status === 'archived');
+
+        if (archivedExps.length === 0) {
+            return '<p style="text-align: center; color: var(--text-secondary); padding: 32px;">No archived experiments</p>';
+        }
+
+        return archivedExps.map(exp => `
+            <div class="settings-row" style="padding: 16px; margin-bottom: 8px; background: var(--surface-color); border-radius: 12px;">
+                <div style="flex: 1;">
+                    <div style="font-weight: var(--weight-semibold); margin-bottom: 4px;">${escapeHtml(exp.title)}</div>
+                    <div style="font-size: 12px; color: var(--text-secondary);">${exp.category || 'No category'} • ${exp.durationDays} days</div>
+                </div>
+                <button class="btn-unarchive-exp" data-exp-id="${exp.id}"
+                        style="background: var(--inactive-bg); color: var(--text-primary); border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: var(--weight-semibold);">
+                    Restore
+                </button>
+            </div>
+        `).join('');
     },
 
     /**
@@ -1016,6 +1059,27 @@ const App = {
             if (e.target.closest('#btn-check-updates')) {
                 e.stopPropagation();
                 this.checkForUpdates();
+                return;
+            }
+        });
+
+        // View Archived button
+        app.addEventListener('click', (e) => {
+            if (e.target.closest('#btn-view-archive')) {
+                e.stopPropagation();
+                this.openModal('modal-archived');
+                return;
+            }
+        });
+
+        // Unarchive experiment button
+        app.addEventListener('click', (e) => {
+            const unarchiveBtn = e.target.closest('.btn-unarchive-exp');
+            if (unarchiveBtn) {
+                const expId = unarchiveBtn.dataset.expId;
+                DataManager.updateExperiment(expId, { status: 'active' });
+                this.showToast('Experiment restored');
+                this.render();
                 return;
             }
         });
@@ -1210,10 +1274,10 @@ const App = {
         };
 
         const PEEK_THRESHOLD = 30;        // Start showing buttons
-        const COMMIT_THRESHOLD = 60;      // Lock buttons open
-        const BUTTONS_WIDTH = 160;        // 2 buttons × 80px
+        const COMMIT_THRESHOLD = 80;      // Lock buttons open (increased for smoother feel)
+        const BUTTONS_WIDTH = 152;        // 2 buttons × 60px + gaps + padding
         const DIRECTION_LOCK_THRESHOLD = 15;
-        const VELOCITY_THRESHOLD = 0.3;   // Auto-open if fast swipe
+        const VELOCITY_THRESHOLD = 0.2;   // Auto-open if fast swipe (lower = less sensitive)
 
         // Haptic feedback helper
         const triggerHaptic = (style = 'medium') => {
@@ -1288,7 +1352,7 @@ const App = {
             let effectiveX = deltaX;
             if (Math.abs(deltaX) > BUTTONS_WIDTH) {
                 const overshoot = Math.abs(deltaX) - BUTTONS_WIDTH;
-                const dampenedOvershoot = overshoot * 0.2;
+                const dampenedOvershoot = overshoot * 0.15;  // Stronger resistance for smoother feel
                 effectiveX = (deltaX > 0 ? 1 : -1) * (BUTTONS_WIDTH + dampenedOvershoot);
             }
 
@@ -1318,22 +1382,35 @@ const App = {
             const elapsed = Date.now() - startTime;
             const velocity = Math.abs(currentX) / elapsed;
 
-            // Determine if should reveal buttons
-            const shouldReveal = Math.abs(currentX) > COMMIT_THRESHOLD || velocity > VELOCITY_THRESHOLD;
+            const isRevealed = row.dataset.revealed === 'open';
 
-            if (shouldReveal) {
-                // Snap to revealed position
-                const snapPosition = currentX > 0 ? BUTTONS_WIDTH : -BUTTONS_WIDTH;
-                row.classList.remove('swiping');
-                row.style.transform = `translateX(${snapPosition}px)`;
-                row.dataset.revealed = currentX > 0 ? 'left' : 'right';
-
-                triggerHaptic('medium');
+            // SIMPLIFIED LOGIC: Right to open, Left to close
+            if (isRevealed) {
+                // Already open - check if swipe left to close
+                if (currentX < -COMMIT_THRESHOLD || (currentX < 0 && velocity > VELOCITY_THRESHOLD)) {
+                    // Close: swipe left
+                    row.classList.remove('swiping');
+                    row.style.transform = '';
+                    delete row.dataset.revealed;
+                    triggerHaptic('medium');
+                } else {
+                    // Not enough movement - stay open
+                    row.classList.remove('swiping');
+                    row.style.transform = `translateX(${BUTTONS_WIDTH}px)`;
+                }
             } else {
-                // Snap back to closed
-                row.classList.remove('swiping');
-                row.style.transform = '';
-                delete row.dataset.revealed;
+                // Not open - check if swipe right to open
+                if (currentX > COMMIT_THRESHOLD || (currentX > 0 && velocity > VELOCITY_THRESHOLD)) {
+                    // Open: swipe right reveals all 4 buttons
+                    row.classList.remove('swiping');
+                    row.style.transform = `translateX(${BUTTONS_WIDTH}px)`;
+                    row.dataset.revealed = 'open';
+                    triggerHaptic('medium');
+                } else {
+                    // Not enough movement - stay closed
+                    row.classList.remove('swiping');
+                    row.style.transform = '';
+                }
             }
 
             this.swipeState.active = false;
@@ -1851,6 +1928,12 @@ const App = {
         const experiment = DataManager.getExperiment(experimentId);
         if (!experiment) return;
 
+        // IMPORTANT: Hide action buttons immediately to prevent visual glitch
+        const actionsLeft = container.querySelector('.swipe-actions-left');
+        const actionsRight = container.querySelector('.swipe-actions-right');
+        if (actionsLeft) actionsLeft.style.opacity = '0';
+        if (actionsRight) actionsRight.style.opacity = '0';
+
         // Animate row off screen
         const row = container.querySelector('.experiment-row');
         row.style.transform = 'translateX(-100%)';
@@ -1878,7 +1961,9 @@ const App = {
                     }, 300);
                 },
                 () => {
-                    // Cancelled: Snap back
+                    // Cancelled: Snap back and restore buttons
+                    if (actionsLeft) actionsLeft.style.opacity = '1';
+                    if (actionsRight) actionsRight.style.opacity = '1';
                     row.classList.remove('swiping');
                     row.style.transform = '';
                 }
@@ -1892,6 +1977,12 @@ const App = {
     handleSwipeArchive(experimentId, container) {
         const experiment = DataManager.getExperiment(experimentId);
         if (!experiment) return;
+
+        // IMPORTANT: Hide action buttons immediately to prevent visual glitch
+        const actionsLeft = container.querySelector('.swipe-actions-left');
+        const actionsRight = container.querySelector('.swipe-actions-right');
+        if (actionsLeft) actionsLeft.style.opacity = '0';
+        if (actionsRight) actionsRight.style.opacity = '0';
 
         // Animate row off screen
         const row = container.querySelector('.experiment-row');
@@ -1922,6 +2013,57 @@ const App = {
                 }
             });
         }, 500);
+    },
+
+    /**
+     * Handle edit experiment action (from swipe button)
+     */
+    handleEditExperiment(experimentId) {
+        const experiment = DataManager.getExperiment(experimentId);
+        if (!experiment) return;
+
+        // Open the create modal for editing
+        this.openModal('modal-create');
+
+        // Populate form with experiment data
+        const form = document.getElementById('form-create');
+        if (!form) return;
+
+        // Set hidden ID field for update
+        const idField = document.getElementById('create-id');
+        if (idField) idField.value = experimentId;
+
+        // Fill in title and purpose
+        const titleField = document.getElementById('create-title');
+        if (titleField) titleField.value = experiment.title || '';
+
+        const purposeField = document.getElementById('create-purpose');
+        if (purposeField) purposeField.value = experiment.purpose || '';
+
+        // Fill in duration
+        const durationField = document.getElementById('create-duration');
+        if (durationField) durationField.value = experiment.durationDays || 30;
+
+        // Set frequency
+        form.querySelectorAll('[data-freq]').forEach(opt => {
+            opt.classList.toggle('active', opt.dataset.freq === experiment.frequency);
+        });
+
+        // Set category
+        form.querySelectorAll('[data-category]').forEach(opt => {
+            opt.classList.toggle('active', opt.dataset.category === experiment.category);
+        });
+
+        // Fill in optional fields
+        const criteriaField = document.getElementById('create-criteria');
+        if (criteriaField && experiment.successCriteria) {
+            criteriaField.value = experiment.successCriteria;
+        }
+
+        const timeField = document.getElementById('create-time');
+        if (timeField && experiment.scheduledTime) {
+            timeField.value = experiment.scheduledTime;
+        }
     },
 
     /**

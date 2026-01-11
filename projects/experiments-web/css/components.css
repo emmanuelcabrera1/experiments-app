@@ -262,7 +262,7 @@ button:focus-visible,
     position: relative;
     z-index: 2;
     background: var(--surface-color);
-    transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
     touch-action: pan-y;
 }
 
@@ -277,7 +277,9 @@ button:focus-visible,
     top: 0;
     bottom: 0;
     display: flex;
-    align-items: stretch;
+    align-items: center;
+    gap: 8px;
+    padding: 0 8px;
     z-index: 1;
 }
 
@@ -288,17 +290,17 @@ button:focus-visible,
 
 .swipe-actions-left {
     left: 0;
-    flex-direction: row-reverse;
+    flex-direction: row;
 }
 
 /* Action buttons */
 .swipe-btn {
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 4px;
-    width: 80px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
     border: none;
     color: white;
     font-family: var(--font-main);
@@ -309,7 +311,7 @@ button:focus-visible,
 }
 
 .swipe-btn:active {
-    transform: scale(0.95);
+    transform: scale(0.92);
 }
 
 /* Button colors */
@@ -347,14 +349,12 @@ button:focus-visible,
 
 /* Button content */
 .swipe-btn-icon {
-    font-size: 24px;
+    font-size: 28px;
     line-height: 1;
 }
 
 .swipe-btn-label {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    display: none;
 }
 
 /* Toast notifications */
