@@ -249,12 +249,12 @@ const App = {
         return `
             <div class="screen active" id="screen-detail">
                 <div style="display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-lg);">
-                    <button id="btn-back" aria-label="Go back" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: var(--inactive-bg); border-radius: 50%;">
-                        ${UI.icons.back}
+                    <button id="btn-back" aria-label="Go back" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: var(--inactive-bg); border-radius: 50%; color: var(--text-primary);">
+                        <span style="width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;">${UI.icons.back}</span>
                     </button>
-                    <h2 style="flex: 1;">${exp.title}</h2>
-                    <button id="btn-edit" aria-label="Edit experiment" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: var(--inactive-bg); border-radius: 50%;">
-                        ${UI.icons.edit}
+                    <h2 style="flex: 1;">${escapeHtml(exp.title)}</h2>
+                    <button id="btn-edit" aria-label="Edit experiment" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: var(--inactive-bg); border-radius: 50%; color: var(--text-primary);">
+                        <span style="width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;">${UI.icons.edit}</span>
                     </button>
                 </div>
                 
@@ -1049,6 +1049,12 @@ const App = {
         app.addEventListener('click', (e) => {
             if (e.target.closest('#fab-add')) {
                 e.stopPropagation();
+                // Reset form for new experiment creation
+                const form = document.getElementById('form-create');
+                if (form) {
+                    form.reset();
+                    this.resetCreateForm(form);
+                }
                 this.openModal('modal-create');
                 return;
             }
@@ -1904,35 +1910,6 @@ const App = {
     },
 
     /**
-     * Handle Edit Experiment
-     */
-    handleEditExperiment() {
-        const exp = DataManager.getExperiment(this.state.currentExperiment);
-        if (!exp) return;
-
-        this.openModal('modal-create');
-
-        // Populate form
-        const form = document.getElementById('form-create');
-        document.getElementById('modal-create-title').textContent = 'Edit Experiment';
-        document.getElementById('create-id').value = exp.id;
-        document.getElementById('btn-delete').style.display = 'block';
-
-        form.elements['title'].value = exp.title;
-        form.elements['purpose'].value = exp.purpose;
-        form.elements['create-duration'].value = exp.durationDays;
-        form.elements['create-time'].value = exp.scheduledTime || '';
-        if (exp.successCriteria) form.elements['criteria'].value = exp.successCriteria;
-
-        // Set segmented controls
-        const categoryBtn = form.querySelector(`[data-category="${exp.category}"]`);
-        if (categoryBtn) categoryBtn.click(); // Trigger click to update state (simple way)
-
-        const freqBtn = form.querySelector(`[data-freq="${exp.frequency}"]`);
-        if (freqBtn) freqBtn.click();
-    },
-
-    /**
      * Create experiment from template - with toast feedback
      */
     createFromTemplate(template) {
@@ -2047,10 +2024,12 @@ const App = {
     },
 
     /**
-     * Handle edit experiment action (from swipe button)
+     * Handle edit experiment action (from swipe button or detail view edit button)
      */
     handleEditExperiment(experimentId) {
-        const experiment = DataManager.getExperiment(experimentId);
+        // Use provided experimentId or fall back to current experiment in state
+        const expId = experimentId || this.state.currentExperiment;
+        const experiment = DataManager.getExperiment(expId);
         if (!experiment) return;
 
         // Open the create modal for editing
@@ -2060,9 +2039,16 @@ const App = {
         const form = document.getElementById('form-create');
         if (!form) return;
 
+        // Set modal title and show delete button for edit mode
+        const modalTitle = document.getElementById('modal-create-title');
+        if (modalTitle) modalTitle.textContent = 'Edit Experiment';
+
+        const deleteBtn = document.getElementById('btn-delete');
+        if (deleteBtn) deleteBtn.style.display = 'block';
+
         // Set hidden ID field for update
         const idField = document.getElementById('create-id');
-        if (idField) idField.value = experimentId;
+        if (idField) idField.value = expId;
 
         // Fill in title and purpose
         const titleField = document.getElementById('create-title');
@@ -2087,14 +2073,10 @@ const App = {
 
         // Fill in optional fields
         const criteriaField = document.getElementById('create-criteria');
-        if (criteriaField && experiment.successCriteria) {
-            criteriaField.value = experiment.successCriteria;
-        }
+        if (criteriaField) criteriaField.value = experiment.successCriteria || '';
 
         const timeField = document.getElementById('create-time');
-        if (timeField && experiment.scheduledTime) {
-            timeField.value = experiment.scheduledTime;
-        }
+        if (timeField) timeField.value = experiment.scheduledTime || '';
     },
 
     /**

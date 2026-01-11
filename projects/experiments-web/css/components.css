@@ -632,6 +632,13 @@ button:focus-visible,
     /* Ensure icon visibility */
 }
 
+/* Detail view header buttons */
+#btn-back svg,
+#btn-edit svg {
+    width: 100%;
+    height: 100%;
+}
+
 /* Small Add Category Button */
 .btn-add-category-mini {
     flex: 0 0 auto;
