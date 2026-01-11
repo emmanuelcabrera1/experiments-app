@@ -276,21 +276,21 @@ button:focus-visible,
     width: 100%;
     display: flex;
     align-items: center;
-    padding: 0 var(--space-lg);
-    font-weight: var(--weight-semibold);
-    font-size: var(--text-sm);
-    color: white;
+    padding: 0 var(--space-xl);
+    font-size: 22px;
     z-index: 1;
 }
 
 .swipe-action-delete {
-    background: #FF3B30;
+    background: var(--text-primary);
+    color: var(--bg-color);
     justify-content: flex-end;
     right: 0;
 }
 
 .swipe-action-archive {
-    background: #34C759;
+    background: var(--inactive-bg);
+    color: var(--text-primary);
     justify-content: flex-start;
     left: 0;
 }
@@ -298,12 +298,16 @@ button:focus-visible,
 .swipe-action-icon {
     display: flex;
     align-items: center;
-    gap: var(--space-sm);
-    transition: transform 0.2s ease;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+    opacity: 0.7;
 }
 
 .swipe-action-icon.active {
-    transform: scale(1.2);
+    transform: scale(1.15);
+    opacity: 1;
 }
 
 /* Toast notifications */

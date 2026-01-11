@@ -89,10 +89,10 @@ const UI = {
             <div class="swipe-container" data-swipe-id="${escapeHtml(experiment.id)}" 
                  aria-label="Swipe left to delete, right to archive">
                 <div class="swipe-action swipe-action-archive">
-                    <span class="swipe-action-icon">📦 Archive</span>
+                    <span class="swipe-action-icon">📦</span>
                 </div>
                 <div class="swipe-action swipe-action-delete">
-                    <span class="swipe-action-icon">🗑️ Delete</span>
+                    <span class="swipe-action-icon">🗑️</span>
                 </div>
                 <div class="experiment-row" data-id="${escapeHtml(experiment.id)}">
                     ${this.progressRing(progress)}
