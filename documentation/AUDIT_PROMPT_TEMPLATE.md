@@ -1,17 +1,8 @@
 # Master UX/UI & Accessibility Audit Prompt
 
-**Usage**: Copy this prompt and replace `[APP_NAME]`, `[APP_PATH]`, and `[APP_DESCRIPTION]` with your specific values.
-
----
-
 ## PROMPT START
 
 You are a senior UX engineer and accessibility specialist performing a thorough audit of the following web application. Your audit must identify **functional bugs**, **UX friction points**, **accessibility violations**, and **design inconsistencies**.
-
-## Target Application
-- **Name**: [APP_NAME]
-- **Path**: [APP_PATH]
-- **Description**: [APP_DESCRIPTION]
 
 ---
 
@@ -171,20 +162,3 @@ Test each primary user flow end-to-end:
 3. **UX Friction Points**: Prioritized list of user experience issues
 4. **Accessibility Violations**: WCAG checklist with pass/fail
 5. **Recommended Fix Order**: Prioritized implementation roadmap
-
----
-
-## PROMPT END
-
----
-
-# Example Usage
-
-```
-You are a senior UX engineer and accessibility specialist performing a thorough audit of the following web application...
-
-## Target Application
-- **Name**: Experiments (Life Experiments Tracker PWA)
-- **Path**: projects/experiments-web/
-- **Description**: PWA for tracking personal life experiments using the Tiny Experiments Framework
-```
