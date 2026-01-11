@@ -249,11 +249,11 @@ const App = {
         return `
             <div class="screen active" id="screen-detail">
                 <div style="display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-lg);">
-                    <button id="btn-back" aria-label="Go back" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                    <button id="btn-back" aria-label="Go back" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: var(--inactive-bg); border-radius: 50%;">
                         ${UI.icons.back}
                     </button>
                     <h2 style="flex: 1;">${exp.title}</h2>
-                    <button id="btn-edit" aria-label="Edit experiment" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                    <button id="btn-edit" aria-label="Edit experiment" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: var(--inactive-bg); border-radius: 50%;">
                         ${UI.icons.edit}
                     </button>
                 </div>
