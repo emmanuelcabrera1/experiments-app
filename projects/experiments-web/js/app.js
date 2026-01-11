@@ -1107,6 +1107,10 @@ const App = {
                     this.swipeState.didSwipe = false;
                     return;
                 }
+                // Prevent click if row is revealed (close it instead, handled elsewhere)
+                if (row.dataset.revealed) {
+                    return;
+                }
                 e.stopPropagation();
                 this.state.currentExperiment = row.dataset.id;
                 this.render();
@@ -1188,7 +1192,7 @@ const App = {
         });
 
         // ========================================
-        // SWIPE GESTURE HANDLING
+        // SWIPE-TO-REVEAL GESTURE HANDLING
         // ========================================
 
         // Initialize swipe state
@@ -1201,20 +1205,48 @@ const App = {
             container: null,
             row: null,
             didSwipe: false,
-            startTime: 0
+            startTime: 0,
+            hapticTriggered: false
         };
 
-        const SWIPE_THRESHOLD = 80;
+        const PEEK_THRESHOLD = 30;        // Start showing buttons
+        const COMMIT_THRESHOLD = 60;      // Lock buttons open
+        const BUTTONS_WIDTH = 160;        // 2 buttons × 80px
         const DIRECTION_LOCK_THRESHOLD = 15;
-        const MAX_SWIPE = 150;
-        const VELOCITY_THRESHOLD = 0.5;
+        const VELOCITY_THRESHOLD = 0.3;   // Auto-open if fast swipe
+
+        // Haptic feedback helper
+        const triggerHaptic = (style = 'medium') => {
+            if (navigator.vibrate) {
+                const patterns = {
+                    light: 10,
+                    medium: 20,
+                    strong: 30,
+                    success: [10, 50, 10]
+                };
+                navigator.vibrate(patterns[style] || patterns.medium);
+            }
+        };
 
         // Touch start
         app.addEventListener('touchstart', (e) => {
             const container = e.target.closest('.swipe-container');
             if (!container) return;
 
+            // Don't start swipe if tapping a button
+            if (e.target.closest('.swipe-btn')) return;
+
             const touch = e.touches[0];
+            const row = container.querySelector('.experiment-row');
+
+            // Close any other open swipes
+            document.querySelectorAll('.experiment-row[data-revealed]').forEach(otherRow => {
+                if (otherRow !== row) {
+                    otherRow.style.transform = '';
+                    delete otherRow.dataset.revealed;
+                }
+            });
+
             this.swipeState = {
                 active: true,
                 startX: touch.clientX,
@@ -1222,18 +1254,13 @@ const App = {
                 currentX: 0,
                 direction: null,
                 container: container,
-                row: container.querySelector('.experiment-row'),
+                row: row,
                 didSwipe: false,
-                startTime: Date.now()
+                startTime: Date.now(),
+                hapticTriggered: false
             };
 
-            // Close any other open swipes
-            document.querySelectorAll('.swipe-container .experiment-row.swiping').forEach(row => {
-                if (row !== this.swipeState.row) {
-                    row.classList.remove('swiping');
-                    row.style.transform = '';
-                }
-            });
+            triggerHaptic('light');
         }, { passive: true });
 
         // Touch move
@@ -1257,32 +1284,28 @@ const App = {
             // Prevent scroll during horizontal swipe
             e.preventDefault();
 
-            // Clamp swipe distance
-            const clampedX = Math.max(-MAX_SWIPE, Math.min(MAX_SWIPE, deltaX));
-            this.swipeState.currentX = clampedX;
+            // Apply rubber-band effect beyond buttons width
+            let effectiveX = deltaX;
+            if (Math.abs(deltaX) > BUTTONS_WIDTH) {
+                const overshoot = Math.abs(deltaX) - BUTTONS_WIDTH;
+                const dampenedOvershoot = overshoot * 0.2;
+                effectiveX = (deltaX > 0 ? 1 : -1) * (BUTTONS_WIDTH + dampenedOvershoot);
+            }
+
+            this.swipeState.currentX = effectiveX;
 
             // Apply transform
             const row = this.swipeState.row;
             row.classList.add('swiping');
-            row.style.transform = `translateX(${clampedX}px)`;
+            row.style.transform = `translateX(${effectiveX}px)`;
 
-            // Update action icon state
-            const archiveIcon = this.swipeState.container.querySelector('.swipe-action-archive .swipe-action-icon');
-            const deleteIcon = this.swipeState.container.querySelector('.swipe-action-delete .swipe-action-icon');
-
-            if (clampedX > SWIPE_THRESHOLD) {
-                archiveIcon?.classList.add('active');
-            } else {
-                archiveIcon?.classList.remove('active');
+            // Haptic feedback at commit threshold
+            if (!this.swipeState.hapticTriggered && Math.abs(effectiveX) >= COMMIT_THRESHOLD) {
+                triggerHaptic('strong');
+                this.swipeState.hapticTriggered = true;
             }
 
-            if (clampedX < -SWIPE_THRESHOLD) {
-                deleteIcon?.classList.add('active');
-            } else {
-                deleteIcon?.classList.remove('active');
-            }
-
-            this.swipeState.didSwipe = Math.abs(clampedX) > 10;
+            this.swipeState.didSwipe = Math.abs(effectiveX) > 10;
         }, { passive: false });
 
         // Touch end
@@ -1290,34 +1313,103 @@ const App = {
             if (!this.swipeState.active) return;
 
             const { currentX, container, row, startTime } = this.swipeState;
-            const experimentId = container?.dataset.swipeId;
 
             // Calculate velocity
             const elapsed = Date.now() - startTime;
             const velocity = Math.abs(currentX) / elapsed;
 
-            // Determine action
-            const shouldTrigger = Math.abs(currentX) > SWIPE_THRESHOLD || velocity > VELOCITY_THRESHOLD;
+            // Determine if should reveal buttons
+            const shouldReveal = Math.abs(currentX) > COMMIT_THRESHOLD || velocity > VELOCITY_THRESHOLD;
 
-            if (shouldTrigger && currentX < -SWIPE_THRESHOLD) {
-                // Swipe left - Delete
-                this.handleSwipeDelete(experimentId, container);
-            } else if (shouldTrigger && currentX > SWIPE_THRESHOLD) {
-                // Swipe right - Archive
-                this.handleSwipeArchive(experimentId, container);
+            if (shouldReveal) {
+                // Snap to revealed position
+                const snapPosition = currentX > 0 ? BUTTONS_WIDTH : -BUTTONS_WIDTH;
+                row.classList.remove('swiping');
+                row.style.transform = `translateX(${snapPosition}px)`;
+                row.dataset.revealed = currentX > 0 ? 'left' : 'right';
+
+                triggerHaptic('medium');
             } else {
-                // Snap back
+                // Snap back to closed
                 row.classList.remove('swiping');
                 row.style.transform = '';
+                delete row.dataset.revealed;
             }
-
-            // Reset icons
-            container?.querySelectorAll('.swipe-action-icon').forEach(icon => {
-                icon.classList.remove('active');
-            });
 
             this.swipeState.active = false;
         }, { passive: true });
+
+        // ========================================
+        // SWIPE ACTION BUTTON HANDLERS
+        // ========================================
+
+        // Button click handler
+        app.addEventListener('click', (e) => {
+            const btn = e.target.closest('.swipe-btn');
+            if (!btn) return;
+
+            e.stopPropagation();
+
+            const action = btn.dataset.action;
+            const container = btn.closest('.swipe-container');
+            const experimentId = container?.dataset.swipeId;
+            const row = container?.querySelector('.experiment-row');
+
+            if (!experimentId || !row) return;
+
+            // Close the swipe first
+            row.style.transform = '';
+            delete row.dataset.revealed;
+
+            // Trigger haptic feedback
+            triggerHaptic('success');
+
+            // Execute action
+            switch (action) {
+                case 'delete':
+                    this.handleSwipeDelete(experimentId, container);
+                    break;
+                case 'archive':
+                    this.handleSwipeArchive(experimentId, container);
+                    break;
+                case 'edit':
+                    this.handleEditExperiment(experimentId);
+                    break;
+                case 'complete':
+                    this.handleCompleteExperiment(experimentId);
+                    break;
+            }
+        });
+
+        // Dismiss swipe on tap outside
+        app.addEventListener('click', (e) => {
+            // Check if click is on experiment row itself (not buttons)
+            const row = e.target.closest('.experiment-row');
+            if (row && row.dataset.revealed) {
+                // Close this revealed swipe
+                e.stopPropagation();
+                row.style.transform = '';
+                delete row.dataset.revealed;
+                return;
+            }
+
+            // Close all revealed swipes if clicking anywhere else
+            if (!e.target.closest('.swipe-container')) {
+                document.querySelectorAll('.experiment-row[data-revealed]').forEach(row => {
+                    row.style.transform = '';
+                    delete row.dataset.revealed;
+                });
+            }
+        });
+
+        // Close other swipes when opening a new one (already handled in touchstart)
+        // Add helper to close all swipes
+        this.closeAllSwipes = () => {
+            document.querySelectorAll('.experiment-row[data-revealed]').forEach(row => {
+                row.style.transform = '';
+                delete row.dataset.revealed;
+            });
+        };
 
         // Mood button click - log mood
         app.addEventListener('click', (e) => {
@@ -1830,6 +1922,36 @@ const App = {
                 }
             });
         }, 500);
+    },
+
+    /**
+     * Handle complete experiment action (from swipe button)
+     */
+    handleCompleteExperiment(experimentId) {
+        const experiment = DataManager.getExperiment(experimentId);
+        if (!experiment) return;
+
+        const today = StreakCalculator.toDateString(new Date());
+
+        // Check if already checked in today
+        const existingEntry = experiment.entries?.find(e => e.date === today);
+
+        if (existingEntry) {
+            this.showToast('Already checked in today!');
+            return;
+        }
+
+        // Add check-in entry for today
+        DataManager.addEntry(experimentId, {
+            date: today,
+            type: 'checkin',
+            isCompleted: true,
+            note: null,
+            reflection: null
+        });
+
+        this.showToast('Great job! 🎉');
+        this.render();
     },
 
     /**

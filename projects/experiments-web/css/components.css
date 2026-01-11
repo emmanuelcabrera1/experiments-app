@@ -247,7 +247,7 @@ button:focus-visible,
 }
 
 /* ========================================
-   SWIPE GESTURES
+   SWIPE GESTURES - Button Reveal System
 ======================================== */
 
 .swipe-container {
@@ -263,51 +263,98 @@ button:focus-visible,
     z-index: 2;
     background: var(--surface-color);
     transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    touch-action: pan-y;
 }
 
 .swipe-container .experiment-row.swiping {
     transition: none;
 }
 
-.swipe-action {
+/* Action button containers */
+.swipe-actions-right,
+.swipe-actions-left {
     position: absolute;
     top: 0;
     bottom: 0;
-    width: 100%;
     display: flex;
-    align-items: center;
-    padding: 0 var(--space-xl);
-    font-size: 22px;
+    align-items: stretch;
     z-index: 1;
 }
 
-.swipe-action-delete {
-    background: var(--text-primary);
-    color: var(--bg-color);
-    justify-content: flex-end;
+.swipe-actions-right {
     right: 0;
+    flex-direction: row;
 }
 
-.swipe-action-archive {
-    background: var(--inactive-bg);
-    color: var(--text-primary);
-    justify-content: flex-start;
+.swipe-actions-left {
     left: 0;
+    flex-direction: row-reverse;
 }
 
-.swipe-action-icon {
+/* Action buttons */
+.swipe-btn {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
-    transition: transform 0.15s ease, opacity 0.15s ease;
-    opacity: 0.7;
+    gap: 4px;
+    width: 80px;
+    border: none;
+    color: white;
+    font-family: var(--font-main);
+    font-weight: var(--weight-semibold);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0;
 }
 
-.swipe-action-icon.active {
-    transform: scale(1.15);
-    opacity: 1;
+.swipe-btn:active {
+    transform: scale(0.95);
+}
+
+/* Button colors */
+.swipe-btn-delete {
+    background: #DC3545;
+}
+
+.swipe-btn-delete:active {
+    background: #C82333;
+}
+
+.swipe-btn-archive {
+    background: #FFA726;
+}
+
+.swipe-btn-archive:active {
+    background: #FB8C00;
+}
+
+.swipe-btn-edit {
+    background: #2196F3;
+}
+
+.swipe-btn-edit:active {
+    background: #1976D2;
+}
+
+.swipe-btn-complete {
+    background: #4CAF50;
+}
+
+.swipe-btn-complete:active {
+    background: #388E3C;
+}
+
+/* Button content */
+.swipe-btn-icon {
+    font-size: 24px;
+    line-height: 1;
+}
+
+.swipe-btn-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 /* Toast notifications */
@@ -350,7 +397,7 @@ button:focus-visible,
 @media (prefers-reduced-motion: reduce) {
 
     .swipe-container .experiment-row,
-    .swipe-action-icon,
+    .swipe-btn,
     .toast {
         transition: none;
     }
