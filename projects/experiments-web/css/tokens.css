@@ -14,6 +14,7 @@
   /* WCAG AA: 4.54:1 contrast on white */
 
   /* Interactive */
+  --primary-color: #2672C7; /* WCAG AA Compliant Blue */
   --active-bg: #000000;
   --active-text: #FFFFFF;
   --inactive-bg: #F2F2F7;
@@ -82,6 +83,7 @@
   /* 30% white */
 
   /* Interactive */
+  --primary-color: #2672C7; /* Keep accessible blue */
   --active-bg: #FFFFFF;
   --active-text: #000000;
   --inactive-bg: #2C2C2E;

@@ -632,14 +632,18 @@ const DataManager = {
     },
 
     /**
-     * Get all categories (default + custom)
+     * Get all categories (default + custom + active from experiments)
      */
     getCategories() {
         const custom = JSON.parse(localStorage.getItem('experiments_categories') || '[]');
         const defaultCategories = ['Health', 'Work', 'Parenting', 'Relationships', 'Learning', 'Hobbies', 'Emotions', 'Money'];
 
+        // Get categories currently in use by active experiments
+        const activeExperiments = this.getExperiments();
+        const usedCategories = activeExperiments.map(e => e.category).filter(Boolean);
+
         // Merge and deduplicate
-        const allCategories = [...new Set([...defaultCategories, ...custom])];
+        const allCategories = [...new Set([...defaultCategories, ...custom, ...usedCategories])];
         return allCategories;
     },
 
