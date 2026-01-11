@@ -77,7 +77,7 @@ const UI = {
     },
 
     /**
-     * Render experiment row
+     * Render experiment row with swipe container
      */
     experimentRow(experiment) {
         const progress = StreakCalculator.progress(experiment);
@@ -86,13 +86,22 @@ const UI = {
         const timeDisplay = experiment.scheduledTime ? `⏰ ${experiment.scheduledTime}` : '';
 
         return `
-            <div class="experiment-row" data-id="${escapeHtml(experiment.id)}">
-                ${this.progressRing(progress)}
-                <div class="experiment-info">
-                    <div class="experiment-title">${escapeHtml(experiment.title)} ${timeDisplay ? `<span style="color: var(--text-tertiary); font-size: var(--text-xs); margin-left: var(--space-sm);">${timeDisplay}</span>` : ''}</div>
-                    <div class="experiment-meta">${daysCompleted} days completed</div>
+            <div class="swipe-container" data-swipe-id="${escapeHtml(experiment.id)}" 
+                 aria-label="Swipe left to delete, right to archive">
+                <div class="swipe-action swipe-action-archive">
+                    <span class="swipe-action-icon">📦 Archive</span>
                 </div>
-                ${this.streakBadge(streak)}
+                <div class="swipe-action swipe-action-delete">
+                    <span class="swipe-action-icon">🗑️ Delete</span>
+                </div>
+                <div class="experiment-row" data-id="${escapeHtml(experiment.id)}">
+                    ${this.progressRing(progress)}
+                    <div class="experiment-info">
+                        <div class="experiment-title">${escapeHtml(experiment.title)} ${timeDisplay ? `<span style="color: var(--text-tertiary); font-size: var(--text-xs); margin-left: var(--space-sm);">${timeDisplay}</span>` : ''}</div>
+                        <div class="experiment-meta">${daysCompleted} days completed</div>
+                    </div>
+                    ${this.streakBadge(streak)}
+                </div>
             </div>
         `;
     },

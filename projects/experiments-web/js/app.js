@@ -710,7 +710,7 @@ const App = {
                         ${DataManager.getCategories().map((cat, i) => `
                             <button type="button" class="segmented-option ${i === 0 ? 'active' : ''}" data-category="${cat}">${cat}</button>
                         `).join('')}
-                        <button type="button" class="segmented-option" id="btn-add-category" style="flex: 0 0 auto; padding: 0 12px; font-size: 18px;">+</button>
+                        <button type="button" class="segmented-option btn-add-category-mini" id="btn-add-category">+</button>
                     </div>
                 </div>
                         <div class="form-group">
@@ -968,24 +968,30 @@ const App = {
         app.addEventListener('click', (e) => {
             const tabItem = e.target.closest('.tab-bar-item');
             if (tabItem) {
+                e.stopPropagation();
                 this.state.currentTab = tabItem.dataset.tab;
                 this.state.currentExperiment = null;
-                this.state.currentFilter = 'ALL'; // Reset filter on tab change
+                this.state.currentFilter = 'ALL';
                 this.render();
+                return;
             }
         });
 
         // FAB click
         app.addEventListener('click', (e) => {
             if (e.target.closest('#fab-add')) {
+                e.stopPropagation();
                 this.openModal('modal-create');
+                return;
             }
         });
 
         // Check for Updates button
         app.addEventListener('click', (e) => {
             if (e.target.closest('#btn-check-updates')) {
+                e.stopPropagation();
                 this.checkForUpdates();
+                return;
             }
         });
 
@@ -993,20 +999,25 @@ const App = {
         app.addEventListener('click', (e) => {
             const themeBtn = e.target.closest('[data-theme-opt]');
             if (themeBtn) {
+                e.stopPropagation();
                 this.setTheme(themeBtn.dataset.themeOpt);
+                return;
             }
         });
 
         // Edit button
         app.addEventListener('click', (e) => {
             if (e.target.closest('#btn-edit')) {
+                e.stopPropagation();
                 this.handleEditExperiment();
+                return;
             }
         });
 
         // Delete button
         app.addEventListener('click', (e) => {
             if (e.target.closest('#btn-delete')) {
+                e.stopPropagation();
                 this.confirmAction(
                     'Delete Experiment?',
                     'This will permanently delete this experiment and all its history. This cannot be undone.',
@@ -1019,6 +1030,7 @@ const App = {
                         this.showToast('Experiment deleted');
                     }
                 );
+                return;
             }
         });
 
@@ -1026,13 +1038,13 @@ const App = {
         app.addEventListener('click', (e) => {
             const toggle = e.target.closest('.reflection-toggle');
             if (toggle) {
+                e.stopPropagation();
                 const fields = toggle.nextElementSibling;
                 const isVisible = fields.classList.contains('visible');
                 const symbol = toggle.querySelector('span:first-child');
-
                 fields.classList.toggle('visible');
-                // Animate height would be better but simple visibility toggle is functional
                 if (symbol) symbol.textContent = isVisible ? '+' : '−';
+                return;
             }
         });
 
@@ -1040,12 +1052,14 @@ const App = {
         app.addEventListener('click', (e) => {
             const closeBtn = e.target.closest('[data-close]');
             if (closeBtn) {
+                e.stopPropagation();
                 this.closeModal(closeBtn.dataset.close);
+                return;
             }
-
             // Click on overlay to close
             if (e.target.classList.contains('modal-overlay')) {
                 this.closeModal(e.target.id);
+                return;
             }
         });
 
@@ -1059,27 +1073,38 @@ const App = {
             }
         });
 
-        // Experiment row click
+        // Experiment row click (with swipe protection)
         app.addEventListener('click', (e) => {
             const row = e.target.closest('.experiment-row');
             if (row) {
+                // Prevent click if we just swiped
+                if (this.swipeState && this.swipeState.didSwipe) {
+                    this.swipeState.didSwipe = false;
+                    return;
+                }
+                e.stopPropagation();
                 this.state.currentExperiment = row.dataset.id;
                 this.render();
+                return;
             }
         });
 
         // Back button
         app.addEventListener('click', (e) => {
             if (e.target.closest('#btn-back')) {
+                e.stopPropagation();
                 this.state.currentExperiment = null;
                 this.render();
+                return;
             }
         });
 
         // Check-in button
         app.addEventListener('click', (e) => {
             if (e.target.closest('#btn-checkin')) {
+                e.stopPropagation();
                 this.openModal('modal-checkin');
+                return;
             }
         });
 
@@ -1087,26 +1112,28 @@ const App = {
         app.addEventListener('click', (e) => {
             const card = e.target.closest('.template-card');
             if (card) {
+                e.stopPropagation();
                 const template = DataManager.getTemplates().find(t => t.id === card.dataset.id);
                 if (template) {
                     this.createFromTemplate(template);
                 }
+                return;
             }
         });
 
-        // Segmented control (non-form) - FIXED: scope to parent control only
+        // Segmented control (non-form) - detail view tabs
         app.addEventListener('click', (e) => {
             const option = e.target.closest('.segmented-option');
             if (option && !option.closest('form')) {
                 const section = option.dataset.section;
                 if (section) {
-                    // Detail view sections - scope to closest segmented-control
+                    e.stopPropagation();
                     const control = option.closest('.segmented-control');
                     control.querySelectorAll('.segmented-option').forEach(o => o.classList.remove('active'));
                     option.classList.add('active');
-
                     document.getElementById('detail-section-entries')?.classList.toggle('hidden', section !== 'entries');
                     document.getElementById('detail-section-calendar')?.classList.toggle('hidden', section !== 'calendar');
+                    return;
                 }
             }
         });
@@ -1115,9 +1142,11 @@ const App = {
         app.addEventListener('click', (e) => {
             const option = e.target.closest('.segmented-option');
             if (option && option.closest('form')) {
+                e.stopPropagation();
                 const parent = option.parentElement;
                 parent.querySelectorAll('.segmented-option').forEach(o => o.classList.remove('active'));
                 option.classList.add('active');
+                return;
             }
         });
 
@@ -1125,13 +1154,145 @@ const App = {
         app.addEventListener('click', (e) => {
             const pill = e.target.closest('.pill[data-filter]');
             if (pill) {
+                e.stopPropagation();
                 const filter = pill.dataset.filter;
-                if (this.state.currentFilter !== filter) {
-                    this.state.currentFilter = filter;
-                    this.render();
-                }
+                this.state.currentFilter = filter;
+                this.render();
+                return;
             }
         });
+
+        // ========================================
+        // SWIPE GESTURE HANDLING
+        // ========================================
+
+        // Initialize swipe state
+        this.swipeState = {
+            active: false,
+            startX: 0,
+            startY: 0,
+            currentX: 0,
+            direction: null, // 'horizontal' or 'vertical'
+            container: null,
+            row: null,
+            didSwipe: false,
+            startTime: 0
+        };
+
+        const SWIPE_THRESHOLD = 80;
+        const DIRECTION_LOCK_THRESHOLD = 15;
+        const MAX_SWIPE = 150;
+        const VELOCITY_THRESHOLD = 0.5;
+
+        // Touch start
+        app.addEventListener('touchstart', (e) => {
+            const container = e.target.closest('.swipe-container');
+            if (!container) return;
+
+            const touch = e.touches[0];
+            this.swipeState = {
+                active: true,
+                startX: touch.clientX,
+                startY: touch.clientY,
+                currentX: 0,
+                direction: null,
+                container: container,
+                row: container.querySelector('.experiment-row'),
+                didSwipe: false,
+                startTime: Date.now()
+            };
+
+            // Close any other open swipes
+            document.querySelectorAll('.swipe-container .experiment-row.swiping').forEach(row => {
+                if (row !== this.swipeState.row) {
+                    row.classList.remove('swiping');
+                    row.style.transform = '';
+                }
+            });
+        }, { passive: true });
+
+        // Touch move
+        app.addEventListener('touchmove', (e) => {
+            if (!this.swipeState.active) return;
+
+            const touch = e.touches[0];
+            const deltaX = touch.clientX - this.swipeState.startX;
+            const deltaY = touch.clientY - this.swipeState.startY;
+
+            // Determine direction if not locked
+            if (!this.swipeState.direction) {
+                if (Math.abs(deltaX) > DIRECTION_LOCK_THRESHOLD || Math.abs(deltaY) > DIRECTION_LOCK_THRESHOLD) {
+                    this.swipeState.direction = Math.abs(deltaX) > Math.abs(deltaY) ? 'horizontal' : 'vertical';
+                }
+            }
+
+            // Only handle horizontal swipes
+            if (this.swipeState.direction !== 'horizontal') return;
+
+            // Prevent scroll during horizontal swipe
+            e.preventDefault();
+
+            // Clamp swipe distance
+            const clampedX = Math.max(-MAX_SWIPE, Math.min(MAX_SWIPE, deltaX));
+            this.swipeState.currentX = clampedX;
+
+            // Apply transform
+            const row = this.swipeState.row;
+            row.classList.add('swiping');
+            row.style.transform = `translateX(${clampedX}px)`;
+
+            // Update action icon state
+            const archiveIcon = this.swipeState.container.querySelector('.swipe-action-archive .swipe-action-icon');
+            const deleteIcon = this.swipeState.container.querySelector('.swipe-action-delete .swipe-action-icon');
+
+            if (clampedX > SWIPE_THRESHOLD) {
+                archiveIcon?.classList.add('active');
+            } else {
+                archiveIcon?.classList.remove('active');
+            }
+
+            if (clampedX < -SWIPE_THRESHOLD) {
+                deleteIcon?.classList.add('active');
+            } else {
+                deleteIcon?.classList.remove('active');
+            }
+
+            this.swipeState.didSwipe = Math.abs(clampedX) > 10;
+        }, { passive: false });
+
+        // Touch end
+        app.addEventListener('touchend', (e) => {
+            if (!this.swipeState.active) return;
+
+            const { currentX, container, row, startTime } = this.swipeState;
+            const experimentId = container?.dataset.swipeId;
+
+            // Calculate velocity
+            const elapsed = Date.now() - startTime;
+            const velocity = Math.abs(currentX) / elapsed;
+
+            // Determine action
+            const shouldTrigger = Math.abs(currentX) > SWIPE_THRESHOLD || velocity > VELOCITY_THRESHOLD;
+
+            if (shouldTrigger && currentX < -SWIPE_THRESHOLD) {
+                // Swipe left - Delete
+                this.handleSwipeDelete(experimentId, container);
+            } else if (shouldTrigger && currentX > SWIPE_THRESHOLD) {
+                // Swipe right - Archive
+                this.handleSwipeArchive(experimentId, container);
+            } else {
+                // Snap back
+                row.classList.remove('swiping');
+                row.style.transform = '';
+            }
+
+            // Reset icons
+            container?.querySelectorAll('.swipe-action-icon').forEach(icon => {
+                icon.classList.remove('active');
+            });
+
+            this.swipeState.active = false;
+        }, { passive: true });
 
         // Mood button click - log mood
         app.addEventListener('click', (e) => {
@@ -1336,7 +1497,7 @@ const App = {
                 const shareText = PartnersManager.generateShareText(experiments);
 
                 if (navigator.share) {
-                    navigator.share({ text: shareText }).catch(() => {});
+                    navigator.share({ text: shareText }).catch(() => { });
                 } else {
                     navigator.clipboard.writeText(shareText).then(() => {
                         this.showToast('Progress copied to clipboard!');
@@ -1560,6 +1721,81 @@ const App = {
     },
 
     /**
+     * Handle swipe-to-delete action
+     */
+    handleSwipeDelete(experimentId, container) {
+        const experiment = DataManager.getExperiment(experimentId);
+        if (!experiment) return;
+
+        // Animate row off screen
+        const row = container.querySelector('.experiment-row');
+        row.style.transform = 'translateX(-100%)';
+        row.style.transition = 'transform 0.25s ease-out';
+
+        // Confirm after animation
+        setTimeout(() => {
+            if (confirm(`Delete "${experiment.title}"? This cannot be undone.`)) {
+                // Collapse container
+                container.style.height = container.offsetHeight + 'px';
+                container.style.overflow = 'hidden';
+                requestAnimationFrame(() => {
+                    container.style.transition = 'height 0.3s ease, opacity 0.3s ease';
+                    container.style.height = '0';
+                    container.style.opacity = '0';
+                });
+
+                setTimeout(() => {
+                    DataManager.deleteExperiment(experimentId);
+                    this.showToast('Experiment deleted');
+                    this.render();
+                }, 300);
+            } else {
+                // Cancel - snap back
+                row.classList.remove('swiping');
+                row.style.transform = '';
+            }
+        }, 250);
+    },
+
+    /**
+     * Handle swipe-to-archive action
+     */
+    handleSwipeArchive(experimentId, container) {
+        const experiment = DataManager.getExperiment(experimentId);
+        if (!experiment) return;
+
+        // Animate row off screen
+        const row = container.querySelector('.experiment-row');
+        row.style.transform = 'translateX(100%)';
+        row.style.transition = 'transform 0.25s ease-out';
+
+        // Collapse container
+        setTimeout(() => {
+            container.style.height = container.offsetHeight + 'px';
+            container.style.overflow = 'hidden';
+            requestAnimationFrame(() => {
+                container.style.transition = 'height 0.3s ease, opacity 0.3s ease';
+                container.style.height = '0';
+                container.style.opacity = '0';
+            });
+        }, 200);
+
+        // Archive after animation
+        setTimeout(() => {
+            DataManager.archiveExperiment(experimentId);
+            this.render();
+
+            // Show toast with undo
+            this.showToast('Experiment archived', {
+                undo: () => {
+                    DataManager.updateExperiment(experimentId, { status: 'active' });
+                    this.render();
+                }
+            });
+        }, 500);
+    },
+
+    /**
      * Load theme from storage
      */
     loadTheme() {
@@ -1602,6 +1838,48 @@ const App = {
             root.removeAttribute('data-theme');
             document.querySelector("meta[name='theme-color']").setAttribute("content", "#FAFAFA");
         }
+    },
+
+    /**
+     * Show toast notification
+     * @param {string} message - Toast message
+     * @param {Object} options - Optional: { undo: callback, duration: ms }
+     */
+    showToast(message, options = {}) {
+        // Remove existing toast
+        const existingToast = document.querySelector('.toast');
+        if (existingToast) existingToast.remove();
+
+        // Create toast element
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.innerHTML = `
+            <span>${message}</span>
+            ${options.undo ? '<button class="toast-undo">Undo</button>' : ''}
+        `;
+
+        document.body.appendChild(toast);
+
+        // Undo handler
+        if (options.undo) {
+            toast.querySelector('.toast-undo').addEventListener('click', () => {
+                options.undo();
+                toast.classList.remove('visible');
+                setTimeout(() => toast.remove(), 200);
+            });
+        }
+
+        // Show toast
+        requestAnimationFrame(() => {
+            toast.classList.add('visible');
+        });
+
+        // Auto-hide
+        const duration = options.duration || 3000;
+        setTimeout(() => {
+            toast.classList.remove('visible');
+            setTimeout(() => toast.remove(), 200);
+        }, duration);
     },
 
     /**

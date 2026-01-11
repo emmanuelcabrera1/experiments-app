@@ -247,6 +247,112 @@ button:focus-visible,
 }
 
 /* ========================================
+   SWIPE GESTURES
+======================================== */
+
+.swipe-container {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-xl);
+    margin-bottom: var(--space-md);
+}
+
+.swipe-container .experiment-row {
+    margin-bottom: 0;
+    position: relative;
+    z-index: 2;
+    background: var(--surface-color);
+    transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.swipe-container .experiment-row.swiping {
+    transition: none;
+}
+
+.swipe-action {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    padding: 0 var(--space-lg);
+    font-weight: var(--weight-semibold);
+    font-size: var(--text-sm);
+    color: white;
+    z-index: 1;
+}
+
+.swipe-action-delete {
+    background: #FF3B30;
+    justify-content: flex-end;
+    right: 0;
+}
+
+.swipe-action-archive {
+    background: #34C759;
+    justify-content: flex-start;
+    left: 0;
+}
+
+.swipe-action-icon {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    transition: transform 0.2s ease;
+}
+
+.swipe-action-icon.active {
+    transform: scale(1.2);
+}
+
+/* Toast notifications */
+.toast {
+    position: fixed;
+    bottom: calc(80px + var(--space-lg));
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--text-primary);
+    color: var(--bg-color);
+    padding: var(--space-sm) var(--space-lg);
+    border-radius: var(--radius-full);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    box-shadow: var(--shadow-lg);
+    z-index: 9999;
+    opacity: 0;
+    transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.toast.visible {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+.toast-undo {
+    background: transparent;
+    border: none;
+    color: var(--accent-color, #007AFF);
+    font-weight: var(--weight-semibold);
+    cursor: pointer;
+    padding: var(--space-xs) var(--space-sm);
+    margin-left: var(--space-sm);
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+
+    .swipe-container .experiment-row,
+    .swipe-action-icon,
+    .toast {
+        transition: none;
+    }
+}
+
+/* ========================================
    PROGRESS RING
 ======================================== */
 
@@ -282,6 +388,13 @@ button:focus-visible,
     transform: translate(-50%, -50%);
     font-size: var(--text-sm);
     font-weight: var(--weight-semibold);
+    pointer-events: none;
+    /* Allow clicks to pass through to parent */
+}
+
+/* Ensure SVG doesn't block clicks on experiment rows */
+.progress-ring svg {
+    pointer-events: none;
 }
 
 /* Large Progress Ring */
@@ -422,6 +535,8 @@ button:focus-visible,
     padding: var(--space-lg);
     padding-bottom: calc(var(--safe-bottom) + var(--space-lg));
     overflow-y: auto;
+    overflow-x: hidden;
+    /* Prevent horizontal scroll/drift */
     animation: slideUp 0.3s ease;
 }
 
@@ -454,6 +569,24 @@ button:focus-visible,
     display: flex;
     align-items: center;
     justify-content: center;
+    z-index: 10;
+    /* Ensure visibility */
+}
+
+.modal-close svg {
+    width: 16px;
+    height: 16px;
+    color: var(--text-primary);
+    /* Ensure icon visibility */
+}
+
+/* Small Add Category Button */
+.btn-add-category-mini {
+    flex: 0 0 auto;
+    padding: 0 var(--space-sm);
+    font-size: var(--text-sm);
+    min-width: 32px;
+    height: 32px;
 }
 
 /* ========================================
