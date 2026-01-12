@@ -191,6 +191,18 @@ const App = {
             );
         }
 
+        // Sort experiments: those without scheduled time first, then by time
+        experiments.sort((a, b) => {
+            // If neither has scheduledTime, maintain original order
+            if (!a.scheduledTime && !b.scheduledTime) return 0;
+            // If only a has no scheduledTime, a comes first
+            if (!a.scheduledTime) return -1;
+            // If only b has no scheduledTime, b comes first
+            if (!b.scheduledTime) return 1;
+            // Both have scheduledTime, sort by time
+            return a.scheduledTime.localeCompare(b.scheduledTime);
+        });
+
         let content = '';
         if (experiments.length === 0) {
             if (filter === 'ALL') {
@@ -1869,7 +1881,8 @@ const App = {
             // Update existing
             DataManager.updateExperiment(id, experimentData);
             this.showToast('Experiment updated');
-            this.state.currentExperiment = id; // Ensure we stay on detail view
+            // Return to lab list after editing
+            this.state.currentExperiment = null;
         } else {
             // Create new
             DataManager.createExperiment({
@@ -1938,6 +1951,10 @@ const App = {
         document.getElementById('modal-create-title').textContent = 'New Experiment';
         document.getElementById('create-id').value = '';
         document.getElementById('btn-delete').style.display = 'none';
+
+        // Reset button text to "Start Experiment"
+        const startBtn = document.getElementById('btn-start-experiment');
+        if (startBtn) startBtn.textContent = 'Start Experiment';
 
         // Reset segmented controls to default state
         form.querySelectorAll('.segmented-control').forEach(control => {
@@ -2083,6 +2100,10 @@ const App = {
 
         const deleteBtn = document.getElementById('btn-delete');
         if (deleteBtn) deleteBtn.style.display = 'block';
+
+        // Change button text to "Save Changes" for edit mode
+        const startBtn = document.getElementById('btn-start-experiment');
+        if (startBtn) startBtn.textContent = 'Save Changes';
 
         // Set hidden ID field for update
         const idField = document.getElementById('create-id');
