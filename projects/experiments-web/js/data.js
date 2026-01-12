@@ -475,9 +475,7 @@ const DataManager = {
      * Create a new experiment
      */
     createExperiment(experiment) {
-        console.log('[DEBUG DataManager] createExperiment called with:', experiment);
         const data = this.load();
-        console.log('[DEBUG DataManager] Loaded data, experiments count:', data.experiments.length);
         const newExp = {
             id: this.generateId(),
             ...experiment,
@@ -487,11 +485,8 @@ const DataManager = {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
-        console.log('[DEBUG DataManager] New experiment object:', newExp);
         data.experiments.push(newExp);
-        console.log('[DEBUG DataManager] After push, experiments count:', data.experiments.length);
         this.save(data);
-        console.log('[DEBUG DataManager] Data saved to localStorage');
         return newExp;
     },
 
