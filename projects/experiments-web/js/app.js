@@ -724,7 +724,7 @@ const App = {
                         <h2 id="modal-create-title">New Experiment</h2>
                         <button class="modal-close" aria-label="Close modal" data-close="modal-create">${UI.icons.x}</button>
                     </div>
-                    <form id="form-create" action="javascript:void(0);" method="POST">
+                    <form id="form-create">
                         <input type="hidden" name="id" id="create-id">
                         <div class="form-group">
                             <label class="form-label" for="create-title">Action — What?</label>
@@ -777,7 +777,7 @@ const App = {
                         <h2>Check In</h2>
                         <button class="modal-close" aria-label="Close modal" data-close="modal-checkin">${UI.icons.x}</button>
                     </div>
-                    <form id="form-checkin" action="javascript:void(0);" method="POST">
+                    <form id="form-checkin">
                         <div class="form-group">
                             <label class="form-label" id="checkin-status-label">Status</label>
                             <div class="segmented-control" role="group" aria-labelledby="checkin-status-label">
@@ -842,7 +842,7 @@ const App = {
                         <h2>Edit Entry</h2>
                         <button class="modal-close" aria-label="Close modal" data-close="modal-edit-entry">${UI.icons.x}</button>
                     </div>
-                    <form id="form-edit-entry" action="javascript:void(0);" method="POST">
+                    <form id="form-edit-entry">
                         <input type="hidden" name="entryId" id="edit-entry-id">
                         <div class="form-group">
                             <label class="form-label" id="edit-entry-status-label">Status</label>
@@ -930,7 +930,7 @@ const App = {
                         <h2>Add Partner</h2>
                         <button class="modal-close" aria-label="Close modal" data-close="modal-add-partner">${UI.icons.x}</button>
                     </div>
-                    <form id="form-add-partner" action="javascript:void(0);" method="POST">
+                    <form id="form-add-partner">
                         <div class="form-group">
                             <label class="form-label" for="partner-name">Partner Name</label>
                             <input class="form-input" id="partner-name" name="name" placeholder="e.g., Sarah" required>
@@ -953,7 +953,7 @@ const App = {
                         <h2>Start Challenge</h2>
                         <button class="modal-close" aria-label="Close modal" data-close="modal-create-challenge">${UI.icons.x}</button>
                     </div>
-                    <form id="form-create-challenge" action="javascript:void(0);" method="POST">
+                    <form id="form-create-challenge">
                         <div class="form-group">
                             <label class="form-label" for="challenge-name">Challenge Name</label>
                             <input class="form-input" id="challenge-name" name="name" placeholder="e.g., January Wellness Challenge" required>
