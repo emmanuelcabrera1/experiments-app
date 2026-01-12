@@ -1049,11 +1049,13 @@ const App = {
         app.addEventListener('click', (e) => {
             if (e.target.closest('#fab-add')) {
                 e.stopPropagation();
+                console.log('[DEBUG] FAB clicked, resetting form');
                 // Reset form for new experiment creation
                 const form = document.getElementById('form-create');
                 if (form) {
                     form.reset();
                     this.resetCreateForm(form);
+                    console.log('[DEBUG] Form reset, id field value:', document.getElementById('create-id').value);
                 }
                 this.openModal('modal-create');
                 return;
@@ -1552,8 +1554,10 @@ const App = {
         // Form submissions - FIXED: Use event delegation for forms
         app.addEventListener('submit', (e) => {
             const form = e.target;
+            console.log('[DEBUG] Form submit event triggered, form.id:', form.id);
             if (form.id === 'form-create') {
                 e.preventDefault();
+                console.log('[DEBUG] form-create submission, calling handleCreateExperiment');
                 this.handleCreateExperiment(form);
             } else if (form.id === 'form-checkin') {
                 e.preventDefault();
@@ -1819,6 +1823,11 @@ const App = {
         const categoryOption = form.querySelector('[data-category].active');
 
         const id = data.get('id');
+
+        // Debug logging
+        console.log('[DEBUG] handleCreateExperiment called');
+        console.log('[DEBUG] id from form:', id, 'type:', typeof id, 'length:', id ? id.length : 0);
+
         const experimentData = {
             title: data.get('title'),
             purpose: data.get('purpose'),
@@ -1829,24 +1838,34 @@ const App = {
             scheduledTime: data.get('scheduledTime') || null,
         };
 
+        console.log('[DEBUG] experimentData:', experimentData);
+
         if (id) {
             // Update existing
+            console.log('[DEBUG] Updating existing experiment with id:', id);
             DataManager.updateExperiment(id, experimentData);
             this.showToast('Experiment updated');
             this.state.currentExperiment = id; // Ensure we stay on detail view
         } else {
             // Create new
-            DataManager.createExperiment({
+            console.log('[DEBUG] Creating new experiment');
+            const newExp = DataManager.createExperiment({
                 ...experimentData,
                 startDate: new Date().toISOString()
             });
+            console.log('[DEBUG] New experiment created:', newExp);
             this.showToast('Experiment created!');
+            // Reset filter to ALL so the new experiment is visible
+            this.state.currentFilter = 'ALL';
         }
 
         this.closeModal('modal-create');
         form.reset();
         this.resetCreateForm(form); // Helper to reset UI state
         this.render();
+
+        // Debug: Check experiments after render
+        console.log('[DEBUG] Experiments after render:', DataManager.getExperiments());
     },
 
     /**
