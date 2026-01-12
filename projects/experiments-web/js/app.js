@@ -724,7 +724,7 @@ const App = {
                         <h2 id="modal-create-title">New Experiment</h2>
                         <button class="modal-close" aria-label="Close modal" data-close="modal-create">${UI.icons.x}</button>
                     </div>
-                    <form id="form-create">
+                    <form id="form-create" action="javascript:void(0);" method="POST">
                         <input type="hidden" name="id" id="create-id">
                         <div class="form-group">
                             <label class="form-label" for="create-title">Action — What?</label>
@@ -777,7 +777,7 @@ const App = {
                         <h2>Check In</h2>
                         <button class="modal-close" aria-label="Close modal" data-close="modal-checkin">${UI.icons.x}</button>
                     </div>
-                    <form id="form-checkin">
+                    <form id="form-checkin" action="javascript:void(0);" method="POST">
                         <div class="form-group">
                             <label class="form-label" id="checkin-status-label">Status</label>
                             <div class="segmented-control" role="group" aria-labelledby="checkin-status-label">
@@ -842,7 +842,7 @@ const App = {
                         <h2>Edit Entry</h2>
                         <button class="modal-close" aria-label="Close modal" data-close="modal-edit-entry">${UI.icons.x}</button>
                     </div>
-                    <form id="form-edit-entry">
+                    <form id="form-edit-entry" action="javascript:void(0);" method="POST">
                         <input type="hidden" name="entryId" id="edit-entry-id">
                         <div class="form-group">
                             <label class="form-label" id="edit-entry-status-label">Status</label>
@@ -930,7 +930,7 @@ const App = {
                         <h2>Add Partner</h2>
                         <button class="modal-close" aria-label="Close modal" data-close="modal-add-partner">${UI.icons.x}</button>
                     </div>
-                    <form id="form-add-partner">
+                    <form id="form-add-partner" action="javascript:void(0);" method="POST">
                         <div class="form-group">
                             <label class="form-label" for="partner-name">Partner Name</label>
                             <input class="form-input" id="partner-name" name="name" placeholder="e.g., Sarah" required>
@@ -953,7 +953,7 @@ const App = {
                         <h2>Start Challenge</h2>
                         <button class="modal-close" aria-label="Close modal" data-close="modal-create-challenge">${UI.icons.x}</button>
                     </div>
-                    <form id="form-create-challenge">
+                    <form id="form-create-challenge" action="javascript:void(0);" method="POST">
                         <div class="form-group">
                             <label class="form-label" for="challenge-name">Challenge Name</label>
                             <input class="form-input" id="challenge-name" name="name" placeholder="e.g., January Wellness Challenge" required>
@@ -1049,13 +1049,11 @@ const App = {
         app.addEventListener('click', (e) => {
             if (e.target.closest('#fab-add')) {
                 e.stopPropagation();
-                console.log('[DEBUG] FAB clicked, resetting form');
                 // Reset form for new experiment creation
                 const form = document.getElementById('form-create');
                 if (form) {
                     form.reset();
                     this.resetCreateForm(form);
-                    console.log('[DEBUG] Form reset, id field value:', document.getElementById('create-id').value);
                 }
                 this.openModal('modal-create');
                 return;
@@ -1554,10 +1552,8 @@ const App = {
         // Form submissions - FIXED: Use event delegation for forms
         app.addEventListener('submit', (e) => {
             const form = e.target;
-            console.log('[DEBUG] Form submit event triggered, form.id:', form.id);
             if (form.id === 'form-create') {
                 e.preventDefault();
-                console.log('[DEBUG] form-create submission, calling handleCreateExperiment');
                 this.handleCreateExperiment(form);
             } else if (form.id === 'form-checkin') {
                 e.preventDefault();
@@ -1823,11 +1819,6 @@ const App = {
         const categoryOption = form.querySelector('[data-category].active');
 
         const id = data.get('id');
-
-        // Debug logging
-        console.log('[DEBUG] handleCreateExperiment called');
-        console.log('[DEBUG] id from form:', id, 'type:', typeof id, 'length:', id ? id.length : 0);
-
         const experimentData = {
             title: data.get('title'),
             purpose: data.get('purpose'),
@@ -1838,22 +1829,17 @@ const App = {
             scheduledTime: data.get('scheduledTime') || null,
         };
 
-        console.log('[DEBUG] experimentData:', experimentData);
-
         if (id) {
             // Update existing
-            console.log('[DEBUG] Updating existing experiment with id:', id);
             DataManager.updateExperiment(id, experimentData);
             this.showToast('Experiment updated');
             this.state.currentExperiment = id; // Ensure we stay on detail view
         } else {
             // Create new
-            console.log('[DEBUG] Creating new experiment');
-            const newExp = DataManager.createExperiment({
+            DataManager.createExperiment({
                 ...experimentData,
                 startDate: new Date().toISOString()
             });
-            console.log('[DEBUG] New experiment created:', newExp);
             this.showToast('Experiment created!');
             // Reset filter to ALL so the new experiment is visible
             this.state.currentFilter = 'ALL';
@@ -1863,9 +1849,6 @@ const App = {
         form.reset();
         this.resetCreateForm(form); // Helper to reset UI state
         this.render();
-
-        // Debug: Check experiments after render
-        console.log('[DEBUG] Experiments after render:', DataManager.getExperiments());
     },
 
     /**
