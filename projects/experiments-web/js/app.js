@@ -763,7 +763,7 @@ const App = {
                             <input class="form-input" id="create-criteria" name="criteria" placeholder="e.g., Complete before 8 AM">
                         </div>
                         <div class="form-actions" style="display: flex; gap: 8px; flex-direction: column;">
-                            <button type="submit" class="btn btn-primary">Start Experiment</button>
+                            <button type="button" id="btn-start-experiment" class="btn btn-primary">Start Experiment</button>
                             <button type="button" id="btn-delete" class="btn" style="background: #FFEBEE; color: #D32F2F; display: none;">Delete Experiment</button>
                         </div>
                     </form>
@@ -805,7 +805,7 @@ const App = {
                                 <textarea class="form-input" name="ref_next" rows="2" placeholder="Focus for next week"></textarea>
                             </div>
                         </div>
-                        <button type="submit" class="btn btn-primary">Save</button>
+                        <button type="button" id="btn-save-checkin" class="btn btn-primary">Save</button>
                     </form>
                 </div>
             </div>
@@ -869,7 +869,7 @@ const App = {
                             </div>
                         </div>
                         <div class="form-actions" style="display: flex; gap: 8px; flex-direction: column;">
-                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                            <button type="button" id="btn-save-entry" class="btn btn-primary">Save Changes</button>
                             <button type="button" id="btn-delete-entry" class="btn" style="background: #FFEBEE; color: #D32F2F;">Delete Entry</button>
                         </div>
                     </form>
@@ -1105,6 +1105,30 @@ const App = {
             if (e.target.closest('#btn-edit')) {
                 e.stopPropagation();
                 this.handleEditExperiment();
+                return;
+            }
+        });
+
+        // Start Experiment button (using click instead of form submit to avoid CSP issues)
+        app.addEventListener('click', (e) => {
+            if (e.target.closest('#btn-start-experiment')) {
+                e.stopPropagation();
+                const form = document.getElementById('form-create');
+                if (form) {
+                    this.handleCreateExperiment(form);
+                }
+                return;
+            }
+        });
+
+        // Save Checkin button (using click instead of form submit to avoid CSP issues)
+        app.addEventListener('click', (e) => {
+            if (e.target.closest('#btn-save-checkin')) {
+                e.stopPropagation();
+                const form = document.getElementById('form-checkin');
+                if (form) {
+                    this.handleCheckin(form);
+                }
                 return;
             }
         });
@@ -1611,6 +1635,18 @@ const App = {
             if (form.id === 'form-edit-entry') {
                 e.preventDefault();
                 this.handleSaveEntry(form);
+            }
+        });
+
+        // Save Entry button (using click instead of form submit to avoid CSP issues)
+        app.addEventListener('click', (e) => {
+            if (e.target.closest('#btn-save-entry')) {
+                e.stopPropagation();
+                const form = document.getElementById('form-edit-entry');
+                if (form) {
+                    this.handleSaveEntry(form);
+                }
+                return;
             }
         });
 
