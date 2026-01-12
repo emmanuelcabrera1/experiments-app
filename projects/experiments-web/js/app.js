@@ -1855,6 +1855,8 @@ const App = {
             });
             console.log('[DEBUG] New experiment created:', newExp);
             this.showToast('Experiment created!');
+            // Reset filter to ALL so the new experiment is visible
+            this.state.currentFilter = 'ALL';
         }
 
         this.closeModal('modal-create');
