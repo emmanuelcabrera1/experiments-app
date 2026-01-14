@@ -15,6 +15,35 @@ function escapeHtml(str) {
     return div.innerHTML;
 }
 
+/**
+ * Format text with auto-linked URLs
+ * Converts URLs to clickable links while escaping other content
+ * @param {string} str - Text that may contain URLs
+ * @returns {string} - HTML string with links
+ */
+function formatTextWithLinks(str) {
+    if (!str) return '';
+
+    // Regex to match URLs
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+
+    // Split by URLs, keeping the URLs in the result
+    const parts = str.split(urlRegex);
+
+    return parts.map(part => {
+        if (urlRegex.test(part)) {
+            // Reset regex lastIndex after test
+            urlRegex.lastIndex = 0;
+            // This is a URL - create a link
+            const escapedUrl = escapeHtml(part);
+            return `<a href="${escapedUrl}" class="note-link" target="_blank" rel="noopener noreferrer">${escapedUrl}</a>`;
+        } else {
+            // Regular text - escape it
+            return escapeHtml(part);
+        }
+    }).join('');
+}
+
 const UI = {
 
     // SVG Icons
@@ -38,7 +67,9 @@ const UI = {
         users: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
         trophy: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>`,
         shield: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,
-        zap: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`
+        zap: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
+        grip: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/></svg>`,
+        todo: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>`
     },
 
     /**
