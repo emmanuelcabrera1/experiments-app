@@ -1,5 +1,14 @@
-node_modules
-dist
-.env
+# Dependencies
+node_modules/
+
+# OS Files
 .DS_Store
-*.log
+Thumbs.db
+
+# Build
+dist/
+build/
+
+# Environment
+.env
+.env.local

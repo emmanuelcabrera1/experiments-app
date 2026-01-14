@@ -1,255 +1,59 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HTML Apps Workspace</title>
-  <style>
-    :root {
-      --primary: #2672C7;
-      --accent: #e74c3c;
-      --dark: #2c3e50;
-      --light: #f8f9fa;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Experiments">
+    <meta name="theme-color" content="#FAFAFA">
+    <meta name="description" content="Track your life experiments using the Tiny Experiments Framework">
 
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    <!-- Security: Content Security Policy -->
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; img-src 'self' data:;">
 
-    body {
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      background: var(--light);
-      color: #333;
-      line-height: 1.6;
-    }
+    <title>Experiments</title>
 
-    :focus-visible {
-      outline: 3px solid var(--primary);
-      outline-offset: 2px;
-    }
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
 
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0 20px;
-    }
+    <!-- Apple Touch Icon -->
+    <link rel="apple-touch-icon" href="assets/icon-192.png">
 
-    /* Hero */
-    .hero {
-      background: white;
-      padding: 60px 0;
-      margin-bottom: 40px;
-      border-bottom: 1px solid #e0e0e0;
-      text-align: center;
-    }
+    <!-- Fonts - SF Pro approximation -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    .hero h1 {
-      font-size: 3rem;
-      color: var(--dark);
-      margin-bottom: 10px;
-    }
-
-    .hero p {
-      font-size: 1.2rem;
-      color: #666;
-    }
-
-    /* Grid */
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 30px;
-      margin-bottom: 60px;
-    }
-
-    .section-title {
-      font-size: 1.5rem;
-      color: var(--dark);
-      margin-bottom: 20px;
-      padding-bottom: 10px;
-      border-bottom: 2px solid var(--primary);
-      display: inline-block;
-    }
-
-    /* Cards */
-    .card {
-      background: white;
-      border-radius: 8px;
-      padding: 25px;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-      transition:
-        transform 0.2s,
-        box-shadow 0.2s;
-      border: 1px solid #eee;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-      border-color: var(--primary);
-    }
-
-    .card h3 {
-      color: var(--dark);
-      margin-bottom: 10px;
-      font-size: 1.25rem;
-    }
-
-    .card p {
-      color: #666;
-      margin-bottom: 20px;
-      flex-grow: 1;
-    }
-
-    .btn {
-      display: inline-block;
-      background: var(--primary);
-      color: white;
-      padding: 10px 20px;
-      border-radius: 4px;
-      text-decoration: none;
-      font-weight: 600;
-      text-align: center;
-      transition: background 0.2s;
-    }
-
-    .btn:hover {
-      background: #357ab8;
-    }
-
-    .btn-outline {
-      background: transparent;
-      color: var(--primary);
-      border: 2px solid var(--primary);
-    }
-
-    .btn-outline:hover {
-      background: var(--primary);
-      color: white;
-    }
-
-    /* Component List */
-    .component-list {
-      list-style: none;
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-      gap: 15px;
-    }
-
-    .component-list a {
-      display: block;
-      background: white;
-      padding: 15px;
-      border-radius: 6px;
-      text-decoration: none;
-      color: var(--dark);
-      text-align: center;
-      font-weight: 600;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-      transition: all 0.2s;
-    }
-
-    .component-list a:hover {
-      background: var(--primary);
-      color: white;
-    }
-  </style>
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/tokens.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/components.css">
 </head>
 
 <body>
-  <header class="hero">
-    <div class="container">
-      <h1>HTML Apps Workspace</h1>
-      <p>Your environment for building elegant web applications</p>
+    <div id="app">
+        <!-- Dynamic content rendered by JavaScript -->
     </div>
-  </header>
 
-  <main class="container">
-    <!-- Documentation -->
-    <section>
-      <h2 class="section-title">📚 Documentation</h2>
-      <div class="grid">
-        <div class="card">
-          <h3>The Elegance Formula</h3>
-          <p>The complete guide with 42 principles for beautiful web design.</p>
-          <a href="documentation/elegance-formula.md" class="btn">Read Guide</a>
-        </div>
-        <div class="card">
-          <h3>Workspace Manual</h3>
-          <p>Learn how to use this workspace structure effectively.</p>
-          <a href="documentation/workspace-guide.md" class="btn btn-outline" onclick="alert('Coming soon!')">Coming
-            Soon</a>
-        </div>
-      </div>
-    </section>
+    <!-- Core Data & Utilities -->
+    <script src="js/data.js"></script>
+    <script src="js/streak.js"></script>
+    <script src="js/mood.js"></script>
+    <script src="js/insights.js"></script>
+    <script src="js/adaptation.js"></script>
+    <script src="js/partners.js"></script>
+    <script src="js/challenges.js"></script>
+    <script src="js/summary.js"></script>
 
-    <!-- Projects -->
-    <section>
-      <h2 class="section-title">🚀 Projects</h2>
-      <div class="grid">
-        <div class="card">
-          <h3>First Elegant App</h3>
-          <p>A reference landing page built using the principles.</p>
-          <a href="projects/first-elegant-app/index.html" class="btn">View Project</a>
-        </div>
-        <div class="card">
-          <h3>Experiments App</h3>
-          <p>Tiny Experiments Framework PWA with PACT methodology.</p>
-          <a href="projects/experiments-web/index.html" class="btn">Launch App</a>
-        </div>
-      </div>
-    </section>
+    <!-- UI Components & App -->
+    <script src="js/ui.js"></script>
+    <script src="js/app.js"></script>
 
-    <!-- Templates -->
-    <section>
-      <h2 class="section-title">📋 Starter Templates</h2>
-      <div class="grid">
-        <div class="card">
-          <h3>Basic Index</h3>
-          <p>Minimal HTML5 setup.</p>
-          <a href="templates/basic-index.html" class="btn btn-outline">View Template</a>
-        </div>
-        <div class="card">
-          <h3>Landing Page</h3>
-          <p>Complete marketing page structure.</p>
-          <a href="templates/landing-page.html" class="btn btn-outline">View Template</a>
-        </div>
-        <div class="card">
-          <h3>Contact Form</h3>
-          <p>Form with validation and styles.</p>
-          <a href="templates/contact-form.html" class="btn btn-outline">View Template</a>
-        </div>
-        <div class="card">
-          <h3>Dashboard</h3>
-          <p>Admin panel layout with data grid.</p>
-          <a href="templates/dashboard.html" class="btn btn-outline">View Template</a>
-        </div>
-      </div>
-    </section>
-
-    <!-- Components -->
-    <section>
-      <h2 class="section-title">🧩 Component Library</h2>
-      <div class="component-list">
-        <a href="components/navbar.html">Navbar</a>
-        <a href="components/buttons.html">Buttons</a>
-        <a href="components/forms.html">Forms</a>
-        <a href="components/cards.html">Cards</a>
-        <a href="components/alerts.html">Alerts</a>
-        <a href="components/modal.html">Modal</a>
-      </div>
-    </section>
-  </main>
-
-  <footer style="text-align: center; padding: 40px; color: #666">
-    <p>&copy; 2024 HTML Apps Workspace</p>
-  </footer>
+    <!-- Service Worker Registration (external file for CSP compliance) -->
+    <script src="js/sw-register.js"></script>
 </body>
 
 </html>
