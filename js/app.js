@@ -1326,14 +1326,20 @@ const App = {
         app.addEventListener('click', (e) => {
             if (e.target.closest('#fab-add-todo')) {
                 e.stopPropagation();
-                const title = prompt('Task title:');
-                if (title && title.trim()) {
-                    const newTodo = TodoManager.add({ title: title.trim() });
-                    this.state.currentTodo = newTodo.id; // Auto-open the detail view
-                    this.state.isEditingTodoNotes = false;
-                    this.showToast('Task added');
-                    this.render();
-                }
+                // Create new task with empty title and immediately open detail view
+                const newTodo = TodoManager.add({ title: '' });
+                this.state.currentTodo = newTodo.id;
+                this.state.isEditingTodoNotes = false;
+                this.render();
+
+                // Focus on title input after render
+                setTimeout(() => {
+                    const titleInput = document.getElementById('todo-detail-title');
+                    if (titleInput) {
+                        titleInput.focus();
+                        titleInput.select(); // Select the placeholder text if any
+                    }
+                }, 100);
                 return;
             }
         });
@@ -1369,10 +1375,16 @@ const App = {
         app.addEventListener('click', (e) => {
             if (e.target.closest('[data-close="modal-todo-detail"]')) {
                 e.stopPropagation();
-                // Save title if changed
+                // Save title if changed, or delete task if title is empty
                 const titleInput = document.getElementById('todo-detail-title');
                 if (titleInput && this.state.currentTodo) {
-                    TodoManager.update(this.state.currentTodo, { title: titleInput.value });
+                    const trimmedTitle = titleInput.value.trim();
+                    if (trimmedTitle) {
+                        TodoManager.update(this.state.currentTodo, { title: trimmedTitle });
+                    } else {
+                        // Delete task if no title was entered
+                        TodoManager.delete(this.state.currentTodo);
+                    }
                 }
                 this.state.currentTodo = null;
                 this.state.isEditingTodoNotes = false;
@@ -1456,8 +1468,17 @@ const App = {
                     const titleInput = document.getElementById('todo-detail-title');
                     const notesInput = document.getElementById('todo-notes-edit');
 
+                    // Check if title is empty - delete task if so
+                    if (titleInput && !titleInput.value.trim()) {
+                        TodoManager.delete(this.state.currentTodo);
+                        this.showToast('Task deleted - no title entered');
+                        this.state.currentTodo = null;
+                        this.render();
+                        return;
+                    }
+
                     const updates = {};
-                    if (titleInput) updates.title = titleInput.value;
+                    if (titleInput) updates.title = titleInput.value.trim();
                     if (notesInput) updates.notes = notesInput.value;
 
                     TodoManager.update(this.state.currentTodo, updates);
