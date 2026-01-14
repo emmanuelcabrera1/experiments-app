@@ -1,0 +1,292 @@
+/* 
+  Experiments - Todo Components
+  Isolated styles for the Todo feature
+*/
+
+/* ========================================
+   TODO LIST
+======================================== */
+
+.todo-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+}
+
+.todo-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-md);
+    background: var(--surface-color);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.todo-item:active {
+    transform: scale(0.98);
+}
+
+/* Drag Handle */
+.todo-grip {
+    width: 20px;
+    height: 20px;
+    color: var(--text-tertiary);
+    cursor: grab;
+    flex-shrink: 0;
+}
+
+.todo-grip:active {
+    cursor: grabbing;
+}
+
+/* Checkbox */
+.todo-checkbox {
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--border-color);
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, border-color 0.2s;
+}
+
+.todo-checkbox.completed {
+    background: var(--active-bg);
+    border-color: var(--active-bg);
+}
+
+.todo-checkbox svg {
+    width: 14px;
+    height: 14px;
+    color: var(--active-text);
+}
+
+/* Content */
+.todo-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.todo-title {
+    font-weight: var(--weight-medium);
+    color: var(--text-primary);
+}
+
+.todo-title.completed {
+    text-decoration: line-through;
+    color: var(--text-tertiary);
+}
+
+.todo-meta {
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+/* Subtask count badge */
+.todo-subtask-count {
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    background: var(--inactive-bg);
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+}
+
+/* ========================================
+   DRAG AND DROP STATE
+======================================== */
+
+.todo-item.dragging {
+    opacity: 0.5;
+    box-shadow: var(--shadow-lg);
+    transform: scale(1.02);
+}
+
+.todo-item.drag-over {
+    border: 2px dashed var(--active-bg);
+}
+
+/* ========================================
+   TODO DETAIL MODAL
+======================================== */
+
+.todo-detail-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    margin-bottom: var(--space-lg);
+}
+
+.todo-detail-title {
+    flex: 1;
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-bold);
+    border: none;
+    background: transparent;
+    padding: var(--space-xs);
+    border-radius: var(--radius-sm);
+}
+
+.todo-detail-title:focus {
+    background: var(--inactive-bg);
+    outline: none;
+}
+
+/* Notes Section */
+.todo-notes {
+    background: var(--inactive-bg);
+    border-radius: var(--radius-md);
+    padding: var(--space-md);
+    min-height: 100px;
+    margin-bottom: var(--space-lg);
+}
+
+.todo-notes textarea {
+    background: transparent;
+    border: none;
+    width: 100%;
+    min-height: 80px;
+    resize: vertical;
+}
+
+/* Rich Text Links */
+.note-link {
+    color: var(--active-bg);
+    text-decoration: underline;
+}
+
+/* ========================================
+   SUBTASK LIST
+======================================== */
+
+.subtask-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+}
+
+.subtask-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm);
+    background: var(--surface-color);
+    border-radius: var(--radius-sm);
+}
+
+.subtask-item .todo-grip {
+    width: 16px;
+    height: 16px;
+}
+
+.subtask-checkbox {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border-color);
+    border-radius: 4px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.subtask-checkbox.completed {
+    background: var(--active-bg);
+    border-color: var(--active-bg);
+}
+
+.subtask-checkbox svg {
+    width: 12px;
+    height: 12px;
+    color: var(--active-text);
+}
+
+.subtask-text {
+    flex: 1;
+    font-size: var(--text-sm);
+}
+
+.subtask-text.completed {
+    text-decoration: line-through;
+    color: var(--text-tertiary);
+}
+
+.subtask-delete {
+    width: 20px;
+    height: 20px;
+    color: var(--text-tertiary);
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.subtask-item:hover .subtask-delete {
+    opacity: 1;
+}
+
+/* Add Subtask Input */
+.add-subtask-input {
+    display: flex;
+    gap: var(--space-sm);
+    padding: var(--space-sm);
+    background: var(--inactive-bg);
+    border-radius: var(--radius-sm);
+    margin-top: var(--space-sm);
+}
+
+.add-subtask-input input {
+    flex: 1;
+    background: transparent;
+    border: none;
+}
+
+/* ========================================
+   iOS-STYLE TOGGLE
+======================================== */
+
+.ios-toggle {
+    width: 51px;
+    height: 31px;
+    background: var(--inactive-bg);
+    border-radius: 31px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.ios-toggle.active {
+    background: var(--active-bg);
+}
+
+.ios-toggle::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 27px;
+    height: 27px;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    transition: transform 0.3s ease;
+}
+
+.ios-toggle.active::after {
+    transform: translateX(20px);
+}
+
+/* ========================================
+   DESTRUCTIVE ACTIONS
+======================================== */
+
+.text-red-500 {
+    color: #EF4444;
+}
+
+.settings-row.destructive .settings-label {
+    color: #EF4444;
+}

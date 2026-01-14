@@ -10,7 +10,10 @@ const App = {
         currentTab: 'experiments',
         currentExperiment: null,
         calendarMonth: new Date(),
-        currentFilter: 'ALL' // NEW: Track active filter
+        currentFilter: 'ALL', // Track active filter
+        dockConfig: ['experiments', 'gallery', 'insights', 'todo'], // Configurable tabs
+        currentTodo: null, // Currently viewed todo in detail modal
+        isEditingTodoNotes: false // Track if notes are in edit mode
     },
 
     // Flag to prevent duplicate event bindings
@@ -22,6 +25,7 @@ const App = {
     init() {
         this.loadAppVersion();
         this.loadTheme();
+        this.loadDockConfig();
         this.setupServiceWorker();
         this.render();
         this.bindEvents();
@@ -140,6 +144,7 @@ const App = {
             ${this.renderTabBar()}
             ${this.renderFAB()}
             ${this.renderModals()}
+            ${this.renderTodoDetailModal()}
             <div id="aria-live-region" class="sr-only" aria-live="polite" aria-atomic="true"></div>
         `;
 
@@ -167,6 +172,8 @@ const App = {
                 return this.renderGalleryScreen();
             case 'insights':
                 return this.renderInsightsScreen();
+            case 'todo':
+                return this.renderTodoScreen();
             case 'settings':
                 return this.renderSettingsScreen();
             default:
@@ -478,6 +485,149 @@ const App = {
     },
 
     /**
+     * Render Todo Screen - Full-featured task management
+     */
+    renderTodoScreen() {
+        const todos = TodoManager.getAll();
+        const activeTodos = todos.filter(t => !t.completed);
+        const completedTodos = todos.filter(t => t.completed);
+
+        // Helper to render a single todo item
+        const renderTodoItem = (todo) => {
+            const subtaskCount = (todo.subtasks || []).length;
+            const completedSubtasks = (todo.subtasks || []).filter(s => s.completed).length;
+
+            return `
+                <div class="todo-item" data-todo-id="${escapeHtml(todo.id)}" draggable="true">
+                    <div class="todo-grip">${UI.icons.grip}</div>
+                    <div class="todo-checkbox ${todo.completed ? 'completed' : ''}" data-action="toggle-todo">
+                        ${todo.completed ? UI.icons.check : ''}
+                    </div>
+                    <div class="todo-content" data-action="open-detail">
+                        <div class="todo-title ${todo.completed ? 'completed' : ''}">${escapeHtml(todo.title)}</div>
+                        ${subtaskCount > 0 ? `<div class="todo-meta">${completedSubtasks}/${subtaskCount} subtasks</div>` : ''}
+                    </div>
+                    ${subtaskCount > 0 ? `<span class="todo-subtask-count">${completedSubtasks}/${subtaskCount}</span>` : ''}
+                </div>
+            `;
+        };
+
+        let content = '';
+        if (todos.length === 0) {
+            content = UI.emptyState('No Tasks Yet', 'Tap + to add your first task.');
+        } else {
+            content = `
+                <div class="todo-list" id="todo-list">
+                    ${activeTodos.map(renderTodoItem).join('')}
+                </div>
+                ${completedTodos.length > 0 ? `
+                    <div style="margin-top: var(--space-lg);">
+                        <p class="subheader" style="margin-bottom: var(--space-sm);">COMPLETED</p>
+                        <div class="todo-list">
+                            ${completedTodos.map(renderTodoItem).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+            `;
+        }
+
+        return `
+            <div class="screen ${this.state.currentTab === 'todo' ? 'active' : ''}" id="screen-todo">
+                <div class="header">
+                    <h1>Tasks</h1>
+                    <p class="subheader">Get things done</p>
+                </div>
+                ${content}
+            </div>
+        `;
+    },
+
+    /**
+     * Render Todo Detail Modal - Redesigned with CHECKLIST and DETAILS sections
+     */
+    renderTodoDetailModal() {
+        if (!this.state.currentTodo) return '';
+
+        const todo = TodoManager.getAll().find(t => t.id === this.state.currentTodo);
+        if (!todo) return '';
+
+        const subtasks = todo.subtasks || [];
+
+        // Format creation date like "CREATED JANUARY 14TH, 2026"
+        const createdDate = new Date(todo.createdAt);
+        const day = createdDate.getDate();
+        const suffix = day === 1 || day === 21 || day === 31 ? 'ST' :
+            day === 2 || day === 22 ? 'ND' :
+                day === 3 || day === 23 ? 'RD' : 'TH';
+        const formattedDate = `CREATED ${createdDate.toLocaleDateString('en-US', { month: 'long' }).toUpperCase()} ${day}${suffix}, ${createdDate.getFullYear()}`;
+
+        return `
+            <div class="modal-overlay active" id="modal-todo-detail">
+                <div class="modal-sheet" style="max-height: 90vh; overflow-y: auto;">
+                    
+                    <!-- Header: Checkbox + Title + Close -->
+                    <div style="display: flex; align-items: flex-start; gap: var(--space-md); margin-bottom: var(--space-lg);">
+                        <div class="todo-checkbox ${todo.completed ? 'completed' : ''}" data-action="toggle-detail-todo" style="width: 32px; height: 32px; flex-shrink: 0; margin-top: 4px;">
+                            ${todo.completed ? UI.icons.check : ''}
+                        </div>
+                        <div style="flex: 1;">
+                            <input type="text" id="todo-detail-title" class="todo-detail-title" value="${escapeHtml(todo.title)}" placeholder="Task title" style="width: 100%; font-size: var(--text-xl); font-weight: var(--weight-bold); border: none; background: transparent; padding: 0; color: inherit;">
+                            <div style="font-size: var(--text-xs); color: var(--text-tertiary); letter-spacing: 0.5px; margin-top: 4px;">${formattedDate}</div>
+                        </div>
+                        <button class="modal-close" aria-label="Close modal" data-close="modal-todo-detail" style="flex-shrink: 0;">${UI.icons.x}</button>
+                    </div>
+
+                    <!-- CHECKLIST Section -->
+                    <div style="margin-bottom: var(--space-lg);">
+                        <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm);">
+                            <span style="color: var(--text-tertiary);">${UI.icons.list || '☰'}</span>
+                            <span style="font-size: var(--text-xs); color: var(--text-tertiary); font-weight: var(--weight-semibold); letter-spacing: 0.5px;">CHECKLIST</span>
+                        </div>
+                        <div class="subtask-list" id="subtask-list" style="background: var(--inactive-bg); border-radius: var(--radius-md); padding: var(--space-xs);">
+                            ${subtasks.map(subtask => `
+                                <div class="subtask-item" data-subtask-id="${subtask.id}" draggable="true" style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm); background: var(--surface-color); border-radius: var(--radius-sm); margin-bottom: var(--space-xs);">
+                                    <div class="todo-grip subtask-grip" style="cursor: grab; color: var(--text-tertiary);">${UI.icons.grip}</div>
+                                    <div class="subtask-checkbox ${subtask.completed ? 'completed' : ''}" data-action="toggle-subtask" style="width: 18px; height: 18px;">
+                                        ${subtask.completed ? UI.icons.check : ''}
+                                    </div>
+                                    <input type="text" class="subtask-edit-input" data-action="edit-subtask" value="${escapeHtml(subtask.text)}" style="flex: 1; border: none; background: transparent; color: inherit; font-size: inherit; ${subtask.completed ? 'text-decoration: line-through; opacity: 0.6;' : ''}">
+                                    <button class="subtask-delete" data-action="delete-subtask" style="opacity: 0.5;">${UI.icons.x}</button>
+                                </div>
+                            `).join('')}
+                            <!-- Add subtask row -->
+                            <div style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm);">
+                                <span style="color: var(--text-tertiary); font-size: 16px;">+</span>
+                                <input type="text" id="add-subtask-text" placeholder="Add a subtask..." style="flex: 1; border: none; background: transparent; font-size: var(--text-sm); color: inherit;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DETAILS & ANNOTATIONS Section -->
+                    <div style="margin-bottom: var(--space-lg);">
+                        <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm);">
+                            <span style="color: var(--text-tertiary);">${UI.icons.edit || '≡'}</span>
+                            <span style="font-size: var(--text-xs); color: var(--text-tertiary); font-weight: var(--weight-semibold); letter-spacing: 0.5px;">DETAILS & ANNOTATIONS</span>
+                        </div>
+                        ${this.state.isEditingTodoNotes ? `
+                            <textarea id="todo-notes-edit" placeholder="Add notes, links, or details..." style="width: 100%; min-height: 150px; padding: var(--space-md); background: var(--inactive-bg); border: 2px solid var(--accent-color); border-radius: var(--radius-md); font-size: var(--text-sm); resize: vertical; color: inherit;">${escapeHtml(todo.notes || '')}</textarea>
+                        ` : `
+                            <div id="notes-view" style="min-height: 60px; padding: var(--space-md); background: var(--inactive-bg); border-radius: var(--radius-md); cursor: pointer; font-size: var(--text-sm); color: inherit;">
+                                ${todo.notes ? formatTextWithLinks(todo.notes) : '<span style="color: var(--text-tertiary); font-style: italic;">Add notes, links, or details...</span>'}
+                            </div>
+                        `}
+                    </div>
+
+                    <!-- Footer Actions -->
+                    <div style="display: flex; gap: var(--space-sm); margin-top: var(--space-lg);">
+                        <button class="btn btn-primary" id="btn-save-todo" style="flex: 1;">Save</button>
+                        <button class="btn" id="btn-delete-todo" style="background: #FFEBEE; color: #D32F2F;">Delete</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+
+    /**
      * Render Settings Screen - with Updates section
      */
     renderSettingsScreen() {
@@ -509,6 +659,35 @@ const App = {
                                 <button type="button" class="segmented-option ${this.state.theme === 'light' ? 'active' : ''}" data-theme-opt="light">Light</button>
                                 <button type="button" class="segmented-option ${this.state.theme === 'dark' ? 'active' : ''}" data-theme-opt="dark">Dark</button>
                             </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-group">
+                        <p class="settings-group-title">Navigation</p>
+                        <div class="settings-row">
+                            <div class="settings-icon" style="background: #E3F2FD;">🧪</div>
+                            <div class="settings-label">Lab</div>
+                            <div class="ios-toggle active" style="opacity: 0.5; pointer-events: none;"></div>
+                        </div>
+                        <div class="settings-row" style="cursor: pointer;" data-dock-toggle="gallery">
+                            <div class="settings-icon" style="background: #FFF3E0;">✨</div>
+                            <div class="settings-label">Gallery</div>
+                            <div class="ios-toggle ${this.state.dockConfig.includes('gallery') ? 'active' : ''}"></div>
+                        </div>
+                        <div class="settings-row" style="cursor: pointer;" data-dock-toggle="insights">
+                            <div class="settings-icon" style="background: #E8F5E9;">📊</div>
+                            <div class="settings-label">Insights</div>
+                            <div class="ios-toggle ${this.state.dockConfig.includes('insights') ? 'active' : ''}"></div>
+                        </div>
+                        <div class="settings-row" style="cursor: pointer;" data-dock-toggle="todo">
+                            <div class="settings-icon" style="background: #F3E5F5;">✓</div>
+                            <div class="settings-label">Todo</div>
+                            <div class="ios-toggle ${this.state.dockConfig.includes('todo') ? 'active' : ''}"></div>
+                        </div>
+                        <div class="settings-row">
+                            <div class="settings-icon" style="background: var(--inactive-bg);">⚙️</div>
+                            <div class="settings-label">Settings</div>
+                            <div class="ios-toggle active" style="opacity: 0.5; pointer-events: none;"></div>
                         </div>
                     </div>
                     
@@ -688,19 +867,27 @@ const App = {
     },
 
     /**
-     * Render Tab Bar
+     * Render Tab Bar - Dynamic based on dockConfig
      */
     renderTabBar() {
-        const tabs = [
+        const allTabs = [
             { id: 'experiments', label: 'Lab', icon: UI.icons.flask },
             { id: 'gallery', label: 'Gallery', icon: UI.icons.sparkles },
             { id: 'insights', label: 'Insights', icon: UI.icons.chart },
+            { id: 'todo', label: 'Todo', icon: UI.icons.todo },
             { id: 'settings', label: 'Settings', icon: UI.icons.settings }
         ];
 
+        // Filter tabs: show configured tabs + always show settings
+        const visibleTabs = allTabs.filter(tab =>
+            tab.id === 'experiments' || // Lab is always visible
+            tab.id === 'settings' ||     // Settings is always visible
+            this.state.dockConfig.includes(tab.id)
+        );
+
         return `
             <nav class="tab-bar" role="tablist" aria-label="Main navigation">
-                ${tabs.map(tab => `
+                ${visibleTabs.map(tab => `
                     <button class="tab-bar-item ${this.state.currentTab === tab.id ? 'active' : ''}" 
                             data-tab="${tab.id}" 
                             role="tab" 
@@ -715,13 +902,19 @@ const App = {
     },
 
     /**
-     * Render FAB
+     * Render FAB - Shows on Lab and Todo screens
      */
     renderFAB() {
-        if (this.state.currentExperiment || this.state.currentTab !== 'experiments') {
+        if (this.state.currentExperiment) {
             return '';
         }
-        return `<button class="fab" id="fab-add" aria-label="Add new experiment">${UI.icons.plus}</button>`;
+        if (this.state.currentTab === 'experiments') {
+            return `<button class="fab" id="fab-add" aria-label="Add new experiment">${UI.icons.plus}</button>`;
+        }
+        if (this.state.currentTab === 'todo') {
+            return `<button class="fab" id="fab-add-todo" aria-label="Add new task">${UI.icons.plus}</button>`;
+        }
+        return '';
     },
 
     /**
@@ -1109,6 +1302,323 @@ const App = {
                 e.stopPropagation();
                 this.setTheme(themeBtn.dataset.themeOpt);
                 return;
+            }
+        });
+
+        // Dock toggle (Settings)
+        app.addEventListener('click', (e) => {
+            const dockToggle = e.target.closest('[data-dock-toggle]');
+            if (dockToggle) {
+                e.stopPropagation();
+                const viewId = dockToggle.dataset.dockToggle;
+                this.toggleDockView(viewId);
+                return;
+            }
+        });
+
+        // Todo FAB - Add new task
+        app.addEventListener('click', (e) => {
+            if (e.target.closest('#fab-add-todo')) {
+                e.stopPropagation();
+                const title = prompt('Task title:');
+                if (title && title.trim()) {
+                    TodoManager.add({ title: title.trim() });
+                    this.showToast('Task added');
+                    this.render();
+                }
+                return;
+            }
+        });
+
+        // Todo checkbox toggle
+        app.addEventListener('click', (e) => {
+            const todoItem = e.target.closest('.todo-item');
+            const toggleAction = e.target.closest('[data-action="toggle-todo"]');
+            if (todoItem && toggleAction) {
+                e.stopPropagation();
+                const todoId = todoItem.dataset.todoId;
+                TodoManager.toggle(todoId);
+                this.render();
+                return;
+            }
+        });
+
+        // Todo item click - open detail modal
+        app.addEventListener('click', (e) => {
+            const todoItem = e.target.closest('.todo-item');
+            const detailAction = e.target.closest('[data-action="open-detail"]');
+            if (todoItem && detailAction) {
+                e.stopPropagation();
+                const todoId = todoItem.dataset.todoId;
+                this.state.currentTodo = todoId;
+                this.state.isEditingTodoNotes = false;
+                this.render();
+                return;
+            }
+        });
+
+        // Todo detail modal: Close button
+        app.addEventListener('click', (e) => {
+            if (e.target.closest('[data-close="modal-todo-detail"]')) {
+                e.stopPropagation();
+                // Save title if changed
+                const titleInput = document.getElementById('todo-detail-title');
+                if (titleInput && this.state.currentTodo) {
+                    TodoManager.update(this.state.currentTodo, { title: titleInput.value });
+                }
+                this.state.currentTodo = null;
+                this.state.isEditingTodoNotes = false;
+                this.render();
+                return;
+            }
+        });
+
+        // Todo detail modal: Toggle completion from detail
+        app.addEventListener('click', (e) => {
+            if (e.target.closest('[data-action="toggle-detail-todo"]')) {
+                e.stopPropagation();
+                if (this.state.currentTodo) {
+                    TodoManager.toggle(this.state.currentTodo);
+                    this.render();
+                }
+                return;
+            }
+        });
+
+        // Todo detail modal: Click notes to edit
+        app.addEventListener('click', (e) => {
+            if (e.target.closest('#notes-view')) {
+                e.stopPropagation();
+                this.state.isEditingTodoNotes = true;
+                this.render();
+                // Focus the textarea after render
+                setTimeout(() => {
+                    const textarea = document.getElementById('todo-notes-edit');
+                    if (textarea) textarea.focus();
+                }, 50);
+                return;
+            }
+        });
+
+        // Todo detail modal: Save notes
+        app.addEventListener('click', (e) => {
+            if (e.target.closest('#btn-save-notes')) {
+                e.stopPropagation();
+                const textarea = document.getElementById('todo-notes-edit');
+                if (textarea && this.state.currentTodo) {
+                    TodoManager.update(this.state.currentTodo, { notes: textarea.value });
+                    this.showToast('Notes saved');
+                }
+                this.state.isEditingTodoNotes = false;
+                this.render();
+                return;
+            }
+        });
+
+        // Todo detail modal: Cancel notes edit
+        app.addEventListener('click', (e) => {
+            if (e.target.closest('#btn-cancel-notes')) {
+                e.stopPropagation();
+                this.state.isEditingTodoNotes = false;
+                this.render();
+                return;
+            }
+        });
+
+        // Todo detail modal: Add subtask on Enter key
+        app.addEventListener('keydown', (e) => {
+            const input = e.target.closest('#add-subtask-text');
+            if (input && e.key === 'Enter' && input.value.trim() && this.state.currentTodo) {
+                e.preventDefault();
+                TodoManager.addSubtask(this.state.currentTodo, input.value.trim());
+                this.render();
+                // Re-focus input
+                setTimeout(() => {
+                    const newInput = document.getElementById('add-subtask-text');
+                    if (newInput) newInput.focus();
+                }, 50);
+            }
+        });
+
+        // Todo detail modal: Save all changes
+        app.addEventListener('click', (e) => {
+            if (e.target.closest('#btn-save-todo')) {
+                e.stopPropagation();
+                if (this.state.currentTodo) {
+                    const titleInput = document.getElementById('todo-detail-title');
+                    const notesInput = document.getElementById('todo-notes-edit');
+
+                    const updates = {};
+                    if (titleInput) updates.title = titleInput.value;
+                    if (notesInput) updates.notes = notesInput.value;
+
+                    TodoManager.update(this.state.currentTodo, updates);
+                    this.showToast('Changes saved');
+                    this.state.currentTodo = null;
+                    this.render();
+                }
+                return;
+            }
+        });
+
+        // Subtask Drag-and-Drop: dragstart
+        app.addEventListener('dragstart', (e) => {
+            const subtaskItem = e.target.closest('.subtask-item');
+            if (subtaskItem && this.state.currentTodo) {
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', subtaskItem.dataset.subtaskId);
+                subtaskItem.classList.add('dragging');
+            }
+        });
+
+        // Subtask Drag-and-Drop: dragover
+        app.addEventListener('dragover', (e) => {
+            const subtaskList = e.target.closest('#subtask-list');
+            if (subtaskList && this.state.currentTodo) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+
+                const dragging = document.querySelector('.subtask-item.dragging');
+                if (dragging) {
+                    const afterElement = this.getDragAfterElement(subtaskList, e.clientY);
+                    if (afterElement == null) {
+                        subtaskList.appendChild(dragging);
+                    } else {
+                        subtaskList.insertBefore(dragging, afterElement);
+                    }
+                }
+            }
+        });
+
+        // Subtask Drag-and-Drop: dragend
+        app.addEventListener('dragend', (e) => {
+            const subtaskItem = e.target.closest('.subtask-item');
+            if (subtaskItem && this.state.currentTodo) {
+                subtaskItem.classList.remove('dragging');
+
+                // Save new order
+                const subtaskList = document.getElementById('subtask-list');
+                if (subtaskList) {
+                    const orderedIds = Array.from(subtaskList.querySelectorAll('.subtask-item'))
+                        .map(item => item.dataset.subtaskId)
+                        .filter(id => id); // Filter out undefined (the add row doesn't have an id)
+                    TodoManager.reorderSubtasks(this.state.currentTodo, orderedIds);
+                }
+            }
+        });
+
+        // Todo detail modal: Save subtask text on blur
+        app.addEventListener('blur', (e) => {
+            const subtaskInput = e.target.closest('.subtask-edit-input');
+            if (subtaskInput && this.state.currentTodo) {
+                const subtaskItem = subtaskInput.closest('.subtask-item');
+                if (subtaskItem) {
+                    const subtaskId = subtaskItem.dataset.subtaskId;
+                    const newText = subtaskInput.value.trim();
+                    if (newText) {
+                        TodoManager.updateSubtask(this.state.currentTodo, subtaskId, newText);
+                    }
+                }
+            }
+        }, true); // Use capture phase for blur
+
+        // Todo detail modal: Live link preview update
+        app.addEventListener('input', (e) => {
+            if (e.target.id === 'todo-notes-edit') {
+                const preview = document.getElementById('notes-preview');
+                if (preview) {
+                    const text = e.target.value;
+                    if (text && text.includes('http')) {
+                        preview.style.display = 'block';
+                        preview.innerHTML = `<div style="font-size: var(--text-xs); color: var(--text-tertiary); margin-bottom: var(--space-xs);">PREVIEW:</div>${formatTextWithLinks(text)}`;
+                    } else {
+                        preview.style.display = 'none';
+                    }
+                }
+            }
+        });
+
+        // Todo detail modal: Toggle subtask
+        app.addEventListener('click', (e) => {
+            const subtaskItem = e.target.closest('.subtask-item');
+            const toggleAction = e.target.closest('[data-action="toggle-subtask"]');
+            if (subtaskItem && toggleAction && this.state.currentTodo) {
+                e.stopPropagation();
+                const subtaskId = subtaskItem.dataset.subtaskId;
+                TodoManager.toggleSubtask(this.state.currentTodo, subtaskId);
+                this.render();
+                return;
+            }
+        });
+
+        // Todo detail modal: Delete subtask
+        app.addEventListener('click', (e) => {
+            const subtaskItem = e.target.closest('.subtask-item');
+            const deleteAction = e.target.closest('[data-action="delete-subtask"]');
+            if (subtaskItem && deleteAction && this.state.currentTodo) {
+                e.stopPropagation();
+                const subtaskId = subtaskItem.dataset.subtaskId;
+                TodoManager.deleteSubtask(this.state.currentTodo, subtaskId);
+                this.render();
+                return;
+            }
+        });
+
+        // Todo detail modal: Delete task
+        app.addEventListener('click', (e) => {
+            if (e.target.closest('#btn-delete-todo')) {
+                e.stopPropagation();
+                if (this.state.currentTodo) {
+                    TodoManager.delete(this.state.currentTodo);
+                    this.showToast('Task deleted');
+                    this.state.currentTodo = null;
+                    this.render();
+                }
+                return;
+            }
+        });
+
+        // Todo Drag-and-Drop: dragstart
+        app.addEventListener('dragstart', (e) => {
+            const todoItem = e.target.closest('.todo-item');
+            if (todoItem) {
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', todoItem.dataset.todoId);
+                todoItem.classList.add('dragging');
+            }
+        });
+
+        // Todo Drag-and-Drop: dragover (allow drop)
+        app.addEventListener('dragover', (e) => {
+            const todoList = e.target.closest('.todo-list');
+            if (todoList) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+
+                const dragging = document.querySelector('.todo-item.dragging');
+                const afterElement = this.getDragAfterElement(todoList, e.clientY);
+
+                if (afterElement == null) {
+                    todoList.appendChild(dragging);
+                } else {
+                    todoList.insertBefore(dragging, afterElement);
+                }
+            }
+        });
+
+        // Todo Drag-and-Drop: dragend (cleanup)
+        app.addEventListener('dragend', (e) => {
+            const todoItem = e.target.closest('.todo-item');
+            if (todoItem) {
+                todoItem.classList.remove('dragging');
+
+                // Save new order
+                const todoList = document.getElementById('todo-list');
+                if (todoList) {
+                    const orderedIds = Array.from(todoList.querySelectorAll('.todo-item'))
+                        .map(item => item.dataset.todoId);
+                    TodoManager.reorder(orderedIds);
+                }
             }
         });
 
@@ -2079,6 +2589,28 @@ const App = {
     },
 
     /**
+     * Get the element to insert before during drag-and-drop
+     * @param {HTMLElement} container - The container element
+     * @param {number} y - The mouse Y position
+     * @returns {HTMLElement|null} - The element to insert before, or null to append
+     */
+    getDragAfterElement(container, y) {
+        // Support both .todo-item and .subtask-item (any draggable element)
+        const draggableElements = [...container.querySelectorAll('[draggable="true"]:not(.dragging)')];
+
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+    },
+
+    /**
      * Handle edit experiment action (from swipe button or detail view edit button)
      */
     handleEditExperiment(experimentId) {
@@ -2191,6 +2723,46 @@ const App = {
         localStorage.setItem('theme', theme);
         this.applyTheme();
         this.render(); // Re-render to update setting toggle
+    },
+
+    /**
+     * Load dock configuration from storage
+     */
+    loadDockConfig() {
+        const stored = localStorage.getItem('experiments_dock');
+        if (stored) {
+            try {
+                this.state.dockConfig = JSON.parse(stored);
+            } catch {
+                // Use default
+            }
+        }
+    },
+
+    /**
+     * Save dock configuration to storage
+     */
+    saveDockConfig() {
+        localStorage.setItem('experiments_dock', JSON.stringify(this.state.dockConfig));
+    },
+
+    /**
+     * Toggle a view in the dock configuration
+     * @param {string} viewId - The view ID to toggle (e.g., 'gallery', 'insights', 'todo')
+     */
+    toggleDockView(viewId) {
+        // Prevent toggling pinned tabs
+        const pinnedTabs = ['experiments', 'settings'];
+        if (pinnedTabs.includes(viewId)) return;
+
+        const index = this.state.dockConfig.indexOf(viewId);
+        if (index > -1) {
+            this.state.dockConfig.splice(index, 1);
+        } else {
+            this.state.dockConfig.push(viewId);
+        }
+        this.saveDockConfig();
+        this.render();
     },
 
     /**

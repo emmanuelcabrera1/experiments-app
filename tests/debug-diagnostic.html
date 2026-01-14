@@ -369,7 +369,7 @@
         function loadActualApp() {
             log('Loading actual app.js...', 'info');
             const script = document.createElement('script');
-            script.src = 'js/app.js';
+            script.src = '../js/app.js';
             script.onerror = () => log('Failed to load app.js', 'error');
             script.onload = () => log('app.js loaded successfully', 'info');
             document.body.appendChild(script);
