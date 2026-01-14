@@ -563,10 +563,10 @@ const App = {
 
         return `
             <div class="modal-overlay active" id="modal-todo-detail">
-                <div class="modal-sheet" style="max-height: 90vh; overflow-y: auto;">
-                    
+                <div class="modal-sheet" style="max-height: 95vh; height: 95vh; overflow-y: auto; display: flex; flex-direction: column;">
+
                     <!-- Header: Checkbox + Title + Close -->
-                    <div style="display: flex; align-items: flex-start; gap: var(--space-md); margin-bottom: var(--space-lg);">
+                    <div style="display: flex; align-items: flex-start; gap: var(--space-md); margin-bottom: var(--space-lg); flex-shrink: 0;">
                         <div class="todo-checkbox ${todo.completed ? 'completed' : ''}" data-action="toggle-detail-todo" style="width: 32px; height: 32px; flex-shrink: 0; margin-top: 4px;">
                             ${todo.completed ? UI.icons.check : ''}
                         </div>
@@ -577,48 +577,54 @@ const App = {
                         <button class="modal-close" aria-label="Close modal" data-close="modal-todo-detail" style="flex-shrink: 0;">${UI.icons.x}</button>
                     </div>
 
-                    <!-- CHECKLIST Section -->
-                    <div style="margin-bottom: var(--space-lg);">
-                        <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm);">
-                            <span style="color: var(--text-tertiary);">${UI.icons.list || '☰'}</span>
-                            <span style="font-size: var(--text-xs); color: var(--text-tertiary); font-weight: var(--weight-semibold); letter-spacing: 0.5px;">CHECKLIST</span>
-                        </div>
-                        <div class="subtask-list" id="subtask-list" style="background: var(--inactive-bg); border-radius: var(--radius-md); padding: var(--space-xs);">
-                            ${subtasks.map(subtask => `
-                                <div class="subtask-item" data-subtask-id="${subtask.id}" draggable="true" style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm); background: var(--surface-color); border-radius: var(--radius-sm); margin-bottom: var(--space-xs);">
-                                    <div class="todo-grip subtask-grip" style="cursor: grab; color: var(--text-tertiary);">${UI.icons.grip}</div>
-                                    <div class="subtask-checkbox ${subtask.completed ? 'completed' : ''}" data-action="toggle-subtask" style="width: 18px; height: 18px;">
-                                        ${subtask.completed ? UI.icons.check : ''}
-                                    </div>
-                                    <input type="text" class="subtask-edit-input" data-action="edit-subtask" value="${escapeHtml(subtask.text)}" style="flex: 1; border: none; background: transparent; color: inherit; font-size: inherit; ${subtask.completed ? 'text-decoration: line-through; opacity: 0.6;' : ''}">
-                                    <button class="subtask-delete" data-action="delete-subtask" style="opacity: 0.5;">${UI.icons.x}</button>
+                    <!-- Scrollable Content Container -->
+                    <div style="flex: 1; overflow-y: auto; margin-bottom: var(--space-lg);">
+                        <!-- CHECKLIST Section -->
+                        <div style="margin-bottom: var(--space-lg);">
+                            <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm);">
+                                <span style="color: var(--text-tertiary);">${UI.icons.list || '☰'}</span>
+                                <span style="font-size: var(--text-xs); color: var(--text-tertiary); font-weight: var(--weight-semibold); letter-spacing: 0.5px;">CHECKLIST</span>
+                            </div>
+                            <div style="background: var(--inactive-bg); border-radius: var(--radius-md); padding: var(--space-xs);">
+                                <!-- Scrollable subtask container -->
+                                <div class="subtask-list" id="subtask-list" style="max-height: ${subtasks.length > 3 ? '240px' : 'none'}; overflow-y: ${subtasks.length > 3 ? 'auto' : 'visible'};">
+                                    ${subtasks.map(subtask => `
+                                        <div class="subtask-item" data-subtask-id="${subtask.id}" draggable="true" style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm); background: var(--surface-color); border-radius: var(--radius-sm); margin-bottom: var(--space-xs);">
+                                            <div class="todo-grip subtask-grip" style="cursor: grab; color: var(--text-tertiary);">${UI.icons.grip}</div>
+                                            <div class="subtask-checkbox ${subtask.completed ? 'completed' : ''}" data-action="toggle-subtask" style="width: 18px; height: 18px;">
+                                                ${subtask.completed ? UI.icons.check : ''}
+                                            </div>
+                                            <input type="text" class="subtask-edit-input" data-action="edit-subtask" value="${escapeHtml(subtask.text)}" style="flex: 1; border: none; background: transparent; color: inherit; font-size: inherit; ${subtask.completed ? 'text-decoration: line-through; opacity: 0.6;' : ''}">
+                                            <button class="subtask-delete" data-action="delete-subtask" style="opacity: 0.5;">${UI.icons.x}</button>
+                                        </div>
+                                    `).join('')}
                                 </div>
-                            `).join('')}
-                            <!-- Add subtask row -->
-                            <div style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm);">
-                                <span style="color: var(--text-tertiary); font-size: 16px;">+</span>
-                                <input type="text" id="add-subtask-text" placeholder="Add a subtask..." style="flex: 1; border: none; background: transparent; font-size: var(--text-sm); color: inherit;">
+                                <!-- Add subtask row - Fixed at bottom of subtask section -->
+                                <div style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-md); background: var(--surface-color); border-radius: var(--radius-sm); margin-top: var(--space-xs);">
+                                    <span style="color: var(--text-tertiary); font-size: 20px; font-weight: bold;">+</span>
+                                    <input type="text" id="add-subtask-text" placeholder="Add a subtask..." style="flex: 1; border: none; background: transparent; font-size: var(--text-sm); color: inherit; padding: var(--space-xs);">
+                                </div>
                             </div>
+                        </div>
+
+                        <!-- DETAILS & ANNOTATIONS Section -->
+                        <div style="margin-bottom: var(--space-lg);">
+                            <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm);">
+                                <span style="color: var(--text-tertiary);">${UI.icons.edit || '≡'}</span>
+                                <span style="font-size: var(--text-xs); color: var(--text-tertiary); font-weight: var(--weight-semibold); letter-spacing: 0.5px;">DETAILS & ANNOTATIONS</span>
+                            </div>
+                            ${this.state.isEditingTodoNotes ? `
+                                <textarea id="todo-notes-edit" placeholder="Add notes, links, or details..." style="width: 100%; min-height: 200px; padding: var(--space-md); background: var(--inactive-bg); border: 2px solid var(--accent-color); border-radius: var(--radius-md); font-size: var(--text-sm); resize: vertical; color: inherit;">${escapeHtml(todo.notes || '')}</textarea>
+                            ` : `
+                                <div id="notes-view" style="min-height: 100px; padding: var(--space-md); background: var(--inactive-bg); border-radius: var(--radius-md); cursor: pointer; font-size: var(--text-sm); color: inherit;">
+                                    ${todo.notes ? formatTextWithLinks(todo.notes) : '<span style="color: var(--text-tertiary); font-style: italic;">Add notes, links, or details...</span>'}
+                                </div>
+                            `}
                         </div>
                     </div>
 
-                    <!-- DETAILS & ANNOTATIONS Section -->
-                    <div style="margin-bottom: var(--space-lg);">
-                        <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm);">
-                            <span style="color: var(--text-tertiary);">${UI.icons.edit || '≡'}</span>
-                            <span style="font-size: var(--text-xs); color: var(--text-tertiary); font-weight: var(--weight-semibold); letter-spacing: 0.5px;">DETAILS & ANNOTATIONS</span>
-                        </div>
-                        ${this.state.isEditingTodoNotes ? `
-                            <textarea id="todo-notes-edit" placeholder="Add notes, links, or details..." style="width: 100%; min-height: 150px; padding: var(--space-md); background: var(--inactive-bg); border: 2px solid var(--accent-color); border-radius: var(--radius-md); font-size: var(--text-sm); resize: vertical; color: inherit;">${escapeHtml(todo.notes || '')}</textarea>
-                        ` : `
-                            <div id="notes-view" style="min-height: 60px; padding: var(--space-md); background: var(--inactive-bg); border-radius: var(--radius-md); cursor: pointer; font-size: var(--text-sm); color: inherit;">
-                                ${todo.notes ? formatTextWithLinks(todo.notes) : '<span style="color: var(--text-tertiary); font-style: italic;">Add notes, links, or details...</span>'}
-                            </div>
-                        `}
-                    </div>
-
-                    <!-- Footer Actions -->
-                    <div style="display: flex; gap: var(--space-sm); margin-top: var(--space-lg);">
+                    <!-- Footer Actions - Fixed at bottom -->
+                    <div style="display: flex; gap: var(--space-sm); padding-top: var(--space-md); flex-shrink: 0; border-top: 1px solid var(--border-color);">
                         <button class="btn btn-primary" id="btn-save-todo" style="flex: 1;">Save</button>
                         <button class="btn" id="btn-delete-todo" style="background: #FFEBEE; color: #D32F2F;">Delete</button>
                     </div>
@@ -1322,7 +1328,9 @@ const App = {
                 e.stopPropagation();
                 const title = prompt('Task title:');
                 if (title && title.trim()) {
-                    TodoManager.add({ title: title.trim() });
+                    const newTodo = TodoManager.add({ title: title.trim() });
+                    this.state.currentTodo = newTodo.id; // Auto-open the detail view
+                    this.state.isEditingTodoNotes = false;
                     this.showToast('Task added');
                     this.render();
                 }
