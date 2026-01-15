@@ -657,7 +657,7 @@ const App = {
 
         return `
             <div class="modal-overlay active" id="modal-todo-detail">
-                <div class="modal-sheet" style="max-height: 95vh; height: 95vh; overflow-y: auto; display: flex; flex-direction: column;">
+                <div class="modal-sheet" style="max-height: 95vh; height: 95vh; overflow-y: auto; display: flex; flex-direction: column; padding-top: var(--space-2xl);">
 
                     <!-- Header: Checkbox + Title + Close -->
                     <div style="display: flex; align-items: flex-start; gap: var(--space-md); margin-bottom: var(--space-lg); flex-shrink: 0;">
