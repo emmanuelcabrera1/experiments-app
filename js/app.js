@@ -13,7 +13,10 @@ const App = {
         currentFilter: 'ALL', // Track active filter
         dockConfig: ['experiments', 'gallery', 'insights', 'todo'], // Configurable tabs
         currentTodo: null, // Currently viewed todo in detail modal
-        isEditingTodoNotes: false // Track if notes are in edit mode
+        isEditingTodoNotes: false, // Track if notes are in edit mode
+        showCompleted: true, // Show/hide completed tasks (collapsible)
+        deletedTodo: null, // Temporarily store deleted todo for undo
+        undoTimeout: null // Timeout ID for undo operation
     },
 
     // Flag to prevent duplicate event bindings
@@ -514,7 +517,7 @@ const App = {
 
         let content = '';
         if (todos.length === 0) {
-            content = UI.emptyState('No Tasks Yet', 'Tap + to add your first task.');
+            content = UI.emptyState('No Tasks Yet', 'Tap the + button to create your first task and start getting things done.');
         } else {
             content = `
                 <div class="todo-list" id="todo-list">
@@ -522,10 +525,15 @@ const App = {
                 </div>
                 ${completedTodos.length > 0 ? `
                     <div style="margin-top: var(--space-lg);">
-                        <p class="subheader" style="margin-bottom: var(--space-sm);">COMPLETED</p>
-                        <div class="todo-list">
-                            ${completedTodos.map(renderTodoItem).join('')}
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-sm); cursor: pointer;" data-action="toggle-completed">
+                            <p class="subheader" style="margin: 0;">COMPLETED (${completedTodos.length})</p>
+                            <span style="color: var(--text-tertiary); font-size: 20px; transform: rotate(${this.state.showCompleted ? '180deg' : '0deg'}); transition: transform 0.2s;">▼</span>
                         </div>
+                        ${this.state.showCompleted ? `
+                            <div class="todo-list">
+                                ${completedTodos.map(renderTodoItem).join('')}
+                            </div>
+                        ` : ''}
                     </div>
                 ` : ''}
             `;
@@ -571,7 +579,7 @@ const App = {
                             ${todo.completed ? UI.icons.check : ''}
                         </div>
                         <div style="flex: 1;">
-                            <input type="text" id="todo-detail-title" class="todo-detail-title" value="${escapeHtml(todo.title)}" placeholder="Task title" style="width: 100%; font-size: var(--text-xl); font-weight: var(--weight-bold); border: none; background: transparent; padding: 0; color: inherit;">
+                            <input type="text" id="todo-detail-title" class="todo-detail-title" value="${escapeHtml(todo.title)}" placeholder="What do you want to accomplish?" maxlength="100" style="width: 100%; font-size: var(--text-xl); font-weight: var(--weight-bold); border: none; background: transparent; padding: 0; color: inherit;">
                             <div style="font-size: var(--text-xs); color: var(--text-tertiary); letter-spacing: 0.5px; margin-top: 4px;">${formattedDate}</div>
                         </div>
                         <button class="modal-close" aria-label="Close modal" data-close="modal-todo-detail" style="flex-shrink: 0;">${UI.icons.x}</button>
@@ -579,30 +587,32 @@ const App = {
 
                     <!-- Scrollable Content Container -->
                     <div style="flex: 1; overflow-y: auto; margin-bottom: var(--space-lg);">
-                        <!-- CHECKLIST Section -->
+                        <!-- CHECKLIST Section - Always shown for easy access -->
                         <div style="margin-bottom: var(--space-lg);">
                             <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm);">
                                 <span style="color: var(--text-tertiary);">${UI.icons.list || '☰'}</span>
                                 <span style="font-size: var(--text-xs); color: var(--text-tertiary); font-weight: var(--weight-semibold); letter-spacing: 0.5px;">CHECKLIST</span>
                             </div>
                             <div style="background: var(--inactive-bg); border-radius: var(--radius-md); padding: var(--space-xs);">
-                                <!-- Scrollable subtask container -->
-                                <div class="subtask-list" id="subtask-list" style="max-height: ${subtasks.length > 3 ? '240px' : 'none'}; overflow-y: ${subtasks.length > 3 ? 'auto' : 'visible'};">
-                                    ${subtasks.map(subtask => `
-                                        <div class="subtask-item" data-subtask-id="${subtask.id}" draggable="true" style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm); background: var(--surface-color); border-radius: var(--radius-sm); margin-bottom: var(--space-xs);">
-                                            <div class="todo-grip subtask-grip" style="cursor: grab; color: var(--text-tertiary);">${UI.icons.grip}</div>
-                                            <div class="subtask-checkbox ${subtask.completed ? 'completed' : ''}" data-action="toggle-subtask" style="width: 18px; height: 18px;">
-                                                ${subtask.completed ? UI.icons.check : ''}
+                                ${subtasks.length > 0 ? `
+                                    <!-- Scrollable subtask container -->
+                                    <div class="subtask-list" id="subtask-list" style="max-height: ${subtasks.length > 3 ? '240px' : 'none'}; overflow-y: ${subtasks.length > 3 ? 'auto' : 'visible'};">
+                                        ${subtasks.map(subtask => `
+                                            <div class="subtask-item" data-subtask-id="${subtask.id}" draggable="true" style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm); background: var(--surface-color); border-radius: var(--radius-sm); margin-bottom: var(--space-xs);">
+                                                <div class="todo-grip subtask-grip" style="cursor: grab; color: var(--text-tertiary);">${UI.icons.grip}</div>
+                                                <div class="subtask-checkbox ${subtask.completed ? 'completed' : ''}" data-action="toggle-subtask" style="width: 18px; height: 18px;">
+                                                    ${subtask.completed ? UI.icons.check : ''}
+                                                </div>
+                                                <input type="text" class="subtask-edit-input" data-action="edit-subtask" value="${escapeHtml(subtask.text)}" maxlength="200" style="flex: 1; border: none; background: transparent; color: inherit; font-size: inherit; ${subtask.completed ? 'text-decoration: line-through; opacity: 0.6;' : ''}">
+                                                <button class="subtask-delete" data-action="delete-subtask" style="opacity: 0.5;">${UI.icons.x}</button>
                                             </div>
-                                            <input type="text" class="subtask-edit-input" data-action="edit-subtask" value="${escapeHtml(subtask.text)}" style="flex: 1; border: none; background: transparent; color: inherit; font-size: inherit; ${subtask.completed ? 'text-decoration: line-through; opacity: 0.6;' : ''}">
-                                            <button class="subtask-delete" data-action="delete-subtask" style="opacity: 0.5;">${UI.icons.x}</button>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                                <!-- Add subtask row - Fixed at bottom of subtask section -->
-                                <div style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-md); background: var(--surface-color); border-radius: var(--radius-sm); margin-top: var(--space-xs);">
+                                        `).join('')}
+                                    </div>
+                                ` : ''}
+                                <!-- Add subtask row - Always visible for easy access -->
+                                <div style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-md); background: var(--surface-color); border-radius: var(--radius-sm); ${subtasks.length > 0 ? 'margin-top: var(--space-xs);' : ''}">
                                     <span style="color: var(--text-tertiary); font-size: 20px; font-weight: bold;">+</span>
-                                    <input type="text" id="add-subtask-text" placeholder="Add a subtask..." style="flex: 1; border: none; background: transparent; font-size: var(--text-sm); color: inherit; padding: var(--space-xs);">
+                                    <input type="text" id="add-subtask-text" placeholder="Add a step..." maxlength="200" style="flex: 1; border: none; background: transparent; font-size: var(--text-sm); color: inherit; padding: var(--space-xs);">
                                 </div>
                             </div>
                         </div>
@@ -1322,6 +1332,16 @@ const App = {
             }
         });
 
+        // Toggle completed section visibility
+        app.addEventListener('click', (e) => {
+            if (e.target.closest('[data-action="toggle-completed"]')) {
+                e.stopPropagation();
+                this.state.showCompleted = !this.state.showCompleted;
+                this.render();
+                return;
+            }
+        });
+
         // Todo FAB - Add new task
         app.addEventListener('click', (e) => {
             if (e.target.closest('#fab-add-todo')) {
@@ -1559,8 +1579,9 @@ const App = {
             }
         }, true); // Use capture phase for blur
 
-        // Todo detail modal: Live link preview update
+        // Todo detail modal: Input handlers (notes preview, character counters)
         app.addEventListener('input', (e) => {
+            // Notes link preview
             if (e.target.id === 'todo-notes-edit') {
                 const preview = document.getElementById('notes-preview');
                 if (preview) {
@@ -1571,6 +1592,30 @@ const App = {
                     } else {
                         preview.style.display = 'none';
                     }
+                }
+            }
+
+            // Title character counter (show when approaching limit)
+            if (e.target.id === 'todo-detail-title') {
+                const maxLength = 100;
+                const currentLength = e.target.value.length;
+                const remaining = maxLength - currentLength;
+
+                // Show counter when 20 characters or less remaining
+                if (remaining <= 20) {
+                    let counterEl = document.getElementById('title-char-counter');
+                    if (!counterEl) {
+                        counterEl = document.createElement('div');
+                        counterEl.id = 'title-char-counter';
+                        counterEl.style.cssText = 'font-size: var(--text-xs); margin-top: 4px; transition: color 0.2s;';
+                        e.target.parentElement.appendChild(counterEl);
+                    }
+                    counterEl.textContent = `${remaining} characters remaining`;
+                    counterEl.style.color = remaining <= 10 ? '#EF4444' : 'var(--text-tertiary)';
+                } else {
+                    // Remove counter when plenty of space
+                    const counterEl = document.getElementById('title-char-counter');
+                    if (counterEl) counterEl.remove();
                 }
             }
         });
@@ -1601,15 +1646,34 @@ const App = {
             }
         });
 
-        // Todo detail modal: Delete task
+        // Todo detail modal: Delete task with undo
         app.addEventListener('click', (e) => {
             if (e.target.closest('#btn-delete-todo')) {
                 e.stopPropagation();
                 if (this.state.currentTodo) {
-                    TodoManager.delete(this.state.currentTodo);
-                    this.showToast('Task deleted');
+                    // Get full todo object before deleting
+                    const deletedTodo = TodoManager.getAll().find(t => t.id === this.state.currentTodo);
+                    const todoId = this.state.currentTodo;
+
+                    // Delete the task
+                    TodoManager.delete(todoId);
                     this.state.currentTodo = null;
                     this.render();
+
+                    // Show undo toast
+                    this.showToast('Task deleted', {
+                        duration: 5000, // 5 seconds to undo
+                        undo: () => {
+                            // Restore the deleted todo
+                            if (deletedTodo) {
+                                const todos = TodoManager.getAll();
+                                todos.push(deletedTodo);
+                                TodoManager.save(todos);
+                                this.showToast('Task restored');
+                                this.render();
+                            }
+                        }
+                    });
                 }
                 return;
             }
