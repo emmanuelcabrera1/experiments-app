@@ -601,35 +601,13 @@ const App = {
         const activeTodos = todos.filter(t => !t.completed);
         const completedTodos = todos.filter(t => t.completed);
 
-        // Helper to render a single todo item
-        const renderTodoItem = (todo) => {
-            const subtaskCount = (todo.subtasks || []).length;
-            const completedSubtasks = (todo.subtasks || []).filter(s => s.completed).length;
-            const statusText = todo.completed ? 'completed' : 'not completed';
-            const subtaskText = subtaskCount > 0 ? `, ${completedSubtasks} of ${subtaskCount} subtasks completed` : '';
-
-            return `
-                <div class="todo-item" data-todo-id="${escapeHtml(todo.id)}" draggable="true" role="listitem" aria-label="${escapeHtml(todo.title)}, ${statusText}${subtaskText}">
-                    <div class="todo-grip" aria-label="Drag to reorder" role="button" tabindex="0">${UI.icons.grip}</div>
-                    <div class="todo-checkbox ${todo.completed ? 'completed' : ''}" data-action="toggle-todo" role="checkbox" aria-checked="${todo.completed}" aria-label="Mark as ${todo.completed ? 'incomplete' : 'complete'}" tabindex="0">
-                        ${todo.completed ? UI.icons.check : ''}
-                    </div>
-                    <div class="todo-content" data-action="open-detail" role="button" tabindex="0">
-                        <div class="todo-title ${todo.completed ? 'completed' : ''}">${escapeHtml(todo.title)}</div>
-                        ${subtaskCount > 0 ? `<div class="todo-meta">${completedSubtasks}/${subtaskCount} subtasks</div>` : ''}
-                    </div>
-                    ${subtaskCount > 0 ? `<span class="todo-subtask-count" aria-label="${completedSubtasks} of ${subtaskCount} subtasks completed">${completedSubtasks}/${subtaskCount}</span>` : ''}
-                </div>
-            `;
-        };
-
         let content = '';
         if (todos.length === 0) {
             content = UI.emptyState('No Tasks Yet', 'Tap the + button to create your first task and start getting things done.');
         } else {
             content = `
                 <div class="todo-list" id="todo-list" role="list" aria-label="Active tasks">
-                    ${activeTodos.map(renderTodoItem).join('')}
+                    ${activeTodos.map(t => this.renderTodoItem(t)).join('')}
                 </div>
                 ${completedTodos.length > 0 ? `
                     <div style="margin-top: var(--space-lg);">
@@ -639,7 +617,7 @@ const App = {
                         </button>
                         <div class="completed-list-container" style="max-height: ${this.state.showCompleted ? '10000px' : '0'}; opacity: ${this.state.showCompleted ? '1' : '0'}; ${!this.state.showCompleted ? 'display: none;' : ''}">
                             <div class="todo-list" role="list" aria-label="Completed tasks">
-                                ${completedTodos.map(renderTodoItem).join('')}
+                                ${completedTodos.map(t => this.renderTodoItem(t)).join('')}
                             </div>
                         </div>
                     </div>
@@ -749,6 +727,45 @@ const App = {
                 </div>
             </div>
         `;
+    },
+
+    /**
+     * Helper to render a single todo item
+     */
+    renderTodoItem(todo) {
+        const subtaskCount = (todo.subtasks || []).length;
+        const completedSubtasks = (todo.subtasks || []).filter(s => s.completed).length;
+        const statusText = todo.completed ? 'completed' : 'not completed';
+        const subtaskText = subtaskCount > 0 ? `, ${completedSubtasks} of ${subtaskCount} subtasks completed` : '';
+
+        return `
+            <div class="todo-item" data-todo-id="${escapeHtml(todo.id)}" draggable="true" role="listitem" aria-label="${escapeHtml(todo.title)}, ${statusText}${subtaskText}">
+                <div class="todo-grip" aria-label="Drag to reorder" role="button" tabindex="0">${UI.icons.grip}</div>
+                <div class="todo-checkbox ${todo.completed ? 'completed' : ''}" data-action="toggle-todo" role="checkbox" aria-checked="${todo.completed}" aria-label="Mark as ${todo.completed ? 'incomplete' : 'complete'}" tabindex="0">
+                    ${todo.completed ? UI.icons.check : ''}
+                </div>
+                <div class="todo-content" data-action="open-detail" role="button" tabindex="0">
+                    <div class="todo-title ${todo.completed ? 'completed' : ''}">${escapeHtml(todo.title)}</div>
+                </div>
+                ${subtaskCount > 0 ? `<span class="todo-subtask-count" aria-label="${completedSubtasks} of ${subtaskCount} subtasks completed">${completedSubtasks}/${subtaskCount}</span>` : ''}
+            </div>
+        `;
+    },
+
+    /**
+     * Update a specific todo item in the DOM without full re-render
+     */
+    updateTodoItemDOM(todoId) {
+        const todo = TodoManager.getAll().find(t => t.id === todoId);
+        if (!todo) return;
+
+        const oldItem = document.querySelector(`.todo-item[data-todo-id="${todoId}"]`);
+        if (oldItem) {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = this.renderTodoItem(todo);
+            const newItem = tempDiv.firstElementChild;
+            oldItem.replaceWith(newItem);
+        }
     },
 
     /**
