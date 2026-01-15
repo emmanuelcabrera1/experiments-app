@@ -3296,8 +3296,17 @@ const App = {
      * Check for service worker updates
      */
     async checkForUpdates() {
+        // Handle local file protocol specially (Service Workers don't work on file://)
+        if (window.location.protocol === 'file:') {
+            this.showToast('Local file mode: Reloading...');
+            this.log('SW: file:// protocol detected. SW disabled. Reloading.');
+            setTimeout(() => window.location.reload(), 1000);
+            return;
+        }
+
         if (!('serviceWorker' in navigator)) {
-            this.showToast('Updates not supported');
+            this.showToast('Updates not supported. Reloading...');
+            setTimeout(() => window.location.reload(), 1000);
             return;
         }
 
