@@ -69,8 +69,10 @@ const App = {
         }
 
         // Update subtask count
-        const subtaskCount = (todo.subtasks || []).length;
-        const completedSubtasks = (todo.subtasks || []).filter(s => s.completed).length;
+        // FIX: Use helper to get subtasks from checklists (supports migrated data)
+        const allSubtasks = TodoManager.getAllSubtasks(todo);
+        const subtaskCount = allSubtasks.length;
+        const completedSubtasks = allSubtasks.filter(s => s.completed).length;
 
         const metaEl = element.querySelector('.todo-meta');
         if (subtaskCount > 0) {
@@ -2281,28 +2283,36 @@ const App = {
         });
 
         // Todo Drag-and-Drop: dragstart
+        // Todo Drag-and-Drop: dragstart
         app.addEventListener('dragstart', (e) => {
-            const todoItem = e.target.closest('.todo-item');
-            if (todoItem) {
+            // FIX: Get the container, not just the item
+            const container = e.target.closest('.swipe-container');
+            // Ensure we are dragging by the grip
+            if (container && e.target.closest('.todo-grip')) {
                 e.dataTransfer.effectAllowed = 'move';
-                e.dataTransfer.setData('text/plain', todoItem.dataset.todoId);
-                // Set drag image to the whole row
+                e.dataTransfer.setData('text/plain', container.dataset.swipeId);
+
+                // Set drag image to the container
                 if (e.dataTransfer.setDragImage) {
-                    e.dataTransfer.setDragImage(todoItem, 0, 0);
+                    e.dataTransfer.setDragImage(container, 0, 0);
                 }
-                todoItem.classList.add('dragging');
+                container.classList.add('dragging');
             }
         });
 
         // Todo Drag-and-Drop: dragover (allow drop)
+        // Todo Drag-and-Drop: dragover (allow drop)
         app.addEventListener('dragover', (e) => {
             const todoList = e.target.closest('.todo-list');
-            if (todoList) {
+            // Only allow if we are dragging a generic todo (swipe-container)
+            // and NOT if dragging a subtask or other item type
+            const dragging = document.querySelector('.swipe-container.dragging');
+
+            if (todoList && dragging) {
                 e.preventDefault();
                 e.dataTransfer.dropEffect = 'move';
 
-                const dragging = document.querySelector('.todo-item.dragging');
-                const afterElement = this.getDragAfterElement(todoList, e.clientY);
+                const afterElement = this.getSwipeContainerDragAfterElement(todoList, e.clientY);
 
                 if (afterElement == null) {
                     todoList.appendChild(dragging);
@@ -2313,15 +2323,17 @@ const App = {
         });
 
         // Todo Drag-and-Drop: dragend (cleanup)
+        // Todo Drag-and-Drop: dragend (cleanup)
         app.addEventListener('dragend', (e) => {
-            const todoItem = e.target.closest('.todo-item');
-            if (todoItem) {
-                todoItem.classList.remove('dragging');
+            const container = e.target.closest('.swipe-container');
+            if (container) {
+                container.classList.remove('dragging');
 
                 // Save new order
                 const todoList = document.getElementById('todo-list');
                 if (todoList) {
                     // FIX: Validate IDs before saving order
+                    // Note: We query the items inside the reordered containers
                     const orderedIds = Array.from(todoList.querySelectorAll('.todo-item[data-todo-id]'))
                         .map(item => item.dataset.todoId)
                         .filter(id => id && id.startsWith('todo-')); // Validate ID format
@@ -3387,6 +3399,25 @@ const App = {
             const box = child.getBoundingClientRect();
             const offset = y - box.top - box.height / 2;
 
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+    },
+
+    /**
+     * Get swipe container to insert before during drag
+     * @param {HTMLElement} container - The list container
+     * @param {number} y - The mouse Y position
+     * @returns {HTMLElement|null} - The element to insert before, or null to append
+     */
+    getSwipeContainerDragAfterElement(container, y) {
+        const sections = [...container.querySelectorAll('.swipe-container:not(.dragging)')];
+        return sections.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
             if (offset < 0 && offset > closest.offset) {
                 return { offset: offset, element: child };
             } else {
