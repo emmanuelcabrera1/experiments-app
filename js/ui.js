@@ -18,6 +18,7 @@ function escapeHtml(str) {
 /**
  * Format text with auto-linked URLs
  * Converts URLs to clickable links while escaping other content
+ * Preserves line breaks by converting \n to <br> tags
  * @param {string} str - Text that may contain URLs
  * @returns {string} - HTML string with links
  */
@@ -30,7 +31,7 @@ function formatTextWithLinks(str) {
     // Split by URLs, keeping the URLs in the result
     const parts = str.split(urlRegex);
 
-    return parts.map(part => {
+    const html = parts.map(part => {
         if (urlRegex.test(part)) {
             // Reset regex lastIndex after test
             urlRegex.lastIndex = 0;
@@ -42,6 +43,9 @@ function formatTextWithLinks(str) {
             return escapeHtml(part);
         }
     }).join('');
+
+    // Convert newlines to <br> tags to preserve line breaks
+    return html.replace(/\n/g, '<br>');
 }
 
 const UI = {
