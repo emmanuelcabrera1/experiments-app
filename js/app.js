@@ -36,6 +36,99 @@ const App = {
     },
 
     /**
+     * Selective DOM Update Functions (Performance Optimization)
+     * These methods update specific elements without full re-renders
+     */
+
+    /**
+     * Update a single todo item's DOM without re-rendering
+     * @param {string} todoId - The todo ID to update
+     */
+    updateTodoItemDOM(todoId) {
+        const todo = TodoManager.getAll().find(t => t.id === todoId);
+        const element = document.querySelector(`[data-todo-id="${todoId}"]`);
+
+        if (!element || !todo) return;
+
+        // Update checkbox state with animation
+        const checkbox = element.querySelector('.todo-checkbox');
+        if (checkbox) {
+            checkbox.classList.toggle('completed', todo.completed);
+            checkbox.setAttribute('aria-checked', todo.completed);
+            checkbox.innerHTML = todo.completed ? UI.icons.check : '';
+        }
+
+        // Update title with completion state
+        const title = element.querySelector('.todo-title');
+        if (title) {
+            title.classList.toggle('completed', todo.completed);
+            if (title.textContent !== todo.title) {
+                title.textContent = todo.title;
+            }
+        }
+
+        // Update subtask count
+        const subtaskCount = (todo.subtasks || []).length;
+        const completedSubtasks = (todo.subtasks || []).filter(s => s.completed).length;
+
+        const metaEl = element.querySelector('.todo-meta');
+        if (subtaskCount > 0) {
+            if (metaEl) {
+                metaEl.textContent = `${completedSubtasks}/${subtaskCount} subtasks`;
+            }
+        } else if (metaEl) {
+            metaEl.remove();
+        }
+
+        const countBadge = element.querySelector('.todo-subtask-count');
+        if (subtaskCount > 0) {
+            if (countBadge) {
+                countBadge.textContent = `${completedSubtasks}/${subtaskCount}`;
+                countBadge.setAttribute('aria-label', `${completedSubtasks} of ${subtaskCount} subtasks completed`);
+            }
+        } else if (countBadge) {
+            countBadge.remove();
+        }
+    },
+
+    /**
+     * Update character counter without re-rendering
+     * @param {HTMLInputElement} input - The input element
+     */
+    updateCharacterCounter(input) {
+        const maxLength = parseInt(input.getAttribute('maxlength')) || 100;
+        const currentLength = input.value.length;
+        const remaining = maxLength - currentLength;
+
+        // Show counter when 20 characters or less remaining
+        if (remaining <= 20) {
+            let counterEl = input.parentElement.querySelector('.char-counter');
+            if (!counterEl) {
+                counterEl = document.createElement('div');
+                counterEl.className = 'char-counter';
+                counterEl.style.cssText = 'position: absolute; bottom: -20px; right: 0; font-size: var(--text-xs); transition: color 0.2s, opacity 0.2s; opacity: 0;';
+                input.parentElement.style.position = 'relative';
+                input.parentElement.appendChild(counterEl);
+                // Trigger fade in
+                requestAnimationFrame(() => {
+                    counterEl.style.opacity = '1';
+                });
+            }
+            counterEl.textContent = `${remaining} characters remaining`;
+            counterEl.style.color = remaining <= 10 ? '#EF4444' : 'var(--text-tertiary)';
+        } else {
+            // Fade out and remove counter
+            const counterEl = input.parentElement.querySelector('.char-counter');
+            if (counterEl) {
+                counterEl.style.opacity = '0';
+                setTimeout(() => {
+                    if (counterEl.parentElement) counterEl.remove();
+                }, 200);
+            }
+        }
+    },
+
+    /**
      * Initialize the app
      */
     init() {
@@ -542,13 +635,13 @@ const App = {
                     <div style="margin-top: var(--space-lg);">
                         <button style="display: flex; width: 100%; align-items: center; justify-content: space-between; margin-bottom: var(--space-sm); cursor: pointer; background: none; border: none; padding: 0; text-align: left;" data-action="toggle-completed" aria-expanded="${this.state.showCompleted}" aria-label="${this.state.showCompleted ? 'Hide' : 'Show'} completed tasks">
                             <p class="subheader" style="margin: 0;">COMPLETED (${completedTodos.length})</p>
-                            <span style="color: var(--text-tertiary); font-size: 20px; transform: rotate(${this.state.showCompleted ? '180deg' : '0deg'}); transition: transform 0.2s;" aria-hidden="true">▼</span>
+                            <span class="completed-chevron" style="color: var(--text-tertiary); font-size: 20px; transform: rotate(${this.state.showCompleted ? '180deg' : '0deg'}); transition: transform 0.2s;" aria-hidden="true">▼</span>
                         </button>
-                        ${this.state.showCompleted ? `
+                        <div class="completed-list-container" style="max-height: ${this.state.showCompleted ? '10000px' : '0'}; opacity: ${this.state.showCompleted ? '1' : '0'}; ${!this.state.showCompleted ? 'display: none;' : ''}">
                             <div class="todo-list" role="list" aria-label="Completed tasks">
                                 ${completedTodos.map(renderTodoItem).join('')}
                             </div>
-                        ` : ''}
+                        </div>
                     </div>
                 ` : ''}
             `;
@@ -1347,12 +1440,41 @@ const App = {
             }
         });
 
-        // Toggle completed section visibility
+        // Toggle completed section visibility (NO full re-render!)
         app.addEventListener('click', (e) => {
             if (e.target.closest('[data-action="toggle-completed"]')) {
                 e.stopPropagation();
+                // Use selective update for smooth animation
+                const section = document.querySelector('.completed-list-container');
+                const button = e.target.closest('[data-action="toggle-completed"]');
+
                 this.state.showCompleted = !this.state.showCompleted;
-                this.render();
+
+                if (button) {
+                    button.setAttribute('aria-expanded', this.state.showCompleted);
+                    const chevron = button.querySelector('[aria-hidden="true"]');
+                    if (chevron) {
+                        chevron.style.transform = this.state.showCompleted ? 'rotate(180deg)' : 'rotate(0deg)';
+                    }
+                }
+
+                if (section) {
+                    if (this.state.showCompleted) {
+                        section.style.display = 'block';
+                        requestAnimationFrame(() => {
+                            section.style.maxHeight = section.scrollHeight + 'px';
+                            section.style.opacity = '1';
+                        });
+                    } else {
+                        section.style.maxHeight = '0';
+                        section.style.opacity = '0';
+                        setTimeout(() => {
+                            if (!this.state.showCompleted) {
+                                section.style.display = 'none';
+                            }
+                        }, 300);
+                    }
+                }
                 return;
             }
         });
@@ -1379,7 +1501,7 @@ const App = {
             }
         });
 
-        // Todo checkbox toggle
+        // Todo checkbox toggle (OPTIMIZED: No full re-render!)
         app.addEventListener('click', (e) => {
             const todoItem = e.target.closest('.todo-item');
             const toggleAction = e.target.closest('[data-action="toggle-todo"]');
@@ -1387,7 +1509,8 @@ const App = {
                 e.stopPropagation();
                 const todoId = todoItem.dataset.todoId;
                 TodoManager.toggle(todoId);
-                this.render();
+                // Use selective DOM update instead of full re-render
+                this.updateTodoItemDOM(todoId);
                 return;
             }
         });
@@ -1628,7 +1751,7 @@ const App = {
             }
         }, true); // Use capture phase for blur
 
-        // Todo detail modal: Input handlers (notes preview, character counters)
+        // Todo detail modal: Input handlers (OPTIMIZED: No re-renders!)
         app.addEventListener('input', (e) => {
             // Notes link preview
             if (e.target.id === 'todo-notes-edit') {
@@ -1644,28 +1767,9 @@ const App = {
                 }
             }
 
-            // Title character counter (show when approaching limit)
+            // Title character counter - Use selective update method
             if (e.target.id === 'todo-detail-title') {
-                const maxLength = 100;
-                const currentLength = e.target.value.length;
-                const remaining = maxLength - currentLength;
-
-                // Show counter when 20 characters or less remaining
-                if (remaining <= 20) {
-                    let counterEl = document.getElementById('title-char-counter');
-                    if (!counterEl) {
-                        counterEl = document.createElement('div');
-                        counterEl.id = 'title-char-counter';
-                        counterEl.style.cssText = 'font-size: var(--text-xs); margin-top: 4px; transition: color 0.2s;';
-                        e.target.parentElement.appendChild(counterEl);
-                    }
-                    counterEl.textContent = `${remaining} characters remaining`;
-                    counterEl.style.color = remaining <= 10 ? '#EF4444' : 'var(--text-tertiary)';
-                } else {
-                    // Remove counter when plenty of space
-                    const counterEl = document.getElementById('title-char-counter');
-                    if (counterEl) counterEl.remove();
-                }
+                this.updateCharacterCounter(e.target);
             }
         });
 
