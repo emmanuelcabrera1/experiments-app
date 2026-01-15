@@ -15,7 +15,7 @@ const App = {
         currentTodo: null, // Currently viewed todo in detail modal
         isEditingTodoNotes: false, // Track if notes are in edit mode
         showCompleted: true, // Show/hide completed tasks (collapsible)
-        showHidden: false, // Show/hide hidden tasks section
+        showHidden: localStorage.getItem('experiments_show_hidden') === 'true', // Load state from storage
         deletedTodo: null, // Temporarily store deleted todo for undo
         undoTimeout: null // Timeout ID for undo operation
     },
@@ -1568,6 +1568,7 @@ const App = {
             if (e.target.closest('[data-action="toggle-hidden"]')) {
                 e.stopPropagation();
                 this.state.showHidden = !this.state.showHidden;
+                localStorage.setItem('experiments_show_hidden', this.state.showHidden);
                 this.render();
                 return;
             }
@@ -2786,7 +2787,15 @@ const App = {
                 if (action === 'hide') {
                     const todo = TodoManager.getAll().find(t => t.id === swipeId);
                     const isHidden = todo?.hidden;
-                    TodoManager.toggleHidden(swipeId);
+                    const updated = TodoManager.toggleHidden(swipeId);
+
+                    // UX Fix: Auto-expand hidden section when hiding a task
+                    // so it doesn't just "disappear"
+                    if (!isHidden) { // Was not hidden, now is hidden
+                        this.state.showHidden = true;
+                        localStorage.setItem('experiments_show_hidden', 'true');
+                    }
+
                     this.render();
                     this.showToast(isHidden ? 'Task unhidden' : 'Task hidden');
                 }
