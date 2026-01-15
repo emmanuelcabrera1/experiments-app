@@ -685,11 +685,12 @@ const App = {
                             <!-- Checklists Container -->
                             <div id="checklists-container">
                                 ${checklists.map(cl => `
-                                    <div class="checklist-section" data-checklist-id="${cl.id}" style="margin-bottom: var(--space-md); background: var(--inactive-bg); border-radius: var(--radius-md); overflow: hidden;">
+                                    <div class="checklist-section" data-checklist-id="${cl.id}" draggable="true" style="margin-bottom: var(--space-md); background: var(--inactive-bg); border-radius: var(--radius-md); overflow: hidden;">
                                         
                                         <!-- Checklist Header -->
-                                        <div class="checklist-header" style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm) var(--space-md); background: rgba(0,0,0,0.03); cursor: pointer;" data-action="toggle-checklist-collapse">
-                                            <span style="font-family: monospace; font-weight: bold; color: var(--text-secondary); width: 20px; text-align: center; font-size: 16px;">
+                                        <div class="checklist-header" style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm) var(--space-md); background: rgba(0,0,0,0.03);">
+                                            <div class="checklist-grip" style="cursor: grab; color: var(--text-tertiary); display: flex; align-items: center;">${UI.icons.grip}</div>
+                                            <span class="checklist-toggle" data-action="toggle-checklist-collapse" style="font-family: monospace; font-weight: bold; color: var(--text-secondary); width: 20px; text-align: center; font-size: 16px; cursor: pointer;">
                                                 ${cl.isCollapsed ? '+' : '−'}
                                             </span>
                                             <span class="checklist-title" contenteditable="true" data-action="edit-checklist-title" style="flex: 1; font-weight: 600; font-size: var(--text-sm); color: var(--text-secondary); outline: none; padding: 2px 4px; border-radius: 4px; border: 1px solid transparent;">${escapeHtml(cl.title)}</span>
@@ -1979,6 +1980,52 @@ const App = {
             }
         });
 
+        // Checklist Drag-and-Drop: dragstart
+        app.addEventListener('dragstart', (e) => {
+            const section = e.target.closest('.checklist-section');
+            // Only handle if it's a checklist section and NOT a subtask item
+            if (section && this.state.currentTodo && !e.target.closest('.subtask-item')) {
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('application/checklist-id', section.dataset.checklistId);
+                section.classList.add('checklist-dragging');
+            }
+        });
+
+        // Checklist Drag-and-Drop: dragover
+        app.addEventListener('dragover', (e) => {
+            const container = e.target.closest('#checklists-container');
+            const draggingChecklist = document.querySelector('.checklist-section.checklist-dragging');
+            if (container && this.state.currentTodo && draggingChecklist) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+
+                const afterElement = this.getChecklistDragAfterElement(container, e.clientY);
+                if (afterElement == null) {
+                    container.appendChild(draggingChecklist);
+                } else {
+                    container.insertBefore(draggingChecklist, afterElement);
+                }
+            }
+        });
+
+        // Checklist Drag-and-Drop: dragend
+        app.addEventListener('dragend', (e) => {
+            const section = e.target.closest('.checklist-section');
+            if (section && section.classList.contains('checklist-dragging')) {
+                section.classList.remove('checklist-dragging');
+
+                const container = document.getElementById('checklists-container');
+                if (container && this.state.currentTodo) {
+                    const orderedIds = Array.from(container.querySelectorAll('.checklist-section[data-checklist-id]'))
+                        .map(s => s.dataset.checklistId);
+
+                    if (orderedIds.length > 0) {
+                        TodoManager.reorderChecklists(this.state.currentTodo, orderedIds);
+                    }
+                }
+            }
+        });
+
         // Edit Subtask: Switch to Input (Click)
         app.addEventListener('click', (e) => {
             const span = e.target.closest('[data-action="edit-subtask-inline"]');
@@ -3217,6 +3264,26 @@ const App = {
             } else {
                 return closest;
             }
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+    },
+
+    /**
+     * Get checklist element to insert before during drag
+     * @param {HTMLElement} container - The checklists container
+     * @param {number} y - The mouse Y position
+     * @returns {HTMLElement|null} - The element to insert before, or null to append
+     */
+    getChecklistDragAfterElement(container, y) {
+        const sections = [...container.querySelectorAll('.checklist-section:not(.checklist-dragging)')];
+
+        return sections.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+
+            if (offset < 0 && offset > closest.offset) {
+                return { offset, element: child };
+            }
+            return closest;
         }, { offset: Number.NEGATIVE_INFINITY }).element;
     },
 
