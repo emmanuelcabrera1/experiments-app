@@ -101,6 +101,108 @@
     background: var(--inactive-bg);
     padding: 2px 8px;
     border-radius: var(--radius-sm);
+    transition: all 0.2s ease;
+}
+
+/* ========================================
+   SMOOTH ANIMATIONS & TRANSITIONS
+======================================== */
+
+/* Completed section smooth collapse */
+.completed-list-container {
+    overflow: hidden;
+    transition: max-height 0.3s cubic-bezier(0.4, 0.0, 0.2, 1),
+                opacity 0.3s ease;
+    will-change: max-height, opacity;
+}
+
+/* Chevron rotation */
+.completed-chevron {
+    transition: transform 0.2s ease;
+}
+
+/* Fade in new items */
+@keyframes fadeInSlide {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.todo-item.animating-in {
+    animation: fadeInSlide 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+/* Checkbox check animation */
+@keyframes checkPop {
+    0% {
+        transform: scale(0);
+    }
+    50% {
+        transform: scale(1.2);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.todo-checkbox.completed svg,
+.subtask-checkbox.completed svg {
+    animation: checkPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Modal fade transitions */
+.modal-overlay {
+    transition: opacity 0.2s ease;
+}
+
+.modal-overlay:not(.active) {
+    pointer-events: none;
+    opacity: 0;
+}
+
+.modal-overlay.active {
+    opacity: 1;
+}
+
+.modal-sheet {
+    transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.modal-overlay:not(.active) .modal-sheet {
+    transform: translateY(20px);
+}
+
+.modal-overlay.active .modal-sheet {
+    transform: translateY(0);
+}
+
+/* Character counter fade */
+.char-counter {
+    opacity: 0;
+    transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+.char-counter.visible {
+    opacity: 1;
+}
+
+/* Subtask list smooth transitions */
+.subtask-item {
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.subtask-item:hover {
+    background: var(--inactive-bg);
+}
+
+/* Delete button fade */
+.subtask-delete {
+    transition: opacity 0.2s ease;
 }
 
 /* ========================================
