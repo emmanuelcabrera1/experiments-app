@@ -711,7 +711,7 @@ const App = {
                                                 <div class="subtask-checkbox ${subtask.completed ? 'completed' : ''}" data-action="toggle-subtask" style="width: 18px; height: 18px;">
                                                     ${subtask.completed ? UI.icons.check : ''}
                                                 </div>
-                                                <input type="text" class="subtask-edit-input" data-action="edit-subtask" value="${escapeHtml(subtask.text)}" maxlength="200" style="flex: 1; border: none; background: transparent; color: inherit; font-size: inherit; ${subtask.completed ? 'text-decoration: line-through; opacity: 0.6;' : ''}">
+                                                <span class="subtask-text" data-action="edit-subtask-inline" style="flex: 1; cursor: text; ${subtask.completed ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${escapeHtml(subtask.text)}</span>
                                                 <button class="subtask-delete" data-action="delete-subtask" style="opacity: 0.5;">${UI.icons.x}</button>
                                             </div>
                                         `).join('')}
@@ -720,7 +720,7 @@ const App = {
                                 <!-- Add subtask row - Always visible for easy access -->
                                 <div style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-md); background: var(--surface-color); border-radius: var(--radius-sm); ${subtasks.length > 0 ? 'margin-top: var(--space-xs);' : ''}">
                                     <span style="color: var(--text-tertiary); font-size: 20px; font-weight: bold;">+</span>
-                                    <input type="text" id="add-subtask-text" placeholder="Add a step..." maxlength="200" style="flex: 1; border: none; background: transparent; font-size: var(--text-sm); color: inherit; padding: var(--space-xs);">
+                                    <input type="text" id="add-subtask-text" placeholder="Add a step..." maxlength="200" style="flex: 1; border: none; background: transparent; font-size: var(--text-sm); color: inherit; padding: var(--space-xs); outline: none;">
                                 </div>
                             </div>
                         </div>
@@ -1483,20 +1483,31 @@ const App = {
         app.addEventListener('click', (e) => {
             if (e.target.closest('#fab-add-todo')) {
                 e.stopPropagation();
-                // Create new task with empty title and immediately open detail view
+
+                // iOS WORKAROUND: Create temporary input to capture focus during tap event
+                // This tricks iOS into showing the keyboard
+                const tempInput = document.createElement('input');
+                tempInput.type = 'text';
+                tempInput.style.cssText = 'position: absolute; opacity: 0; height: 0; width: 0; padding: 0; border: 0;';
+                document.body.appendChild(tempInput);
+                tempInput.focus(); // Synchronous focus within tap event
+
+                // Create new task with empty title and open detail view
                 const newTodo = TodoManager.add({ title: '' });
                 this.state.currentTodo = newTodo.id;
                 this.state.isEditingTodoNotes = false;
                 this.render();
 
-                // Focus on title input after render
-                setTimeout(() => {
+                // Transfer focus to the real title input
+                requestAnimationFrame(() => {
                     const titleInput = document.getElementById('todo-detail-title');
                     if (titleInput) {
                         titleInput.focus();
-                        titleInput.select(); // Select the placeholder text if any
+                        titleInput.select();
                     }
-                }, 100);
+                    // Clean up temp input
+                    tempInput.remove();
+                });
                 return;
             }
         });
@@ -1515,11 +1526,14 @@ const App = {
             }
         });
 
-        // Todo item click - open detail modal
+        // Todo item click - open detail modal (full row, except checkbox and grip)
         app.addEventListener('click', (e) => {
             const todoItem = e.target.closest('.todo-item');
-            const detailAction = e.target.closest('[data-action="open-detail"]');
-            if (todoItem && detailAction) {
+            // Ignore clicks on checkbox, grip, or other interactive elements
+            const isCheckbox = e.target.closest('[data-action="toggle-todo"]');
+            const isGrip = e.target.closest('.todo-grip');
+
+            if (todoItem && !isCheckbox && !isGrip) {
                 e.stopPropagation();
                 const todoId = todoItem.dataset.todoId;
                 this.state.currentTodo = todoId;
@@ -1563,17 +1577,30 @@ const App = {
             }
         });
 
-        // Todo detail modal: Click notes to edit
+        // Todo detail modal: Click notes to edit (OPTIMIZED: No re-render!)
         app.addEventListener('click', (e) => {
-            if (e.target.closest('#notes-view')) {
+            const notesView = e.target.closest('#notes-view');
+            if (notesView && this.state.currentTodo) {
                 e.stopPropagation();
+
+                // Get current notes from data
+                const todo = TodoManager.getAll().find(t => t.id === this.state.currentTodo);
+                const currentNotes = todo?.notes || '';
+
+                // Create textarea to replace the view div
+                const textarea = document.createElement('textarea');
+                textarea.id = 'todo-notes-edit';
+                textarea.placeholder = 'Add notes, links, or details...';
+                textarea.style.cssText = 'width: 100%; min-height: 200px; padding: var(--space-md); background: var(--inactive-bg); border: 2px solid var(--accent-color); border-radius: var(--radius-md); font-size: var(--text-sm); resize: vertical; color: inherit; outline: none;';
+                textarea.value = currentNotes;
+
+                // Replace view with textarea
+                notesView.replaceWith(textarea);
+                textarea.focus();
+
+                // Update state (for save button logic)
                 this.state.isEditingTodoNotes = true;
-                this.render();
-                // Focus the textarea after render
-                setTimeout(() => {
-                    const textarea = document.getElementById('todo-notes-edit');
-                    if (textarea) textarea.focus();
-                }, 50);
+
                 return;
             }
         });
@@ -1603,18 +1630,40 @@ const App = {
             }
         });
 
-        // Todo detail modal: Add subtask on Enter key
+        // Todo detail modal: Add subtask on Enter key (OPTIMIZED: No full re-render!)
         app.addEventListener('keydown', (e) => {
             const input = e.target.closest('#add-subtask-text');
             if (input && e.key === 'Enter' && input.value.trim() && this.state.currentTodo) {
                 e.preventDefault();
-                TodoManager.addSubtask(this.state.currentTodo, input.value.trim());
-                this.render();
-                // Re-focus input
-                setTimeout(() => {
-                    const newInput = document.getElementById('add-subtask-text');
-                    if (newInput) newInput.focus();
-                }, 50);
+                const text = input.value.trim();
+
+                // Add to data layer
+                const updatedTodo = TodoManager.addSubtask(this.state.currentTodo, text);
+                if (!updatedTodo) return;
+
+                // Get the newly added subtask (last one in array)
+                const newSubtask = updatedTodo.subtasks[updatedTodo.subtasks.length - 1];
+
+                // Create new subtask DOM element (using span for text to allow drag)
+                const subtaskHtml = `
+                    <div class="subtask-item" data-subtask-id="${escapeHtml(newSubtask.id)}" draggable="true" style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm); background: var(--surface-color); border-radius: var(--radius-sm); margin-bottom: var(--space-xs);">
+                        <div class="todo-grip subtask-grip" style="cursor: grab; color: var(--text-tertiary);">${UI.icons.grip}</div>
+                        <div class="subtask-checkbox" data-action="toggle-subtask" style="width: 18px; height: 18px;"></div>
+                        <span class="subtask-text" data-action="edit-subtask-inline" style="flex: 1; cursor: text;">${escapeHtml(newSubtask.text)}</span>
+                        <button class="subtask-delete" data-action="delete-subtask" style="opacity: 0.5;">${UI.icons.x}</button>
+                    </div>
+                `;
+
+                // Insert before the add-subtask row
+                const subtaskList = document.getElementById('subtask-list');
+                const addRow = input.closest('div[style*="display: flex"]');
+                if (subtaskList && addRow) {
+                    addRow.insertAdjacentHTML('beforebegin', subtaskHtml);
+                }
+
+                // Clear input and keep focus
+                input.value = '';
+                input.focus();
             }
         });
 
@@ -1731,7 +1780,7 @@ const App = {
             }
         });
 
-        // Todo detail modal: Save subtask text on blur
+        // Todo detail modal: Save subtask text on blur (and revert to span)
         app.addEventListener('blur', (e) => {
             const subtaskInput = e.target.closest('.subtask-edit-input');
             if (subtaskInput && this.state.currentTodo) {
@@ -1739,15 +1788,52 @@ const App = {
                 if (subtaskItem) {
                     const subtaskId = subtaskItem.dataset.subtaskId;
                     const newText = subtaskInput.value.trim();
+
                     if (newText) {
-                        // FIX: Pass object with 'text' property, not raw string
+                        // Save the updated text
                         TodoManager.updateSubtask(this.state.currentTodo, subtaskId, { text: newText });
+
+                        // Convert input back to span (view mode)
+                        const span = document.createElement('span');
+                        span.className = 'subtask-text';
+                        span.setAttribute('data-action', 'edit-subtask-inline');
+                        span.style.cssText = 'flex: 1; cursor: text;';
+                        span.textContent = newText;
+                        subtaskInput.replaceWith(span);
                     } else {
-                        // FIX: Delete empty subtasks instead of keeping them
-                        TodoManager.deleteSubtask(this.state.currentTodo, subtaskId);
-                        this.render(); // Re-render to update UI
+                        // Delete empty subtasks with animation
+                        subtaskItem.classList.add('exiting');
+                        setTimeout(() => {
+                            TodoManager.deleteSubtask(this.state.currentTodo, subtaskId);
+                            this.render();
+                        }, 250);
                     }
                 }
+            }
+        }, true); // Use capture phase for blur
+
+        // Todo detail modal: Save notes on blur (OPTIMIZED: No re-render!)
+        app.addEventListener('blur', (e) => {
+            const notesTextarea = e.target.closest('#todo-notes-edit');
+            if (notesTextarea && this.state.currentTodo) {
+                const newNotes = notesTextarea.value;
+
+                // Save to data layer
+                TodoManager.update(this.state.currentTodo, { notes: newNotes });
+
+                // Create view div to replace textarea
+                const viewDiv = document.createElement('div');
+                viewDiv.id = 'notes-view';
+                viewDiv.style.cssText = 'min-height: 100px; padding: var(--space-md); background: var(--inactive-bg); border-radius: var(--radius-md); cursor: pointer; font-size: var(--text-sm); color: inherit;';
+                viewDiv.innerHTML = newNotes
+                    ? formatTextWithLinks(newNotes)
+                    : '<span style="color: var(--text-tertiary); font-style: italic;">Add notes, links, or details...</span>';
+
+                // Replace textarea with view
+                notesTextarea.replaceWith(viewDiv);
+
+                // Update state
+                this.state.isEditingTodoNotes = false;
             }
         }, true); // Use capture phase for blur
 
@@ -1773,6 +1859,32 @@ const App = {
             }
         });
 
+        // Todo detail modal: Click on subtask text to edit inline
+        app.addEventListener('click', (e) => {
+            const subtaskText = e.target.closest('[data-action="edit-subtask-inline"]');
+            if (subtaskText && this.state.currentTodo) {
+                e.stopPropagation();
+                const subtaskItem = subtaskText.closest('.subtask-item');
+                if (!subtaskItem) return;
+
+                const currentText = subtaskText.textContent;
+
+                // Replace span with input for editing
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'subtask-edit-input';
+                input.value = currentText;
+                input.maxLength = 200;
+                input.style.cssText = 'flex: 1; border: none; background: transparent; color: inherit; font-size: inherit; outline: none;';
+
+                subtaskText.replaceWith(input);
+                input.focus();
+                input.select();
+
+                return;
+            }
+        });
+
         // Todo detail modal: Toggle subtask
         app.addEventListener('click', (e) => {
             const subtaskItem = e.target.closest('.subtask-item');
@@ -1786,15 +1898,23 @@ const App = {
             }
         });
 
-        // Todo detail modal: Delete subtask
+        // Todo detail modal: Delete subtask (with exit animation)
         app.addEventListener('click', (e) => {
             const subtaskItem = e.target.closest('.subtask-item');
             const deleteAction = e.target.closest('[data-action="delete-subtask"]');
             if (subtaskItem && deleteAction && this.state.currentTodo) {
                 e.stopPropagation();
                 const subtaskId = subtaskItem.dataset.subtaskId;
-                TodoManager.deleteSubtask(this.state.currentTodo, subtaskId);
-                this.render();
+
+                // Add exiting class for animation
+                subtaskItem.classList.add('exiting');
+
+                // Wait for animation to complete, then delete
+                setTimeout(() => {
+                    TodoManager.deleteSubtask(this.state.currentTodo, subtaskId);
+                    this.render();
+                }, 250); // Match animation duration in CSS
+
                 return;
             }
         });

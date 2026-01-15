@@ -22,7 +22,16 @@
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-sm);
     cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+        box-shadow 0.2s ease,
+        opacity 0.2s ease;
+    /* Entry animation */
+    animation: todoSlideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.todo-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .todo-item:active {
@@ -112,7 +121,7 @@
 .completed-list-container {
     overflow: hidden;
     transition: max-height 0.3s cubic-bezier(0.4, 0.0, 0.2, 1),
-                opacity 0.3s ease;
+        opacity 0.3s ease;
     will-change: max-height, opacity;
 }
 
@@ -121,12 +130,51 @@
     transition: transform 0.2s ease;
 }
 
-/* Fade in new items */
+/* Entry animation - slide in from right */
+@keyframes todoSlideIn {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Staggered entry for list items */
+.todo-item:nth-child(1) {
+    animation-delay: 0s;
+}
+
+.todo-item:nth-child(2) {
+    animation-delay: 0.05s;
+}
+
+.todo-item:nth-child(3) {
+    animation-delay: 0.1s;
+}
+
+.todo-item:nth-child(4) {
+    animation-delay: 0.15s;
+}
+
+.todo-item:nth-child(5) {
+    animation-delay: 0.2s;
+}
+
+.todo-item:nth-child(n+6) {
+    animation-delay: 0.25s;
+}
+
+/* Fade in animation for new items */
 @keyframes fadeInSlide {
     from {
         opacity: 0;
         transform: translateY(-10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -142,9 +190,11 @@
     0% {
         transform: scale(0);
     }
+
     50% {
         transform: scale(1.2);
     }
+
     100% {
         transform: scale(1);
     }
@@ -193,11 +243,59 @@
 
 /* Subtask list smooth transitions */
 .subtask-item {
-    transition: background 0.2s ease, transform 0.2s ease;
+    transition: background 0.2s ease,
+        transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+        opacity 0.2s ease,
+        max-height 0.3s ease;
+    /* Entry animation */
+    animation: subtaskSlideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    overflow: hidden;
 }
 
 .subtask-item:hover {
     background: var(--inactive-bg);
+    transform: translateX(2px);
+}
+
+/* Subtask Entry Animation */
+@keyframes subtaskSlideIn {
+    from {
+        opacity: 0;
+        max-height: 0;
+        transform: translateY(-10px);
+        padding-top: 0;
+        padding-bottom: 0;
+        margin-bottom: 0;
+    }
+
+    to {
+        opacity: 1;
+        max-height: 100px;
+        transform: translateY(0);
+    }
+}
+
+/* Subtask Exit Animation */
+@keyframes subtaskSlideOut {
+    from {
+        opacity: 1;
+        max-height: 100px;
+        transform: scale(1);
+    }
+
+    to {
+        opacity: 0;
+        max-height: 0;
+        transform: scale(0.95);
+        padding-top: 0;
+        padding-bottom: 0;
+        margin-bottom: 0;
+    }
+}
+
+.subtask-item.exiting {
+    animation: subtaskSlideOut 0.25s ease-out forwards;
+    pointer-events: none;
 }
 
 /* Delete button fade */
@@ -210,13 +308,15 @@
 ======================================== */
 
 .todo-item.dragging {
-    opacity: 0.6;
-    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-    transform: scale(1.05) rotate(2deg);
+    opacity: 0.95;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    transform: scale(1.02);
     cursor: grabbing;
     z-index: 1000;
     background: var(--surface-color);
     border: 2px solid var(--active-bg);
+    /* Smooth spring-like transition */
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
 
 .todo-item.drag-over {
@@ -224,14 +324,17 @@
     background: var(--inactive-bg);
 }
 
-/* Subtask drag states */
+/* Subtask drag states - Framer Motion-like smoothness */
 .subtask-item.dragging {
-    opacity: 0.6;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-    transform: scale(1.03);
+    opacity: 0.95;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: scale(1.02);
     cursor: grabbing;
     z-index: 100;
     border: 1px solid var(--active-bg);
+    background: var(--surface-color);
+    /* Smooth spring-like transition */
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
 
 /* ========================================
@@ -365,6 +468,20 @@
     flex: 1;
     background: transparent;
     border: none;
+    outline: none;
+}
+
+/* Remove white focus outline from all modal inputs */
+#add-subtask-text,
+#todo-notes-edit,
+.subtask-edit-input {
+    outline: none;
+}
+
+#add-subtask-text:focus,
+.subtask-edit-input:focus {
+    /* Subtle underline on focus instead of outline */
+    border-bottom: 1px solid var(--active-bg);
 }
 
 /* ========================================
@@ -394,7 +511,7 @@
     height: 27px;
     background: white;
     border-radius: 50%;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     transition: transform 0.3s ease;
 }
 
