@@ -732,7 +732,7 @@ const App = {
                                 <span style="font-size: var(--text-xs); color: var(--text-tertiary); font-weight: var(--weight-semibold); letter-spacing: 0.5px;">DETAILS & ANNOTATIONS</span>
                             </div>
                             ${this.state.isEditingTodoNotes ? `
-                                <textarea id="todo-notes-edit" placeholder="Add notes, links, or details..." style="width: 100%; min-height: 200px; padding: var(--space-md); background: var(--inactive-bg); border: 2px solid var(--accent-color); border-radius: var(--radius-md); font-size: var(--text-sm); resize: vertical; color: inherit;">${escapeHtml(todo.notes || '')}</textarea>
+                                <textarea id="todo-notes-edit" placeholder="Add notes, links, or details..." style="width: 100%; min-height: 500px; padding: var(--space-md); background: var(--inactive-bg); border: 2px solid var(--accent-color); border-radius: var(--radius-md); font-size: var(--text-sm); resize: vertical; color: inherit;">${escapeHtml(todo.notes || '')}</textarea>
                             ` : `
                                 <div id="notes-view" style="min-height: 100px; padding: var(--space-md); background: var(--inactive-bg); border-radius: var(--radius-md); cursor: pointer; font-size: var(--text-sm); color: inherit;">
                                     ${todo.notes ? formatTextWithLinks(todo.notes) : '<span style="color: var(--text-tertiary); font-style: italic;">Add notes, links, or details...</span>'}
@@ -1591,7 +1591,7 @@ const App = {
                 const textarea = document.createElement('textarea');
                 textarea.id = 'todo-notes-edit';
                 textarea.placeholder = 'Add notes, links, or details...';
-                textarea.style.cssText = 'width: 100%; min-height: 200px; padding: var(--space-md); background: var(--inactive-bg); border: 2px solid var(--accent-color); border-radius: var(--radius-md); font-size: var(--text-sm); resize: vertical; color: inherit; outline: none;';
+                textarea.style.cssText = 'width: 100%; min-height: 500px; padding: var(--space-md); background: var(--inactive-bg); border: 2px solid var(--accent-color); border-radius: var(--radius-md); font-size: var(--text-sm); resize: vertical; color: inherit; outline: none;';
                 textarea.value = currentNotes;
 
                 // Replace view with textarea
