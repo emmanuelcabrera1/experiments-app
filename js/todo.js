@@ -8,15 +8,35 @@ const TodoManager = {
     DB_KEY: 'experiments_todos',
 
     /**
+     * Generate a unique ID
+     * @param {string} prefix - Prefix for the ID (e.g., 'todo', 'sub')
+     * @returns {string} Unique ID
+     */
+    generateId(prefix = 'id') {
+        // Use timestamp + random string for uniqueness
+        const timestamp = Date.now();
+        const random = Math.random().toString(36).substring(2, 9);
+        return `${prefix}-${timestamp}-${random}`;
+    },
+
+    /**
      * Load todos from localStorage
      * @returns {Array} Array of TodoItem objects
      */
     load() {
-        const raw = localStorage.getItem(this.DB_KEY);
-        if (!raw) return [];
         try {
-            return JSON.parse(raw);
-        } catch {
+            const raw = localStorage.getItem(this.DB_KEY);
+            if (!raw) return [];
+            const parsed = JSON.parse(raw);
+            // Validate data structure
+            if (!Array.isArray(parsed)) {
+                console.warn('Invalid todos data structure, resetting');
+                return [];
+            }
+            return parsed;
+        } catch (error) {
+            console.error('Failed to load todos from localStorage:', error);
+            // Return empty array as fallback
             return [];
         }
     },
@@ -24,9 +44,20 @@ const TodoManager = {
     /**
      * Save todos to localStorage
      * @param {Array} todos - Array of TodoItem objects
+     * @returns {boolean} Success status
      */
     save(todos) {
-        localStorage.setItem(this.DB_KEY, JSON.stringify(todos));
+        try {
+            localStorage.setItem(this.DB_KEY, JSON.stringify(todos));
+            return true;
+        } catch (error) {
+            console.error('Failed to save todos to localStorage:', error);
+            // Show user-friendly error if possible
+            if (window.App && window.App.showToast) {
+                window.App.showToast('Failed to save tasks. Storage may be full.');
+            }
+            return false;
+        }
     },
 
     /**
@@ -45,7 +76,7 @@ const TodoManager = {
     add(todoData) {
         const todos = this.load();
         const newTodo = {
-            id: `todo-${Date.now()}`,
+            id: this.generateId('todo'),
             title: todoData.title || 'New Task',
             notes: todoData.notes || '',
             subtasks: todoData.subtasks || [],
@@ -124,7 +155,7 @@ const TodoManager = {
 
         const subtasks = todo.subtasks || [];
         subtasks.push({
-            id: `sub-${Date.now()}`,
+            id: this.generateId('sub'),
             text: text,
             completed: false
         });

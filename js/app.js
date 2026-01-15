@@ -1528,10 +1528,13 @@ const App = {
                 // Save new order
                 const subtaskList = document.getElementById('subtask-list');
                 if (subtaskList) {
-                    const orderedIds = Array.from(subtaskList.querySelectorAll('.subtask-item'))
+                    // FIX: Only select subtask items with valid IDs (exclude add subtask row)
+                    const orderedIds = Array.from(subtaskList.querySelectorAll('.subtask-item[data-subtask-id]'))
                         .map(item => item.dataset.subtaskId)
-                        .filter(id => id); // Filter out undefined (the add row doesn't have an id)
-                    TodoManager.reorderSubtasks(this.state.currentTodo, orderedIds);
+                        .filter(id => id && id.startsWith('sub-')); // Validate ID format
+                    if (orderedIds.length > 0) {
+                        TodoManager.reorderSubtasks(this.state.currentTodo, orderedIds);
+                    }
                 }
             }
         });
@@ -1545,7 +1548,12 @@ const App = {
                     const subtaskId = subtaskItem.dataset.subtaskId;
                     const newText = subtaskInput.value.trim();
                     if (newText) {
-                        TodoManager.updateSubtask(this.state.currentTodo, subtaskId, newText);
+                        // FIX: Pass object with 'text' property, not raw string
+                        TodoManager.updateSubtask(this.state.currentTodo, subtaskId, { text: newText });
+                    } else {
+                        // FIX: Delete empty subtasks instead of keeping them
+                        TodoManager.deleteSubtask(this.state.currentTodo, subtaskId);
+                        this.render(); // Re-render to update UI
                     }
                 }
             }
@@ -1644,9 +1652,13 @@ const App = {
                 // Save new order
                 const todoList = document.getElementById('todo-list');
                 if (todoList) {
-                    const orderedIds = Array.from(todoList.querySelectorAll('.todo-item'))
-                        .map(item => item.dataset.todoId);
-                    TodoManager.reorder(orderedIds);
+                    // FIX: Validate IDs before saving order
+                    const orderedIds = Array.from(todoList.querySelectorAll('.todo-item[data-todo-id]'))
+                        .map(item => item.dataset.todoId)
+                        .filter(id => id && id.startsWith('todo-')); // Validate ID format
+                    if (orderedIds.length > 0) {
+                        TodoManager.reorder(orderedIds);
+                    }
                 }
             }
         });
