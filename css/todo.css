@@ -25,8 +25,6 @@
     transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
         box-shadow 0.2s ease,
         opacity 0.2s ease;
-    /* Entry animation */
-    animation: todoSlideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
 .todo-item:hover {
@@ -42,6 +40,12 @@
 .todo-grip {
     width: 20px;
     height: 20px;
+    padding: 10px;
+    /* Increase hit area */
+    margin: -10px;
+    /* Offset padding to keep layout */
+    box-sizing: content-box;
+    /* Include padding in click area */
     color: var(--text-tertiary);
     cursor: grab;
     flex-shrink: 0;
@@ -59,8 +63,8 @@
 
 /* Checkbox */
 .todo-checkbox {
-    width: 24px;
-    height: 24px;
+    width: 21px;
+    height: 21px;
     border: 2px solid var(--border-color);
     border-radius: 50%;
     flex-shrink: 0;

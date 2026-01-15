@@ -2579,8 +2579,18 @@ const App = {
             const leftActions = container.querySelector('.swipe-actions-left');
             const rightActions = container.querySelector('.swipe-actions-right');
 
-            const leftWidth = leftActions ? leftActions.offsetWidth : 0;
-            const rightWidth = rightActions ? rightActions.offsetWidth : 0;
+            const swipeType = container.dataset.swipeType;
+            let leftWidth = leftActions ? leftActions.offsetWidth : 0;
+            let rightWidth = rightActions ? rightActions.offsetWidth : 0;
+            let hasLeft = !!leftActions;
+            let hasRight = !!rightActions;
+
+            // FIX: Explicitly enforce config for known types to avoid DOM/layout race conditions
+            if (swipeType === 'todo') {
+                hasLeft = true;
+                leftWidth = 80; // Button (60) + gap (8) + padding (8) + buffer
+                hasRight = false; // Todos don't have right actions currently
+            }
 
             this.swipeState = {
                 active: true,
@@ -2592,8 +2602,8 @@ const App = {
                 row: row,
                 leftWidth: leftWidth || 80,
                 rightWidth: rightWidth || 152,
-                hasLeft: !!leftActions,
-                hasRight: !!rightActions,
+                hasLeft: hasLeft,
+                hasRight: hasRight,
                 didSwipe: false,
                 startTime: Date.now(),
                 hapticTriggered: false
