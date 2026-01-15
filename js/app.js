@@ -2010,8 +2010,9 @@ const App = {
 
         // Checklist Drag-and-Drop: dragend
         app.addEventListener('dragend', (e) => {
-            const section = e.target.closest('.checklist-section');
-            if (section && section.classList.contains('checklist-dragging')) {
+            // Find the dragging checklist by class, not by e.target
+            const section = document.querySelector('.checklist-section.checklist-dragging');
+            if (section) {
                 section.classList.remove('checklist-dragging');
 
                 const container = document.getElementById('checklists-container');
