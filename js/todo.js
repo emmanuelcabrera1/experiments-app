@@ -1,58 +1,49 @@
-/**
- * Experiments - Todo Manager
- * Handles all Todo logic: CRUD, subtasks, persistence, and drag-and-drop state.
- * Storage Key: experiments_todos
- */
-
 const TodoManager = {
     DB_KEY: 'experiments_todos',
 
-    /**
-     * Generate a unique ID
-     * @param {string} prefix - Prefix for the ID (e.g., 'todo', 'sub')
-     * @returns {string} Unique ID
-     */
     generateId(prefix = 'id') {
-        // Use timestamp + random string for uniqueness
         const timestamp = Date.now();
         const random = Math.random().toString(36).substring(2, 9);
         return `${prefix}-${timestamp}-${random}`;
     },
 
-    /**
-     * Load todos from localStorage
-     * @returns {Array} Array of TodoItem objects
-     */
     load() {
         try {
             const raw = localStorage.getItem(this.DB_KEY);
             if (!raw) return [];
             const parsed = JSON.parse(raw);
-            // Validate data structure
-            if (!Array.isArray(parsed)) {
-                console.warn('Invalid todos data structure, resetting');
-                return [];
-            }
+            if (!Array.isArray(parsed)) return [];
+
+            // MIGRATION: 
+            // Convert legacy 'subtasks' array to 'checklists' array structure
+            parsed.forEach(t => {
+                // If has subtasks but no checklists, migrate
+                if (t.subtasks && (!t.checklists || t.checklists.length === 0)) {
+                    t.checklists = [{
+                        id: this.generateId('cl'),
+                        title: 'Checklist',
+                        isCollapsed: false,
+                        items: t.subtasks
+                    }];
+                    delete t.subtasks;
+                }
+                // Ensure checklists array exists
+                if (!t.checklists) t.checklists = [];
+            });
+
             return parsed;
         } catch (error) {
-            console.error('Failed to load todos from localStorage:', error);
-            // Return empty array as fallback
+            console.error('Failed to load todos:', error);
             return [];
         }
     },
 
-    /**
-     * Save todos to localStorage
-     * @param {Array} todos - Array of TodoItem objects
-     * @returns {boolean} Success status
-     */
     save(todos) {
         try {
             localStorage.setItem(this.DB_KEY, JSON.stringify(todos));
             return true;
         } catch (error) {
-            console.error('Failed to save todos to localStorage:', error);
-            // Show user-friendly error if possible
+            console.error('Failed to save todos:', error);
             if (window.App && window.App.showToast) {
                 window.App.showToast('Failed to save tasks. Storage may be full.');
             }
@@ -60,40 +51,35 @@ const TodoManager = {
         }
     },
 
-    /**
-     * Get all todos
-     * @returns {Array} Array of TodoItem objects
-     */
     getAll() {
         return this.load();
     },
 
-    /**
-     * Add a new todo
-     * @param {Object} todoData - { title, notes?, subtasks? }
-     * @returns {Object} The created TodoItem
-     */
     add(todoData) {
         const todos = this.load();
         const newTodo = {
             id: this.generateId('todo'),
             title: todoData.title || 'New Task',
             notes: todoData.notes || '',
-            subtasks: todoData.subtasks || [],
+            checklists: [], // Start with empty checklists array
             completed: false,
             createdAt: new Date().toISOString()
         };
+        // Add default checklist if subtasks provided
+        if (todoData.subtasks && todoData.subtasks.length > 0) {
+            newTodo.checklists.push({
+                id: this.generateId('cl'),
+                title: 'Checklist',
+                isCollapsed: false,
+                items: todoData.subtasks
+            });
+        }
+
         todos.push(newTodo);
         this.save(todos);
         return newTodo;
     },
 
-    /**
-     * Update an existing todo
-     * @param {string} id - Todo ID
-     * @param {Object} updates - Fields to update
-     * @returns {Object|null} Updated todo or null if not found
-     */
     update(id, updates) {
         const todos = this.load();
         const index = todos.findIndex(t => t.id === id);
@@ -104,11 +90,6 @@ const TodoManager = {
         return todos[index];
     },
 
-    /**
-     * Delete a todo
-     * @param {string} id - Todo ID
-     * @returns {boolean} Success status
-     */
     delete(id) {
         const todos = this.load();
         const filtered = todos.filter(t => t.id !== id);
@@ -117,11 +98,6 @@ const TodoManager = {
         return true;
     },
 
-    /**
-     * Toggle todo completion status
-     * @param {string} id - Todo ID
-     * @returns {Object|null} Updated todo or null
-     */
     toggle(id) {
         const todos = this.load();
         const todo = todos.find(t => t.id === id);
@@ -129,10 +105,6 @@ const TodoManager = {
         return this.update(id, { completed: !todo.completed });
     },
 
-    /**
-     * Reorder todos (for drag-and-drop)
-     * @param {Array} orderedIds - Array of todo IDs in new order
-     */
     reorder(orderedIds) {
         const todos = this.load();
         const reordered = orderedIds
@@ -141,87 +113,139 @@ const TodoManager = {
         this.save(reordered);
     },
 
-    // --- Subtask Methods ---
+    // --- Checklist Methods ---
 
-    /**
-     * Add a subtask to a todo
-     * @param {string} todoId - Parent todo ID
-     * @param {string} text - Subtask text
-     * @returns {Object|null} Updated todo or null
-     */
-    addSubtask(todoId, text) {
+    addChecklist(todoId, title = 'Checklist') {
         const todo = this.load().find(t => t.id === todoId);
         if (!todo) return null;
 
-        const subtasks = todo.subtasks || [];
-        subtasks.push({
+        const newChecklist = {
+            id: this.generateId('cl'),
+            title: title,
+            isCollapsed: false,
+            items: []
+        };
+
+        // Push to existing checklists
+        const checklists = todo.checklists || [];
+        checklists.push(newChecklist);
+
+        return this.update(todoId, { checklists });
+    },
+
+    deleteChecklist(todoId, checklistId) {
+        const todo = this.load().find(t => t.id === todoId);
+        if (!todo) return null;
+
+        const checklists = (todo.checklists || []).filter(cl => cl.id !== checklistId);
+        return this.update(todoId, { checklists });
+    },
+
+    updateChecklist(todoId, checklistId, updates) {
+        const todo = this.load().find(t => t.id === todoId);
+        if (!todo) return null;
+
+        const checklists = (todo.checklists || []).map(cl =>
+            cl.id === checklistId ? { ...cl, ...updates } : cl
+        );
+        return this.update(todoId, { checklists });
+    },
+
+    // --- Subtask Item Methods ---
+
+    addSubtaskItem(todoId, checklistId, text) {
+        const todo = this.load().find(t => t.id === todoId);
+        if (!todo) return null;
+
+        const checklists = todo.checklists || [];
+        const checklistIndex = checklists.findIndex(cl => cl.id === checklistId);
+        if (checklistIndex === -1) return null;
+
+        // Add item
+        checklists[checklistIndex].items.push({
             id: this.generateId('sub'),
             text: text,
             completed: false
         });
-        return this.update(todoId, { subtasks });
+
+        return this.update(todoId, { checklists });
     },
 
-    /**
-     * Update a subtask
-     * @param {string} todoId - Parent todo ID
-     * @param {string} subtaskId - Subtask ID
-     * @param {Object} updates - Fields to update
-     * @returns {Object|null} Updated todo or null
-     */
-    updateSubtask(todoId, subtaskId, updates) {
+    updateSubtaskItem(todoId, subtaskId, updates) {
         const todo = this.load().find(t => t.id === todoId);
         if (!todo) return null;
 
-        const subtasks = (todo.subtasks || []).map(s =>
-            s.id === subtaskId ? { ...s, ...updates } : s
-        );
-        return this.update(todoId, { subtasks });
+        // Find subtask in ANY checklist
+        let found = false;
+        const checklists = (todo.checklists || []).map(cl => {
+            if (found) return cl; // Optimization: skip if already found (though map needs to return all)
+
+            const itemIndex = cl.items.findIndex(i => i.id === subtaskId);
+            if (itemIndex > -1) {
+                found = true;
+                const newItems = [...cl.items];
+                newItems[itemIndex] = { ...newItems[itemIndex], ...updates };
+                return { ...cl, items: newItems };
+            }
+            return cl;
+        });
+
+        if (!found) return null;
+        return this.update(todoId, { checklists });
     },
 
-    /**
-     * Delete a subtask
-     * @param {string} todoId - Parent todo ID
-     * @param {string} subtaskId - Subtask ID
-     * @returns {Object|null} Updated todo or null
-     */
-    deleteSubtask(todoId, subtaskId) {
+    deleteSubtaskItem(todoId, subtaskId) {
         const todo = this.load().find(t => t.id === todoId);
         if (!todo) return null;
 
-        const subtasks = (todo.subtasks || []).filter(s => s.id !== subtaskId);
-        return this.update(todoId, { subtasks });
+        const checklists = (todo.checklists || []).map(cl => ({
+            ...cl,
+            items: cl.items.filter(i => i.id !== subtaskId)
+        }));
+
+        return this.update(todoId, { checklists });
     },
 
-    /**
-     * Toggle subtask completion
-     * @param {string} todoId - Parent todo ID
-     * @param {string} subtaskId - Subtask ID
-     * @returns {Object|null} Updated todo or null
-     */
-    toggleSubtask(todoId, subtaskId) {
+    toggleSubtaskItem(todoId, subtaskId) {
         const todo = this.load().find(t => t.id === todoId);
         if (!todo) return null;
 
-        const subtask = (todo.subtasks || []).find(s => s.id === subtaskId);
-        if (!subtask) return null;
+        // Find the item to get current status
+        const allItems = this.getAllSubtasks(todo);
+        const item = allItems.find(i => i.id === subtaskId);
+        if (!item) return null;
 
-        return this.updateSubtask(todoId, subtaskId, { completed: !subtask.completed });
+        return this.updateSubtaskItem(todoId, subtaskId, { completed: !item.completed });
     },
 
-    /**
-     * Reorder subtasks within a todo
-     * @param {string} todoId - Parent todo ID
-     * @param {Array} orderedIds - Array of subtask IDs in new order
-     * @returns {Object|null} Updated todo or null
-     */
-    reorderSubtasks(todoId, orderedIds) {
+    reorderSubtaskItems(todoId, checklistId, orderedIds) {
         const todo = this.load().find(t => t.id === todoId);
         if (!todo) return null;
 
-        const subtasks = orderedIds
-            .map(id => (todo.subtasks || []).find(s => s.id === id))
+        const checklists = todo.checklists || [];
+        const clIndex = checklists.findIndex(cl => cl.id === checklistId);
+        if (clIndex === -1) return null;
+
+        const originalItems = checklists[clIndex].items;
+        // Map orderedIds to items, filtering out any missing ones
+        const reorderedItems = orderedIds
+            .map(id => originalItems.find(i => i.id === id))
             .filter(Boolean);
-        return this.update(todoId, { subtasks });
+
+        // Update specific checklist
+        const newChecklists = [...checklists];
+        newChecklists[clIndex] = { ...newChecklists[clIndex], items: reorderedItems };
+
+        return this.update(todoId, { checklists: newChecklists });
+    },
+
+    // --- Helpers ---
+
+    /**
+     * Get all subtasks flattened from all checklists
+     */
+    getAllSubtasks(todo) {
+        if (!todo || !todo.checklists) return [];
+        return todo.checklists.flatMap(cl => cl.items || []);
     }
 };

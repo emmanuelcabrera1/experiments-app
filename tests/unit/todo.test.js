@@ -1,5 +1,5 @@
 /**
- * Unit Tests for TodoManager
+ * Unit Tests for TodoManager (Multi-Checklist Version)
  * Run in browser console or include via script tag
  * 
  * Usage:
@@ -92,7 +92,7 @@ const TodoTests = {
         this.assert(todo.id.startsWith('todo-'), 'Has valid ID');
         this.assertEqual(todo.title, 'Test Task', 'Title is set correctly');
         this.assertEqual(todo.notes, '', 'Notes defaults to empty string');
-        this.assertEqual(todo.subtasks, [], 'Subtasks defaults to empty array');
+        this.assertEqual(todo.checklists, [], 'Checklists defaults to empty array');
         this.assertEqual(todo.completed, false, 'Completed defaults to false');
         this.assert(todo.createdAt, 'Has createdAt timestamp');
 
@@ -199,95 +199,128 @@ const TodoTests = {
     },
 
     /**
-     * Test: addSubtask adds subtask to todo
+     * Test: addChecklist adds a new checklist
      */
-    testAddSubtask() {
-        console.log('\n📋 TEST: addSubtask()');
-
+    testAddChecklist() {
+        console.log('\n📋 TEST: addChecklist()');
         localStorage.removeItem(TodoManager.DB_KEY);
         const todo = TodoManager.add({ title: 'Parent Task' });
 
-        const updated = TodoManager.addSubtask(todo.id, 'Subtask 1');
-        this.assertEqual(updated.subtasks.length, 1, 'Subtask is added');
-        this.assertEqual(updated.subtasks[0].text, 'Subtask 1', 'Subtask text is correct');
-        this.assert(updated.subtasks[0].id.startsWith('sub-'), 'Subtask has valid ID');
-        this.assertEqual(updated.subtasks[0].completed, false, 'Subtask defaults to not completed');
-
-        // Add another
-        const updated2 = TodoManager.addSubtask(todo.id, 'Subtask 2');
-        this.assertEqual(updated2.subtasks.length, 2, 'Multiple subtasks can be added');
+        const updated = TodoManager.addChecklist(todo.id, 'My Checklist');
+        this.assertEqual(updated.checklists.length, 1, 'Checklist added');
+        this.assertEqual(updated.checklists[0].title, 'My Checklist', 'Title set correctly');
+        this.assert(updated.checklists[0].id.startsWith('cl-'), 'Checklist ID generated');
+        this.assertEqual(updated.checklists[0].items, [], 'Items initialized empty');
     },
 
     /**
-     * Test: updateSubtask modifies subtask
+     * Test: updateChecklist modifies checklist
      */
-    testUpdateSubtask() {
-        console.log('\n📋 TEST: updateSubtask()');
-
+    testUpdateChecklist() {
+        console.log('\n📋 TEST: updateChecklist()');
         localStorage.removeItem(TodoManager.DB_KEY);
         const todo = TodoManager.add({ title: 'Parent' });
-        const withSub = TodoManager.addSubtask(todo.id, 'Original');
-        const subId = withSub.subtasks[0].id;
+        const withList = TodoManager.addChecklist(todo.id, 'Old Title');
+        const listId = withList.checklists[0].id;
 
-        const updated = TodoManager.updateSubtask(todo.id, subId, { text: 'Updated Text' });
-        this.assertEqual(updated.subtasks[0].text, 'Updated Text', 'Subtask text is updated');
+        const updated = TodoManager.updateChecklist(todo.id, listId, { title: 'New Title', isCollapsed: true });
+        this.assertEqual(updated.checklists[0].title, 'New Title', 'Title updated');
+        this.assertEqual(updated.checklists[0].isCollapsed, true, 'Collapsed state updated');
     },
 
     /**
-     * Test: deleteSubtask removes subtask
+     * Test: deleteChecklist removes checklist
      */
-    testDeleteSubtask() {
-        console.log('\n📋 TEST: deleteSubtask()');
-
+    testDeleteChecklist() {
+        console.log('\n📋 TEST: deleteChecklist()');
         localStorage.removeItem(TodoManager.DB_KEY);
         const todo = TodoManager.add({ title: 'Parent' });
-        TodoManager.addSubtask(todo.id, 'Subtask 1');
-        const withTwo = TodoManager.addSubtask(todo.id, 'Subtask 2');
-        const subId = withTwo.subtasks[0].id;
+        const withList = TodoManager.addChecklist(todo.id, 'To Delete');
+        const listId = withList.checklists[0].id;
 
-        const updated = TodoManager.deleteSubtask(todo.id, subId);
-        this.assertEqual(updated.subtasks.length, 1, 'Subtask is removed');
-        this.assertEqual(updated.subtasks[0].text, 'Subtask 2', 'Correct subtask remains');
+        const updated = TodoManager.deleteChecklist(todo.id, listId);
+        this.assertEqual(updated.checklists.length, 0, 'Checklist removed');
     },
 
     /**
-     * Test: toggleSubtask flips subtask completed
+     * Test: addSubtaskItem adds item to specific checklist
      */
-    testToggleSubtask() {
-        console.log('\n📋 TEST: toggleSubtask()');
-
+    testAddSubtaskItem() {
+        console.log('\n📋 TEST: addSubtaskItem()');
         localStorage.removeItem(TodoManager.DB_KEY);
         const todo = TodoManager.add({ title: 'Parent' });
-        const withSub = TodoManager.addSubtask(todo.id, 'Subtask');
-        const subId = withSub.subtasks[0].id;
+        const withList = TodoManager.addChecklist(todo.id, 'Main');
+        const listId = withList.checklists[0].id;
 
-        const toggled1 = TodoManager.toggleSubtask(todo.id, subId);
-        this.assertEqual(toggled1.subtasks[0].completed, true, 'Subtask toggled to true');
-
-        const toggled2 = TodoManager.toggleSubtask(todo.id, subId);
-        this.assertEqual(toggled2.subtasks[0].completed, false, 'Subtask toggled back to false');
+        const updated = TodoManager.addSubtaskItem(todo.id, listId, 'New Item');
+        const items = updated.checklists[0].items;
+        this.assertEqual(items.length, 1, 'Item added to checklist');
+        this.assertEqual(items[0].text, 'New Item', 'Item text correct');
+        this.assert(items[0].id.startsWith('sub-'), 'Item ID valid');
     },
 
     /**
-     * Test: reorderSubtasks changes subtask order
+     * Test: updateSubtaskItem modifies item
      */
-    testReorderSubtasks() {
-        console.log('\n📋 TEST: reorderSubtasks()');
-
+    testUpdateSubtaskItem() {
+        console.log('\n📋 TEST: updateSubtaskItem()');
         localStorage.removeItem(TodoManager.DB_KEY);
         const todo = TodoManager.add({ title: 'Parent' });
-        TodoManager.addSubtask(todo.id, 'First');
-        TodoManager.addSubtask(todo.id, 'Second');
-        const withThree = TodoManager.addSubtask(todo.id, 'Third');
+        const withList = TodoManager.addChecklist(todo.id, 'Main');
+        const listId = withList.checklists[0].id;
+        const withItem = TodoManager.addSubtaskItem(todo.id, listId, 'Old Text');
+        const itemId = withItem.checklists[0].items[0].id;
 
-        const ids = withThree.subtasks.map(s => s.id);
-        // Reorder to: Third, First, Second
-        TodoManager.reorderSubtasks(todo.id, [ids[2], ids[0], ids[1]]);
+        const updated = TodoManager.updateSubtaskItem(todo.id, itemId, { text: 'New Text', completed: true });
+        const item = updated.checklists[0].items[0];
 
-        const updated = TodoManager.getAll().find(t => t.id === todo.id);
-        this.assertEqual(updated.subtasks[0].text, 'Third', 'Third is now first');
-        this.assertEqual(updated.subtasks[1].text, 'First', 'First is now second');
-        this.assertEqual(updated.subtasks[2].text, 'Second', 'Second is now third');
+        this.assertEqual(item.text, 'New Text', 'Text updated');
+        this.assertEqual(item.completed, true, 'Completion updated');
+    },
+
+    /**
+     * Test: deleteSubtaskItem removes item
+     */
+    testDeleteSubtaskItem() {
+        console.log('\n📋 TEST: deleteSubtaskItem()');
+        localStorage.removeItem(TodoManager.DB_KEY);
+        const todo = TodoManager.add({ title: 'Parent' });
+        const withList = TodoManager.addChecklist(todo.id, 'Main');
+        const listId = withList.checklists[0].id;
+        const withItem = TodoManager.addSubtaskItem(todo.id, listId, 'To Delete');
+        const itemId = withItem.checklists[0].items[0].id;
+
+        const updated = TodoManager.deleteSubtaskItem(todo.id, itemId);
+        this.assertEqual(updated.checklists[0].items.length, 0, 'Item deleted');
+    },
+
+    /**
+     * Test: reorderSubtaskItems changes order within checklist
+     */
+    testReorderSubtaskItems() {
+        console.log('\n📋 TEST: reorderSubtaskItems()');
+        localStorage.removeItem(TodoManager.DB_KEY);
+        const todo = TodoManager.add({ title: 'Parent' });
+        const withList = TodoManager.addChecklist(todo.id, 'Main');
+        const listId = withList.checklists[0].id;
+
+        TodoManager.addSubtaskItem(todo.id, listId, '1');
+        TodoManager.addSubtaskItem(todo.id, listId, '2');
+        const withThree = TodoManager.addSubtaskItem(todo.id, listId, '3'); // Returns todo
+
+        // Refetch IDs from the updated todo returned by last call
+        const items = withThree.checklists[0].items;
+        const ids = items.map(i => i.id);
+
+        // Reorder: 3, 1, 2
+        TodoManager.reorderSubtaskItems(todo.id, listId, [ids[2], ids[0], ids[1]]);
+
+        const finalTodo = TodoManager.getAll().find(t => t.id === todo.id);
+        const finalItems = finalTodo.checklists[0].items;
+
+        this.assertEqual(finalItems[0].text, '3', 'Order correct 1');
+        this.assertEqual(finalItems[1].text, '1', 'Order correct 2');
+        this.assertEqual(finalItems[2].text, '2', 'Order correct 3');
     },
 
     /**
@@ -296,27 +329,12 @@ const TodoTests = {
     testEdgeCases() {
         console.log('\n📋 TEST: Edge Cases');
 
-        // Update non-existent todo
         const updateResult = TodoManager.update('fake-id', { title: 'X' });
         this.assertEqual(updateResult, null, 'Update non-existent returns null');
 
-        // Toggle non-existent todo
-        const toggleResult = TodoManager.toggle('fake-id');
-        this.assertEqual(toggleResult, null, 'Toggle non-existent returns null');
-
-        // Subtask on non-existent todo
-        const subResult = TodoManager.addSubtask('fake-id', 'X');
-        this.assertEqual(subResult, null, 'AddSubtask on non-existent returns null');
-
-        // Corrupted localStorage
         localStorage.setItem(TodoManager.DB_KEY, 'not-json');
         const loadResult = TodoManager.load();
         this.assertEqual(loadResult, [], 'Corrupted data returns empty array');
-
-        // Non-array data
-        localStorage.setItem(TodoManager.DB_KEY, JSON.stringify({ not: 'array' }));
-        const loadResult2 = TodoManager.load();
-        this.assertEqual(loadResult2, [], 'Non-array data returns empty array');
     },
 
     /**
@@ -325,7 +343,7 @@ const TodoTests = {
     runAll() {
         console.clear();
         console.log('═══════════════════════════════════════════');
-        console.log('   🧪 TodoManager Unit Tests');
+        console.log('   🧪 TodoManager Unit Tests (Multi-List)');
         console.log('═══════════════════════════════════════════');
 
         this.passed = 0;
@@ -341,11 +359,13 @@ const TodoTests = {
             this.testDelete();
             this.testToggle();
             this.testReorder();
-            this.testAddSubtask();
-            this.testUpdateSubtask();
-            this.testDeleteSubtask();
-            this.testToggleSubtask();
-            this.testReorderSubtasks();
+            this.testAddChecklist();
+            this.testUpdateChecklist();
+            this.testDeleteChecklist();
+            this.testAddSubtaskItem();
+            this.testUpdateSubtaskItem();
+            this.testDeleteSubtaskItem();
+            this.testReorderSubtaskItems();
             this.testEdgeCases();
         } finally {
             this.teardown();

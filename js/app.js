@@ -645,7 +645,8 @@ const App = {
         const todo = TodoManager.getAll().find(t => t.id === this.state.currentTodo);
         if (!todo) return '';
 
-        const subtasks = todo.subtasks || [];
+        // Use checklists, defaulting to empty if migration hasn't run yet (handled by load)
+        const checklists = todo.checklists || [];
 
         // Format creation date like "CREATED JANUARY 14TH, 2026"
         const createdDate = new Date(todo.createdAt);
@@ -673,34 +674,59 @@ const App = {
 
                     <!-- Scrollable Content Container -->
                     <div style="flex: 1; overflow-y: auto; margin-bottom: var(--space-lg);">
-                        <!-- CHECKLIST Section - Always shown for easy access -->
+                        
+                        <!-- CHECKLISTS Section -->
                         <div style="margin-bottom: var(--space-lg);">
                             <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm);">
                                 <span style="color: var(--text-tertiary);">${UI.icons.list || '☰'}</span>
-                                <span style="font-size: var(--text-xs); color: var(--text-tertiary); font-weight: var(--weight-semibold); letter-spacing: 0.5px;">CHECKLIST</span>
+                                <span style="font-size: var(--text-xs); color: var(--text-tertiary); font-weight: var(--weight-semibold); letter-spacing: 0.5px;">CHECKLISTS</span>
                             </div>
-                            <div style="background: var(--inactive-bg); border-radius: var(--radius-md); padding: var(--space-xs);">
-                                ${subtasks.length > 0 ? `
-                                    <!-- Scrollable subtask container -->
-                                    <div class="subtask-list" id="subtask-list" style="max-height: ${subtasks.length > 3 ? '240px' : 'none'}; overflow-y: ${subtasks.length > 3 ? 'auto' : 'visible'};">
-                                        ${subtasks.map(subtask => `
-                                            <div class="subtask-item" data-subtask-id="${subtask.id}" draggable="true" style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm); background: var(--surface-color); border-radius: var(--radius-sm); margin-bottom: var(--space-xs);">
-                                                <div class="todo-grip subtask-grip" style="cursor: grab; color: var(--text-tertiary);">${UI.icons.grip}</div>
-                                                <div class="subtask-checkbox ${subtask.completed ? 'completed' : ''}" data-action="toggle-subtask" style="width: 18px; height: 18px;">
-                                                    ${subtask.completed ? UI.icons.check : ''}
-                                                </div>
-                                                <span class="subtask-text" data-action="edit-subtask-inline" style="flex: 1; cursor: text; ${subtask.completed ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${escapeHtml(subtask.text)}</span>
-                                                <button class="subtask-delete" data-action="delete-subtask" style="opacity: 0.5;">${UI.icons.x}</button>
+                            
+                            <!-- Checklists Container -->
+                            <div id="checklists-container">
+                                ${checklists.map(cl => `
+                                    <div class="checklist-section" data-checklist-id="${cl.id}" style="margin-bottom: var(--space-md); background: var(--inactive-bg); border-radius: var(--radius-md); overflow: hidden;">
+                                        
+                                        <!-- Checklist Header -->
+                                        <div class="checklist-header" style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm) var(--space-md); background: rgba(0,0,0,0.03); cursor: pointer;" data-action="toggle-checklist-collapse">
+                                            <span style="font-family: monospace; font-weight: bold; color: var(--text-secondary); width: 20px; text-align: center; font-size: 16px;">
+                                                ${cl.isCollapsed ? '+' : '−'}
+                                            </span>
+                                            <span class="checklist-title" contenteditable="true" data-action="edit-checklist-title" style="flex: 1; font-weight: 600; font-size: var(--text-sm); color: var(--text-secondary); outline: none; padding: 2px 4px; border-radius: 4px; border: 1px solid transparent;">${escapeHtml(cl.title)}</span>
+                                            <button class="checklist-delete" data-action="delete-checklist" style="opacity: 0.3; padding: 4px; border: none; background: transparent; cursor: pointer;">${UI.icons.x}</button>
+                                        </div>
+                                        
+                                        <!-- Checklist Content (Items + Add Row) -->
+                                        <div class="checklist-content" style="display: ${cl.isCollapsed ? 'none' : 'block'}; padding: var(--space-xs);">
+                                            
+                                            <!-- Subtask List -->
+                                            <div class="subtask-list" id="list-${cl.id}">
+                                                ${(cl.items || []).map(subtask => `
+                                                    <div class="subtask-item" data-subtask-id="${subtask.id}" draggable="true" style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm); background: var(--surface-color); border-radius: var(--radius-sm); margin-bottom: var(--space-xs);">
+                                                        <div class="todo-grip subtask-grip" style="cursor: grab; color: var(--text-tertiary);">${UI.icons.grip}</div>
+                                                        <div class="subtask-checkbox ${subtask.completed ? 'completed' : ''}" data-action="toggle-subtask" style="width: 18px; height: 18px;">
+                                                            ${subtask.completed ? UI.icons.check : ''}
+                                                        </div>
+                                                        <span class="subtask-text" data-action="edit-subtask-inline" style="flex: 1; cursor: text; ${subtask.completed ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${escapeHtml(subtask.text)}</span>
+                                                        <button class="subtask-delete" data-action="delete-subtask" style="opacity: 0.5;">${UI.icons.x}</button>
+                                                    </div>
+                                                `).join('')}
                                             </div>
-                                        `).join('')}
+                                            
+                                            <!-- Add Subtask Row -->
+                                            <div style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm); background: var(--surface-color); border-radius: var(--radius-sm); margin-top: var(--space-xs);">
+                                                <span style="color: var(--text-tertiary); font-weight: bold;">+</span>
+                                                <input type="text" class="add-subtask-text" placeholder="Add item..." maxlength="200" style="flex: 1; border: none; background: transparent; font-size: var(--text-sm); color: inherit; padding: 0; outline: none;">
+                                            </div>
+                                        </div>
                                     </div>
-                                ` : ''}
-                                <!-- Add subtask row - Always visible for easy access -->
-                                <div style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-md); background: var(--surface-color); border-radius: var(--radius-sm); ${subtasks.length > 0 ? 'margin-top: var(--space-xs);' : ''}">
-                                    <span style="color: var(--text-tertiary); font-size: 20px; font-weight: bold;">+</span>
-                                    <input type="text" id="add-subtask-text" placeholder="Add a step..." maxlength="200" style="flex: 1; border: none; background: transparent; font-size: var(--text-sm); color: inherit; padding: var(--space-xs); outline: none;">
-                                </div>
+                                `).join('')}
                             </div>
+
+                            <!-- Add New Checklist Button -->
+                            <button id="btn-add-checklist" style="width: 100%; padding: var(--space-md); background: var(--inactive-bg); border: 2px dashed var(--border-color); border-radius: var(--radius-md); color: var(--text-tertiary); cursor: pointer; font-size: var(--text-sm); margin-top: var(--space-sm); transition: all 0.2s;">
+                                + Add New Checklist
+                            </button>
                         </div>
 
                         <!-- DETAILS & ANNOTATIONS Section -->
@@ -733,8 +759,11 @@ const App = {
      * Helper to render a single todo item
      */
     renderTodoItem(todo) {
-        const subtaskCount = (todo.subtasks || []).length;
-        const completedSubtasks = (todo.subtasks || []).filter(s => s.completed).length;
+        // Use helper to get flat list of subtasks from all checklists
+        const allSubtasks = TodoManager.getAllSubtasks(todo);
+        const subtaskCount = allSubtasks.length;
+        const completedSubtasks = allSubtasks.filter(s => s.completed).length;
+
         const statusText = todo.completed ? 'completed' : 'not completed';
         const subtaskText = subtaskCount > 0 ? `, ${completedSubtasks} of ${subtaskCount} subtasks completed` : '';
 
@@ -1647,67 +1676,191 @@ const App = {
             }
         });
 
-        // Todo detail modal: Add subtask on Enter key (OPTIMIZED: No full re-render!)
+        // --- Checklist System Listeners ---
+
+        // Toggle Checklist Collapse
+        app.addEventListener('click', (e) => {
+            const header = e.target.closest('.checklist-header');
+            // Ignore if clicking delete button or editable title
+            if (header && !e.target.closest('.checklist-delete') && !e.target.closest('.checklist-title')) {
+                const section = header.closest('[data-checklist-id]');
+                if (section && this.state.currentTodo) {
+                    const checklistId = section.dataset.checklistId;
+                    const todo = TodoManager.getAll().find(t => t.id === this.state.currentTodo);
+                    const cl = todo.checklists.find(c => c.id === checklistId);
+                    if (cl) {
+                        const newCollapsed = !cl.isCollapsed;
+                        TodoManager.updateChecklist(this.state.currentTodo, checklistId, { isCollapsed: newCollapsed });
+
+                        // Selective DOM update (No full re-render)
+                        const content = section.querySelector('.checklist-content');
+                        // Toggle icon is the first span
+                        const toggleIcon = header.querySelector('span');
+
+                        if (content) {
+                            content.style.display = newCollapsed ? 'none' : 'block';
+                        }
+                        if (toggleIcon) {
+                            toggleIcon.textContent = newCollapsed ? '+' : '−';
+                        }
+                    }
+                }
+            }
+        });
+
+        // Add New Checklist - Optimized to append directly to DOM
+        app.addEventListener('click', (e) => {
+            if (e.target.closest('#btn-add-checklist')) {
+                const updatedTodo = TodoManager.addChecklist(this.state.currentTodo, 'New Checklist');
+
+                if (updatedTodo) {
+                    const newChecklist = updatedTodo.checklists[updatedTodo.checklists.length - 1]; // Get last added
+                    const container = document.getElementById('checklists-container');
+
+                    if (container) {
+                        const div = document.createElement('div');
+                        div.className = 'checklist-section';
+                        div.dataset.checklistId = newChecklist.id;
+                        div.style.cssText = 'margin-bottom: var(--space-md); background: var(--inactive-bg); border-radius: var(--radius-md); overflow: hidden; opacity: 0; transition: opacity 0.3s ease;';
+
+                        div.innerHTML = `
+                            <!-- Checklist Header -->
+                            <div class="checklist-header" style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm) var(--space-md); background: rgba(0,0,0,0.03); cursor: pointer;" data-action="toggle-checklist-collapse">
+                                <span style="font-family: monospace; font-weight: bold; color: var(--text-secondary); width: 20px; text-align: center; font-size: 16px;">−</span>
+                                <span class="checklist-title" contenteditable="true" data-action="edit-checklist-title" style="flex: 1; font-weight: 600; font-size: var(--text-sm); color: var(--text-secondary); outline: none; padding: 2px 4px; border-radius: 4px; border: 1px solid transparent;">${escapeHtml(newChecklist.title)}</span>
+                                <button class="checklist-delete" data-action="delete-checklist" style="opacity: 0.3; padding: 4px; border: none; background: transparent; cursor: pointer;">${UI.icons.x}</button>
+                            </div>
+                            
+                            <!-- Checklist Content (Items + Add Row) -->
+                            <div class="checklist-content" style="display: block; padding: var(--space-xs);">
+                                
+                                <!-- Subtask List -->
+                                <div class="subtask-list" id="list-${newChecklist.id}"></div>
+                                
+                                <!-- Add Subtask Row -->
+                                <div style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm); background: var(--surface-color); border-radius: var(--radius-sm); margin-top: var(--space-xs);">
+                                    <span style="color: var(--text-tertiary); font-weight: bold;">+</span>
+                                    <input type="text" class="add-subtask-text" placeholder="Add item..." maxlength="200" style="flex: 1; border: none; background: transparent; font-size: var(--text-sm); color: inherit; padding: 0; outline: none;">
+                                </div>
+                            </div>
+                        `;
+
+                        container.appendChild(div);
+
+                        // Animate in and Focus
+                        requestAnimationFrame(() => {
+                            div.style.opacity = '1';
+                            const title = div.querySelector('.checklist-title');
+                            if (title) {
+                                title.focus();
+                                // Select all text
+                                const range = document.createRange();
+                                range.selectNodeContents(title);
+                                const sel = window.getSelection();
+                                sel.removeAllRanges();
+                                sel.addRange(range);
+                            }
+                        });
+                    }
+                }
+            }
+        });
+
+        // Delete Checklist
+        app.addEventListener('click', (e) => {
+            const btn = e.target.closest('.checklist-delete');
+            if (btn && confirm('Delete this checklist?')) {
+                const section = btn.closest('[data-checklist-id]');
+                const checklistId = section.dataset.checklistId;
+                TodoManager.deleteChecklist(this.state.currentTodo, checklistId);
+                this.render();
+            }
+        });
+
+        // Edit Checklist Title (Blur) for auto-save
+        app.addEventListener('blur', (e) => {
+            const titleSpan = e.target.closest('.checklist-title');
+            if (titleSpan) {
+                const section = titleSpan.closest('[data-checklist-id]');
+                const checklistId = section.dataset.checklistId;
+                const newTitle = titleSpan.innerText.trim() || 'Checklist';
+                TodoManager.updateChecklist(this.state.currentTodo, checklistId, { title: newTitle });
+            }
+        }, true);
+
+        // Prevent newlines in Checklist Title
         app.addEventListener('keydown', (e) => {
-            const input = e.target.closest('#add-subtask-text');
+            const titleSpan = e.target.closest('.checklist-title');
+            if (titleSpan && e.key === 'Enter') {
+                e.preventDefault();
+                titleSpan.blur();
+            }
+        });
+
+        // Add Subtask (Enter) - Optimized to append directly to DOM
+        app.addEventListener('keydown', (e) => {
+            const input = e.target.closest('.add-subtask-text');
             if (input && e.key === 'Enter' && input.value.trim() && this.state.currentTodo) {
                 e.preventDefault();
                 const text = input.value.trim();
+                const section = input.closest('[data-checklist-id]');
+                const checklistId = section.dataset.checklistId;
 
-                // Add to data layer
-                const updatedTodo = TodoManager.addSubtask(this.state.currentTodo, text);
-                if (!updatedTodo) return;
+                const updatedTodo = TodoManager.addSubtaskItem(this.state.currentTodo, checklistId, text);
 
-                // Get the newly added subtask (last one in array)
-                const newSubtask = updatedTodo.subtasks[updatedTodo.subtasks.length - 1];
+                if (updatedTodo) {
+                    const cl = updatedTodo.checklists.find(c => c.id === checklistId);
+                    const newSubtask = cl.items[cl.items.length - 1]; // Get last item
 
-                // Create new subtask DOM element (using span for text to allow drag)
-                // Create new subtask DOM element safely
-                const itemDiv = document.createElement('div');
-                itemDiv.className = 'subtask-item';
-                itemDiv.dataset.subtaskId = newSubtask.id;
-                itemDiv.draggable = true;
-                itemDiv.style.cssText = 'display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm); background: var(--surface-color); border-radius: var(--radius-sm); margin-bottom: var(--space-xs); opacity: 0; animation: subtaskSlideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;';
+                    const listContainer = section.querySelector('.subtask-list');
+                    if (listContainer) {
+                        const div = document.createElement('div');
+                        div.className = 'subtask-item';
+                        div.dataset.subtaskId = newSubtask.id;
+                        div.draggable = true;
+                        div.style.cssText = 'display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm); background: var(--surface-color); border-radius: var(--radius-sm); margin-bottom: var(--space-xs); opacity: 0; transition: opacity 0.2s ease-out, transform 0.2s ease-out; transform: translateY(10px);';
 
-                itemDiv.innerHTML = `
-                    <div class="todo-grip subtask-grip" style="cursor: grab; color: var(--text-tertiary);">${UI.icons.grip}</div>
-                    <div class="subtask-checkbox" data-action="toggle-subtask" style="width: 18px; height: 18px;"></div>
-                    <span class="subtask-text" data-action="edit-subtask-inline" style="flex: 1; cursor: text;">${escapeHtml(newSubtask.text)}</span>
-                    <button class="subtask-delete" data-action="delete-subtask" style="opacity: 0.5;">${UI.icons.x}</button>
-                `;
+                        div.innerHTML = `
+                            <div class="todo-grip subtask-grip" style="cursor: grab; color: var(--text-tertiary);">${UI.icons.grip}</div>
+                            <div class="subtask-checkbox" data-action="toggle-subtask" style="width: 18px; height: 18px;"></div>
+                            <span class="subtask-text" data-action="edit-subtask-inline" style="flex: 1; cursor: text;">${escapeHtml(newSubtask.text)}</span>
+                            <button class="subtask-delete" data-action="delete-subtask" style="opacity: 0.5;">${UI.icons.x}</button>
+                        `;
 
-                // Find or create list container
-                let subtaskList = document.getElementById('subtask-list');
-                const addRow = input.closest('div[style*="background: var(--surface-color)"]');
-                const parentContainer = addRow ? addRow.parentElement : null;
+                        listContainer.appendChild(div);
 
-                if (parentContainer) {
-                    if (!subtaskList) {
-                        // First subtask: Create the list container
-                        subtaskList = document.createElement('div');
-                        subtaskList.className = 'subtask-list';
-                        subtaskList.id = 'subtask-list';
-                        subtaskList.style.cssText = 'max-height: none; overflow-y: visible; margin-bottom: var(--space-xs);'; // Add margin to separate from add row
-                        parentContainer.insertBefore(subtaskList, addRow);
-
-                        // Add margin to add-row since we now have items above it
-                        addRow.style.marginTop = 'var(--space-xs)';
+                        // Animate In
+                        requestAnimationFrame(() => {
+                            div.style.opacity = '1';
+                            div.style.transform = 'translateY(0)';
+                        });
                     }
-
-                    // Append new item to list
-                    subtaskList.appendChild(itemDiv);
-
-                    // Trigger animation (safari fix: force reflow)
-                    void itemDiv.offsetWidth;
-                    itemDiv.style.opacity = '1';
-                } else {
-                    // Fallback to full render if DOM structure is unexpected
-                    this.render();
                 }
 
-                // Clear input and keep focus
                 input.value = '';
-                input.focus();
+                // Focus remains on input since we didn't re-render
+            }
+        });
+
+        // Toggle Subtask Item
+        app.addEventListener('click', (e) => {
+            const checkbox = e.target.closest('[data-action="toggle-subtask"]');
+            if (checkbox && this.state.currentTodo) {
+                const item = checkbox.closest('.subtask-item');
+                const subtaskId = item.dataset.subtaskId;
+                TodoManager.toggleSubtaskItem(this.state.currentTodo, subtaskId);
+                this.render();
+            }
+        });
+
+        // Delete Subtask Item
+        app.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-action="delete-subtask"]');
+            if (btn && this.state.currentTodo) {
+                const item = btn.closest('.subtask-item');
+                const subtaskId = item.dataset.subtaskId;
+                TodoManager.deleteSubtaskItem(this.state.currentTodo, subtaskId);
+                this.render();
             }
         });
 
@@ -1775,7 +1928,7 @@ const App = {
             }
         });
 
-        // Subtask Drag-and-Drop: dragstart
+        // Subtask Drag-and-Drop: dragstart (Updated)
         app.addEventListener('dragstart', (e) => {
             const subtaskItem = e.target.closest('.subtask-item');
             if (subtaskItem && this.state.currentTodo) {
@@ -1785,9 +1938,9 @@ const App = {
             }
         });
 
-        // Subtask Drag-and-Drop: dragover
+        // Subtask Drag-and-Drop: dragover (Updated)
         app.addEventListener('dragover', (e) => {
-            const subtaskList = e.target.closest('#subtask-list');
+            const subtaskList = e.target.closest('.subtask-list');
             if (subtaskList && this.state.currentTodo) {
                 e.preventDefault();
                 e.dataTransfer.dropEffect = 'move';
@@ -1804,57 +1957,92 @@ const App = {
             }
         });
 
-        // Subtask Drag-and-Drop: dragend
+        // Subtask Drag-and-Drop: dragend (Updated)
         app.addEventListener('dragend', (e) => {
             const subtaskItem = e.target.closest('.subtask-item');
             if (subtaskItem && this.state.currentTodo) {
                 subtaskItem.classList.remove('dragging');
 
-                // Save new order
-                const subtaskList = document.getElementById('subtask-list');
+                const subtaskList = subtaskItem.closest('.subtask-list');
                 if (subtaskList) {
-                    // FIX: Only select subtask items with valid IDs (exclude add subtask row)
-                    const orderedIds = Array.from(subtaskList.querySelectorAll('.subtask-item[data-subtask-id]'))
-                        .map(item => item.dataset.subtaskId)
-                        .filter(id => id && id.startsWith('sub-')); // Validate ID format
-                    if (orderedIds.length > 0) {
-                        TodoManager.reorderSubtasks(this.state.currentTodo, orderedIds);
+                    const section = subtaskList.closest('[data-checklist-id]');
+                    if (section) {
+                        const checklistId = section.dataset.checklistId;
+                        const orderedIds = Array.from(subtaskList.querySelectorAll('.subtask-item[data-subtask-id]'))
+                            .map(item => item.dataset.subtaskId);
+
+                        if (orderedIds.length > 0) {
+                            TodoManager.reorderSubtaskItems(this.state.currentTodo, checklistId, orderedIds);
+                        }
                     }
                 }
             }
         });
 
-        // Todo detail modal: Save subtask text on blur (and revert to span)
-        app.addEventListener('blur', (e) => {
-            const subtaskInput = e.target.closest('.subtask-edit-input');
-            if (subtaskInput && this.state.currentTodo) {
-                const subtaskItem = subtaskInput.closest('.subtask-item');
-                if (subtaskItem) {
-                    const subtaskId = subtaskItem.dataset.subtaskId;
-                    const newText = subtaskInput.value.trim();
+        // Edit Subtask: Switch to Input (Click)
+        app.addEventListener('click', (e) => {
+            const span = e.target.closest('[data-action="edit-subtask-inline"]');
+            if (span && this.state.currentTodo) {
+                const text = span.textContent;
+                const input = document.createElement('input');
+                input.className = 'subtask-edit-input';
+                input.value = text;
+                input.style.cssText = 'flex: 1; font-size: inherit; color: inherit; background: transparent; border: none; outline: none; padding: 0;';
+                span.replaceWith(input);
+                input.focus();
+            }
+        });
 
-                    if (newText) {
-                        // Save the updated text
-                        TodoManager.updateSubtask(this.state.currentTodo, subtaskId, { text: newText });
+        // Edit Subtask: Save (Blur/Enter)
+        const saveSubtaskEdit = (input) => {
+            const item = input.closest('.subtask-item');
+            if (item && this.state.currentTodo) {
+                const subtaskId = item.dataset.subtaskId;
+                const newText = input.value.trim();
 
-                        // Convert input back to span (view mode)
-                        const span = document.createElement('span');
-                        span.className = 'subtask-text';
-                        span.setAttribute('data-action', 'edit-subtask-inline');
-                        span.style.cssText = 'flex: 1; cursor: text;';
-                        span.textContent = newText;
-                        subtaskInput.replaceWith(span);
-                    } else {
-                        // Delete empty subtasks with animation
-                        subtaskItem.classList.add('exiting');
-                        setTimeout(() => {
-                            TodoManager.deleteSubtask(this.state.currentTodo, subtaskId);
-                            this.render();
-                        }, 250);
+                if (newText) {
+                    TodoManager.updateSubtaskItem(this.state.currentTodo, subtaskId, { text: newText });
+
+                    // Manual DOM Update: Revert to span
+                    const span = document.createElement('span');
+                    span.className = 'subtask-text';
+                    span.dataset.action = 'edit-subtask-inline';
+
+                    // Check completion status for styling
+                    const checkbox = item.querySelector('.subtask-checkbox');
+                    const isCompleted = checkbox && checkbox.classList.contains('completed'); // Check visual state
+
+                    span.style.cssText = 'flex: 1; cursor: text;';
+                    if (isCompleted) {
+                        span.style.textDecoration = 'line-through';
+                        span.style.opacity = '0.6';
                     }
+
+                    span.textContent = newText;
+                    input.replaceWith(span);
+                } else {
+                    // Delete if empty
+                    TodoManager.deleteSubtaskItem(this.state.currentTodo, subtaskId);
+                    // Animate and Remove
+                    item.style.transition = 'all 0.2s ease';
+                    item.style.opacity = '0';
+                    setTimeout(() => item.remove(), 200);
                 }
             }
-        }, true); // Use capture phase for blur
+        };
+
+        app.addEventListener('blur', (e) => {
+            if (e.target.matches('.subtask-edit-input')) {
+                saveSubtaskEdit(e.target);
+            }
+        }, true);
+
+        app.addEventListener('keydown', (e) => {
+            if (e.target.matches('.subtask-edit-input') && e.key === 'Enter') {
+                e.preventDefault();
+                saveSubtaskEdit(e.target);
+            }
+        });
 
         // Todo detail modal: Save notes on blur (OPTIMIZED: No re-render!)
         app.addEventListener('blur', (e) => {
