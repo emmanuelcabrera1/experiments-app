@@ -239,6 +239,23 @@ const TodoManager = {
         return this.update(todoId, { checklists: newChecklists });
     },
 
+    /**
+     * Reorder checklists within a todo
+     * @param {string} todoId - ID of the todo
+     * @param {string[]} orderedChecklistIds - Array of checklist IDs in new order
+     */
+    reorderChecklists(todoId, orderedChecklistIds) {
+        const todo = this.load().find(t => t.id === todoId);
+        if (!todo) return null;
+
+        const original = todo.checklists || [];
+        const reordered = orderedChecklistIds
+            .map(id => original.find(cl => cl.id === id))
+            .filter(Boolean);
+
+        return this.update(todoId, { checklists: reordered });
+    },
+
     // --- Helpers ---
 
     /**

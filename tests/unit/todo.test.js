@@ -324,6 +324,27 @@ const TodoTests = {
     },
 
     /**
+     * Test: reorderChecklists changes checklist order
+     */
+    testReorderChecklists() {
+        console.log('\n📋 TEST: reorderChecklists()');
+        localStorage.removeItem(TodoManager.DB_KEY);
+        const todo = TodoManager.add({ title: 'Parent' });
+        TodoManager.addChecklist(todo.id, 'First');
+        TodoManager.addChecklist(todo.id, 'Second');
+        const withThird = TodoManager.addChecklist(todo.id, 'Third');
+
+        const ids = withThird.checklists.map(cl => cl.id);
+        // Reorder: Third, First, Second
+        TodoManager.reorderChecklists(todo.id, [ids[2], ids[0], ids[1]]);
+
+        const final = TodoManager.getAll().find(t => t.id === todo.id);
+        this.assertEqual(final.checklists[0].title, 'Third', 'Third is now first');
+        this.assertEqual(final.checklists[1].title, 'First', 'First is now second');
+        this.assertEqual(final.checklists[2].title, 'Second', 'Second is now third');
+    },
+
+    /**
      * Test: handles invalid data gracefully
      */
     testEdgeCases() {
@@ -366,6 +387,7 @@ const TodoTests = {
             this.testUpdateSubtaskItem();
             this.testDeleteSubtaskItem();
             this.testReorderSubtaskItems();
+            this.testReorderChecklists();
             this.testEdgeCases();
         } finally {
             this.teardown();

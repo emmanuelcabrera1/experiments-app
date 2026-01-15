@@ -337,6 +337,29 @@
     transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
 
+/* Checklist drag states */
+.checklist-section.checklist-dragging {
+    opacity: 0.5;
+    border: 2px dashed var(--primary-color, #6366f1);
+    transform: scale(0.98);
+    cursor: grabbing;
+    z-index: 100;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.checklist-grip {
+    transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.checklist-grip:hover {
+    color: var(--text-primary);
+    transform: scale(1.1);
+}
+
+.checklist-grip:active {
+    cursor: grabbing;
+}
+
 /* ========================================
    TODO DETAIL MODAL
 ======================================== */
