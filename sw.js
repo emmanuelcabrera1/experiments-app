@@ -4,7 +4,7 @@
  * Version-based cache invalidation
  */
 
-const CACHE_VERSION = 'v1.0.7';
+const CACHE_VERSION = 'v1.0.8';
 const CACHE_NAME = `experiments-${CACHE_VERSION}`;
 
 // Assets to cache on install (relative paths for GitHub Pages subdirectory support)
@@ -14,6 +14,7 @@ const STATIC_ASSETS = [
     './css/tokens.css',
     './css/base.css',
     './css/components.css',
+    './css/todo.css',
     './js/data.js',
     './js/ui.js',
     './js/app.js',
