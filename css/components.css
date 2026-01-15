@@ -266,7 +266,21 @@ button:focus-visible,
     touch-action: pan-y;
 }
 
+/* Todo rows inside swipe containers - match experiment-row behavior */
+.swipe-container .todo-row {
+    margin-bottom: 0;
+    position: relative;
+    z-index: 2;
+    background: var(--surface-color);
+    transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    touch-action: pan-y;
+}
+
 .swipe-container .experiment-row.swiping {
+    transition: none;
+}
+
+.swipe-container .todo-row.swiping {
     transition: none;
 }
 
@@ -345,6 +359,14 @@ button:focus-visible,
 
 .swipe-btn-complete:active {
     background: #388E3C;
+}
+
+.swipe-btn-hide {
+    background: #607D8B;
+}
+
+.swipe-btn-hide:active {
+    background: #455A64;
 }
 
 /* Button content */

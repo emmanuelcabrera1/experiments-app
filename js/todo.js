@@ -63,6 +63,7 @@ const TodoManager = {
             notes: todoData.notes || '',
             checklists: [], // Start with empty checklists array
             completed: false,
+            hidden: false,
             createdAt: new Date().toISOString()
         };
         // Add default checklist if subtasks provided
@@ -103,6 +104,13 @@ const TodoManager = {
         const todo = todos.find(t => t.id === id);
         if (!todo) return null;
         return this.update(id, { completed: !todo.completed });
+    },
+
+    toggleHidden(id) {
+        const todos = this.load();
+        const todo = todos.find(t => t.id === id);
+        if (!todo) return null;
+        return this.update(id, { hidden: !todo.hidden });
     },
 
     reorder(orderedIds) {
