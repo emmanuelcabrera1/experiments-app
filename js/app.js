@@ -1645,20 +1645,47 @@ const App = {
                 const newSubtask = updatedTodo.subtasks[updatedTodo.subtasks.length - 1];
 
                 // Create new subtask DOM element (using span for text to allow drag)
-                const subtaskHtml = `
-                    <div class="subtask-item" data-subtask-id="${escapeHtml(newSubtask.id)}" draggable="true" style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm); background: var(--surface-color); border-radius: var(--radius-sm); margin-bottom: var(--space-xs);">
-                        <div class="todo-grip subtask-grip" style="cursor: grab; color: var(--text-tertiary);">${UI.icons.grip}</div>
-                        <div class="subtask-checkbox" data-action="toggle-subtask" style="width: 18px; height: 18px;"></div>
-                        <span class="subtask-text" data-action="edit-subtask-inline" style="flex: 1; cursor: text;">${escapeHtml(newSubtask.text)}</span>
-                        <button class="subtask-delete" data-action="delete-subtask" style="opacity: 0.5;">${UI.icons.x}</button>
-                    </div>
+                // Create new subtask DOM element safely
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'subtask-item';
+                itemDiv.dataset.subtaskId = newSubtask.id;
+                itemDiv.draggable = true;
+                itemDiv.style.cssText = 'display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm); background: var(--surface-color); border-radius: var(--radius-sm); margin-bottom: var(--space-xs); opacity: 0; animation: subtaskSlideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;';
+
+                itemDiv.innerHTML = `
+                    <div class="todo-grip subtask-grip" style="cursor: grab; color: var(--text-tertiary);">${UI.icons.grip}</div>
+                    <div class="subtask-checkbox" data-action="toggle-subtask" style="width: 18px; height: 18px;"></div>
+                    <span class="subtask-text" data-action="edit-subtask-inline" style="flex: 1; cursor: text;">${escapeHtml(newSubtask.text)}</span>
+                    <button class="subtask-delete" data-action="delete-subtask" style="opacity: 0.5;">${UI.icons.x}</button>
                 `;
 
-                // Insert before the add-subtask row
-                const subtaskList = document.getElementById('subtask-list');
-                const addRow = input.closest('div[style*="display: flex"]');
-                if (subtaskList && addRow) {
-                    addRow.insertAdjacentHTML('beforebegin', subtaskHtml);
+                // Find or create list container
+                let subtaskList = document.getElementById('subtask-list');
+                const addRow = input.closest('div[style*="background: var(--surface-color)"]');
+                const parentContainer = addRow ? addRow.parentElement : null;
+
+                if (parentContainer) {
+                    if (!subtaskList) {
+                        // First subtask: Create the list container
+                        subtaskList = document.createElement('div');
+                        subtaskList.className = 'subtask-list';
+                        subtaskList.id = 'subtask-list';
+                        subtaskList.style.cssText = 'max-height: none; overflow-y: visible; margin-bottom: var(--space-xs);'; // Add margin to separate from add row
+                        parentContainer.insertBefore(subtaskList, addRow);
+
+                        // Add margin to add-row since we now have items above it
+                        addRow.style.marginTop = 'var(--space-xs)';
+                    }
+
+                    // Append new item to list
+                    subtaskList.appendChild(itemDiv);
+
+                    // Trigger animation (safari fix: force reflow)
+                    void itemDiv.offsetWidth;
+                    itemDiv.style.opacity = '1';
+                } else {
+                    // Fallback to full render if DOM structure is unexpected
+                    this.render();
                 }
 
                 // Clear input and keep focus
