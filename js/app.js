@@ -805,8 +805,8 @@ const App = {
                     </button>
                 </div>
                 <!-- Todo row -->
-                <div class="todo-item todo-row" data-todo-id="${escapeHtml(todo.id)}" draggable="true" role="listitem" aria-label="${escapeHtml(todo.title)}, ${statusText}${subtaskText}">
-                    <div class="todo-grip" aria-label="Drag to reorder" role="button" tabindex="0">${UI.icons.grip}</div>
+                <div class="todo-item todo-row" data-todo-id="${escapeHtml(todo.id)}" role="listitem" aria-label="${escapeHtml(todo.title)}, ${statusText}${subtaskText}">
+                    <div class="todo-grip" draggable="true" aria-label="Drag to reorder" role="button" tabindex="0">${UI.icons.grip}</div>
                     <div class="todo-checkbox ${todo.completed ? 'completed' : ''}" data-action="toggle-todo" role="checkbox" aria-checked="${todo.completed}" aria-label="Mark as ${todo.completed ? 'incomplete' : 'complete'}" tabindex="0">
                         ${todo.completed ? UI.icons.check : ''}
                     </div>
@@ -2285,6 +2285,10 @@ const App = {
             if (todoItem) {
                 e.dataTransfer.effectAllowed = 'move';
                 e.dataTransfer.setData('text/plain', todoItem.dataset.todoId);
+                // Set drag image to the whole row
+                if (e.dataTransfer.setDragImage) {
+                    e.dataTransfer.setDragImage(todoItem, 0, 0);
+                }
                 todoItem.classList.add('dragging');
             }
         });
@@ -2557,6 +2561,9 @@ const App = {
             // Don't start swipe if tapping a button
             if (e.target.closest('.swipe-btn')) return;
 
+            // Prevent swipe if touching the drag grip
+            if (e.target.closest('.todo-grip, .grip-handler')) return;
+
             const touch = e.touches[0];
             const row = container.querySelector('.experiment-row, .todo-row');
 
@@ -2568,6 +2575,13 @@ const App = {
                 }
             });
 
+            // Calculate widths dynamically
+            const leftActions = container.querySelector('.swipe-actions-left');
+            const rightActions = container.querySelector('.swipe-actions-right');
+
+            const leftWidth = leftActions ? leftActions.offsetWidth : 0;
+            const rightWidth = rightActions ? rightActions.offsetWidth : 0;
+
             this.swipeState = {
                 active: true,
                 startX: touch.clientX,
@@ -2576,6 +2590,10 @@ const App = {
                 direction: null,
                 container: container,
                 row: row,
+                leftWidth: leftWidth || 80,
+                rightWidth: rightWidth || 152,
+                hasLeft: !!leftActions,
+                hasRight: !!rightActions,
                 didSwipe: false,
                 startTime: Date.now(),
                 hapticTriggered: false
@@ -2607,10 +2625,27 @@ const App = {
 
             // Apply rubber-band effect beyond buttons width
             let effectiveX = deltaX;
-            if (Math.abs(deltaX) > BUTTONS_WIDTH) {
-                const overshoot = Math.abs(deltaX) - BUTTONS_WIDTH;
-                const dampenedOvershoot = overshoot * 0.15;  // Stronger resistance for smoother feel
-                effectiveX = (deltaX > 0 ? 1 : -1) * (BUTTONS_WIDTH + dampenedOvershoot);
+            const state = this.swipeState;
+
+            // Direction constraints and resistance
+            if (deltaX > 0) { // Swiping Right (reveal Left)
+                if (!state.hasLeft) {
+                    // Resist hard if no left actions
+                    effectiveX = deltaX * 0.1;
+                } else if (deltaX > state.leftWidth) {
+                    // Rubber band past width
+                    const overshoot = deltaX - state.leftWidth;
+                    effectiveX = state.leftWidth + (overshoot * 0.15);
+                }
+            } else { // Swiping Left (reveal Right)
+                if (!state.hasRight) {
+                    // Resist hard if no right actions
+                    effectiveX = deltaX * 0.1;
+                } else if (Math.abs(deltaX) > state.rightWidth) {
+                    // Rubber band past width
+                    const overshoot = Math.abs(deltaX) - state.rightWidth;
+                    effectiveX = -(state.rightWidth + (overshoot * 0.15));
+                }
             }
 
             this.swipeState.currentX = effectiveX;
@@ -2620,8 +2655,11 @@ const App = {
             row.classList.add('swiping');
             row.style.transform = `translateX(${effectiveX}px)`;
 
-            // Haptic feedback at commit threshold
-            if (!this.swipeState.hapticTriggered && Math.abs(effectiveX) >= COMMIT_THRESHOLD) {
+            // Haptic feedback at commit threshold (variable based on side)
+            const targetWidth = effectiveX > 0 ? state.leftWidth : state.rightWidth;
+            const threshold = targetWidth * 0.5; // Trigger at 50% open
+
+            if (!this.swipeState.hapticTriggered && Math.abs(effectiveX) >= threshold) {
                 triggerHaptic('strong');
                 this.swipeState.hapticTriggered = true;
             }
@@ -2633,7 +2671,7 @@ const App = {
         app.addEventListener('touchend', (e) => {
             if (!this.swipeState.active) return;
 
-            const { currentX, container, row, startTime } = this.swipeState;
+            const { currentX, container, row, startTime, leftWidth, rightWidth, hasLeft, hasRight } = this.swipeState;
 
             // Calculate velocity
             const elapsed = Date.now() - startTime;
@@ -2645,16 +2683,16 @@ const App = {
             // Handle swipe based on direction and state
             if (isRevealed) {
                 // Already open - check if we should close
-                const isRightOpen = row.dataset.revealed === 'right' || row.dataset.revealed === 'open'; // Support legacy 'open'
-                const isLeftOpen = row.dataset.revealed === 'left';
+                const isSwipedRight = row.dataset.revealed === 'right' || row.dataset.revealed === 'open'; // Opened left actions
+                const isSwipedLeft = row.dataset.revealed === 'left'; // Opened right actions
 
                 let shouldClose = false;
 
-                if (isRightOpen) {
-                    // Open to right (positive), need negative delta to close
+                if (isSwipedRight) {
+                    // Was open with positive transform. Need negative movement to close.
                     shouldClose = currentX < -COMMIT_THRESHOLD || (currentX < 0 && velocity > VELOCITY_THRESHOLD);
-                } else if (isLeftOpen) {
-                    // Open to left (negative), need positive delta to close
+                } else if (isSwipedLeft) {
+                    // Was open with negative transform. Need positive movement to close.
                     shouldClose = currentX > COMMIT_THRESHOLD || (currentX > 0 && velocity > VELOCITY_THRESHOLD);
                 }
 
@@ -2667,26 +2705,36 @@ const App = {
                 } else {
                     // Stay open (restore position)
                     row.classList.remove('swiping');
-                    if (isRightOpen) {
-                        row.style.transform = `translateX(${BUTTONS_WIDTH}px)`;
+                    if (isSwipedRight) {
+                        row.style.transform = `translateX(${leftWidth}px)`;
                     } else {
-                        row.style.transform = `translateX(-${BUTTONS_WIDTH}px)`;
+                        row.style.transform = `translateX(-${rightWidth}px)`;
                     }
                 }
             } else {
                 // Not open - check if swipe to open
-                if (currentX > COMMIT_THRESHOLD || (currentX > 0 && velocity > VELOCITY_THRESHOLD)) {
-                    // Swipe Right -> Open Left Actions
-                    row.classList.remove('swiping');
-                    row.style.transform = `translateX(${BUTTONS_WIDTH}px)`;
-                    row.dataset.revealed = 'right';
-                    triggerHaptic('medium');
-                } else if (currentX < -COMMIT_THRESHOLD || (currentX < 0 && velocity > VELOCITY_THRESHOLD)) {
-                    // Swipe Left -> Open Right Actions
-                    row.classList.remove('swiping');
-                    row.style.transform = `translateX(-${BUTTONS_WIDTH}px)`;
-                    row.dataset.revealed = 'left';
-                    triggerHaptic('medium');
+                if (currentX > 0 && hasLeft) {
+                    // Swiping Right -> Open Left Actions
+                    if (currentX > (leftWidth * 0.4) || (velocity > VELOCITY_THRESHOLD && currentX > 10)) {
+                        row.classList.remove('swiping');
+                        row.style.transform = `translateX(${leftWidth}px)`;
+                        row.dataset.revealed = 'right';
+                        triggerHaptic('medium');
+                    } else {
+                        row.classList.remove('swiping');
+                        row.style.transform = '';
+                    }
+                } else if (currentX < 0 && hasRight) {
+                    // Swiping Left -> Open Right Actions
+                    if (currentX < -(rightWidth * 0.4) || (velocity > VELOCITY_THRESHOLD && currentX < -10)) {
+                        row.classList.remove('swiping');
+                        row.style.transform = `translateX(-${rightWidth}px)`;
+                        row.dataset.revealed = 'left';
+                        triggerHaptic('medium');
+                    } else {
+                        row.classList.remove('swiping');
+                        row.style.transform = '';
+                    }
                 } else {
                     // Not enough movement - stay closed
                     row.classList.remove('swiping');
