@@ -15,6 +15,7 @@ const App = {
         currentTodo: null, // Currently viewed todo in detail modal
         isEditingTodoNotes: false, // Track if notes are in edit mode
         showCompleted: true, // Show/hide completed tasks (collapsible)
+        showHidden: false, // Show/hide hidden tasks section
         deletedTodo: null, // Temporarily store deleted todo for undo
         undoTimeout: null // Timeout ID for undo operation
     },
@@ -598,12 +599,20 @@ const App = {
      */
     renderTodoScreen() {
         const todos = TodoManager.getAll();
-        const activeTodos = todos.filter(t => !t.completed);
-        const completedTodos = todos.filter(t => t.completed);
+
+        // Filter: visible vs hidden
+        const visibleTodos = todos.filter(t => !t.hidden);
+        const hiddenTodos = todos.filter(t => t.hidden);
+
+        // Active and completed from visible only
+        const activeTodos = visibleTodos.filter(t => !t.completed);
+        const completedTodos = visibleTodos.filter(t => t.completed);
 
         let content = '';
         if (todos.length === 0) {
             content = UI.emptyState('No Tasks Yet', 'Tap the + button to create your first task and start getting things done.');
+        } else if (visibleTodos.length === 0 && hiddenTodos.length > 0) {
+            content = UI.emptyState('All Tasks Hidden', 'Open the Hidden section below to see your hidden tasks.');
         } else {
             content = `
                 <div class="todo-list" id="todo-list" role="list" aria-label="Active tasks">
@@ -625,6 +634,21 @@ const App = {
             `;
         }
 
+        // Hidden section (always show if there are hidden todos)
+        const hiddenSection = hiddenTodos.length > 0 ? `
+            <div style="margin-top: var(--space-lg);">
+                <button style="display: flex; width: 100%; align-items: center; justify-content: space-between; margin-bottom: var(--space-sm); cursor: pointer; background: none; border: none; padding: 0; text-align: left;" data-action="toggle-hidden" aria-expanded="${this.state.showHidden}" aria-label="${this.state.showHidden ? 'Hide' : 'Show'} hidden tasks">
+                    <p class="subheader" style="margin: 0; color: var(--text-tertiary);">HIDDEN (${hiddenTodos.length})</p>
+                    <span style="color: var(--text-tertiary); font-size: 20px; transform: rotate(${this.state.showHidden ? '180deg' : '0deg'}); transition: transform 0.2s;" aria-hidden="true">▼</span>
+                </button>
+                <div style="max-height: ${this.state.showHidden ? '10000px' : '0'}; opacity: ${this.state.showHidden ? '1' : '0'}; ${!this.state.showHidden ? 'display: none;' : ''}">
+                    <div class="todo-list" role="list" aria-label="Hidden tasks" style="opacity: 0.7;">
+                        ${hiddenTodos.map(t => this.renderTodoItem(t)).join('')}
+                    </div>
+                </div>
+            </div>
+        ` : '';
+
         return `
             <div class="screen ${this.state.currentTab === 'todo' ? 'active' : ''}" id="screen-todo">
                 <div class="header">
@@ -632,6 +656,7 @@ const App = {
                     <p class="subheader">Get things done</p>
                 </div>
                 ${content}
+                ${hiddenSection}
             </div>
         `;
     },
@@ -767,17 +792,29 @@ const App = {
 
         const statusText = todo.completed ? 'completed' : 'not completed';
         const subtaskText = subtaskCount > 0 ? `, ${completedSubtasks} of ${subtaskCount} subtasks completed` : '';
+        const hideLabel = todo.hidden ? 'Unhide' : 'Hide';
+        const hideIcon = todo.hidden ? '👁️' : '👁️‍🗨️';
 
         return `
-            <div class="todo-item" data-todo-id="${escapeHtml(todo.id)}" draggable="true" role="listitem" aria-label="${escapeHtml(todo.title)}, ${statusText}${subtaskText}">
-                <div class="todo-grip" aria-label="Drag to reorder" role="button" tabindex="0">${UI.icons.grip}</div>
-                <div class="todo-checkbox ${todo.completed ? 'completed' : ''}" data-action="toggle-todo" role="checkbox" aria-checked="${todo.completed}" aria-label="Mark as ${todo.completed ? 'incomplete' : 'complete'}" tabindex="0">
-                    ${todo.completed ? UI.icons.check : ''}
+            <div class="swipe-container" data-swipe-id="${escapeHtml(todo.id)}" data-swipe-type="todo" aria-label="Swipe to reveal actions">
+                <!-- Left actions (swipe right reveals) -->
+                <div class="swipe-actions-left">
+                    <button class="swipe-btn swipe-btn-hide" data-action="hide" aria-label="${hideLabel} task">
+                        <span class="swipe-btn-icon">${hideIcon}</span>
+                        <span class="swipe-btn-label">${hideLabel}</span>
+                    </button>
                 </div>
-                <div class="todo-content" data-action="open-detail" role="button" tabindex="0">
-                    <div class="todo-title ${todo.completed ? 'completed' : ''}">${escapeHtml(todo.title)}</div>
+                <!-- Todo row -->
+                <div class="todo-item todo-row" data-todo-id="${escapeHtml(todo.id)}" draggable="true" role="listitem" aria-label="${escapeHtml(todo.title)}, ${statusText}${subtaskText}">
+                    <div class="todo-grip" aria-label="Drag to reorder" role="button" tabindex="0">${UI.icons.grip}</div>
+                    <div class="todo-checkbox ${todo.completed ? 'completed' : ''}" data-action="toggle-todo" role="checkbox" aria-checked="${todo.completed}" aria-label="Mark as ${todo.completed ? 'incomplete' : 'complete'}" tabindex="0">
+                        ${todo.completed ? UI.icons.check : ''}
+                    </div>
+                    <div class="todo-content" data-action="open-detail" role="button" tabindex="0">
+                        <div class="todo-title ${todo.completed ? 'completed' : ''}">${escapeHtml(todo.title)}</div>
+                    </div>
+                    ${subtaskCount > 0 ? `<span class="todo-subtask-count" aria-label="${completedSubtasks} of ${subtaskCount} subtasks completed">${completedSubtasks}/${subtaskCount}</span>` : ''}
                 </div>
-                ${subtaskCount > 0 ? `<span class="todo-subtask-count" aria-label="${completedSubtasks} of ${subtaskCount} subtasks completed">${completedSubtasks}/${subtaskCount}</span>` : ''}
             </div>
         `;
     },
@@ -1522,6 +1559,16 @@ const App = {
                         }, 300);
                     }
                 }
+                return;
+            }
+        });
+
+        // Toggle hidden section visibility
+        app.addEventListener('click', (e) => {
+            if (e.target.closest('[data-action="toggle-hidden"]')) {
+                e.stopPropagation();
+                this.state.showHidden = !this.state.showHidden;
+                this.render();
                 return;
             }
         });
@@ -2511,10 +2558,10 @@ const App = {
             if (e.target.closest('.swipe-btn')) return;
 
             const touch = e.touches[0];
-            const row = container.querySelector('.experiment-row');
+            const row = container.querySelector('.experiment-row, .todo-row');
 
-            // Close any other open swipes
-            document.querySelectorAll('.experiment-row[data-revealed]').forEach(otherRow => {
+            // Close any other open swipes (both experiments and todos)
+            document.querySelectorAll('.experiment-row[data-revealed], .todo-row[data-revealed]').forEach(otherRow => {
                 if (otherRow !== row) {
                     otherRow.style.transform = '';
                     delete otherRow.dataset.revealed;
@@ -2663,10 +2710,11 @@ const App = {
 
             const action = btn.dataset.action;
             const container = btn.closest('.swipe-container');
-            const experimentId = container?.dataset.swipeId;
-            const row = container?.querySelector('.experiment-row');
+            const swipeId = container?.dataset.swipeId;
+            const swipeType = container?.dataset.swipeType; // 'todo' or undefined (experiment)
+            const row = container?.querySelector('.experiment-row, .todo-row');
 
-            if (!experimentId || !row) return;
+            if (!swipeId || !row) return;
 
             // Close the swipe first
             row.style.transform = '';
@@ -2675,19 +2723,31 @@ const App = {
             // Trigger haptic feedback
             triggerHaptic('success');
 
-            // Execute action
+            // Handle todo actions
+            if (swipeType === 'todo') {
+                if (action === 'hide') {
+                    const todo = TodoManager.getAll().find(t => t.id === swipeId);
+                    const isHidden = todo?.hidden;
+                    TodoManager.toggleHidden(swipeId);
+                    this.render();
+                    this.showToast(isHidden ? 'Task unhidden' : 'Task hidden');
+                }
+                return;
+            }
+
+            // Execute experiment action
             switch (action) {
                 case 'delete':
-                    this.handleSwipeDelete(experimentId, container);
+                    this.handleSwipeDelete(swipeId, container);
                     break;
                 case 'archive':
-                    this.handleSwipeArchive(experimentId, container);
+                    this.handleSwipeArchive(swipeId, container);
                     break;
                 case 'edit':
-                    this.handleEditExperiment(experimentId);
+                    this.handleEditExperiment(swipeId);
                     break;
                 case 'complete':
-                    this.handleCompleteExperiment(experimentId);
+                    this.handleCompleteExperiment(swipeId);
                     break;
             }
         });
@@ -2702,7 +2762,7 @@ const App = {
             }
 
             // Check if click is on experiment row itself (not buttons)
-            const row = e.target.closest('.experiment-row');
+            const row = e.target.closest('.experiment-row, .todo-row');
             if (row && row.dataset.revealed) {
                 // Close this revealed swipe
                 e.stopPropagation();
@@ -2713,7 +2773,7 @@ const App = {
 
             // Close all revealed swipes if clicking anywhere else
             if (!e.target.closest('.swipe-container')) {
-                document.querySelectorAll('.experiment-row[data-revealed]').forEach(row => {
+                document.querySelectorAll('.experiment-row[data-revealed], .todo-row[data-revealed]').forEach(row => {
                     row.style.transform = '';
                     delete row.dataset.revealed;
                 });
@@ -2723,7 +2783,7 @@ const App = {
         // Close other swipes when opening a new one (already handled in touchstart)
         // Add helper to close all swipes
         this.closeAllSwipes = () => {
-            document.querySelectorAll('.experiment-row[data-revealed]').forEach(row => {
+            document.querySelectorAll('.experiment-row[data-revealed], .todo-row[data-revealed]').forEach(row => {
                 row.style.transform = '';
                 delete row.dataset.revealed;
             });
