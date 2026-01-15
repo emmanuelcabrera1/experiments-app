@@ -36,6 +36,12 @@
     color: var(--text-tertiary);
     cursor: grab;
     flex-shrink: 0;
+    transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.todo-grip:hover {
+    color: var(--text-primary);
+    transform: scale(1.1);
 }
 
 .todo-grip:active {
@@ -102,13 +108,28 @@
 ======================================== */
 
 .todo-item.dragging {
-    opacity: 0.5;
-    box-shadow: var(--shadow-lg);
-    transform: scale(1.02);
+    opacity: 0.6;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    transform: scale(1.05) rotate(2deg);
+    cursor: grabbing;
+    z-index: 1000;
+    background: var(--surface-color);
+    border: 2px solid var(--active-bg);
 }
 
 .todo-item.drag-over {
     border: 2px dashed var(--active-bg);
+    background: var(--inactive-bg);
+}
+
+/* Subtask drag states */
+.subtask-item.dragging {
+    opacity: 0.6;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    transform: scale(1.03);
+    cursor: grabbing;
+    z-index: 100;
+    border: 1px solid var(--active-bg);
 }
 
 /* ========================================

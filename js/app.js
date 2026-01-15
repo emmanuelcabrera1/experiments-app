@@ -22,6 +22,19 @@ const App = {
     // Flag to prevent duplicate event bindings
     eventsInitialized: false,
 
+    // Debounce utility for performance optimization
+    debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    },
+
     /**
      * Initialize the app
      */
@@ -499,18 +512,20 @@ const App = {
         const renderTodoItem = (todo) => {
             const subtaskCount = (todo.subtasks || []).length;
             const completedSubtasks = (todo.subtasks || []).filter(s => s.completed).length;
+            const statusText = todo.completed ? 'completed' : 'not completed';
+            const subtaskText = subtaskCount > 0 ? `, ${completedSubtasks} of ${subtaskCount} subtasks completed` : '';
 
             return `
-                <div class="todo-item" data-todo-id="${escapeHtml(todo.id)}" draggable="true">
-                    <div class="todo-grip">${UI.icons.grip}</div>
-                    <div class="todo-checkbox ${todo.completed ? 'completed' : ''}" data-action="toggle-todo">
+                <div class="todo-item" data-todo-id="${escapeHtml(todo.id)}" draggable="true" role="listitem" aria-label="${escapeHtml(todo.title)}, ${statusText}${subtaskText}">
+                    <div class="todo-grip" aria-label="Drag to reorder" role="button" tabindex="0">${UI.icons.grip}</div>
+                    <div class="todo-checkbox ${todo.completed ? 'completed' : ''}" data-action="toggle-todo" role="checkbox" aria-checked="${todo.completed}" aria-label="Mark as ${todo.completed ? 'incomplete' : 'complete'}" tabindex="0">
                         ${todo.completed ? UI.icons.check : ''}
                     </div>
-                    <div class="todo-content" data-action="open-detail">
+                    <div class="todo-content" data-action="open-detail" role="button" tabindex="0">
                         <div class="todo-title ${todo.completed ? 'completed' : ''}">${escapeHtml(todo.title)}</div>
                         ${subtaskCount > 0 ? `<div class="todo-meta">${completedSubtasks}/${subtaskCount} subtasks</div>` : ''}
                     </div>
-                    ${subtaskCount > 0 ? `<span class="todo-subtask-count">${completedSubtasks}/${subtaskCount}</span>` : ''}
+                    ${subtaskCount > 0 ? `<span class="todo-subtask-count" aria-label="${completedSubtasks} of ${subtaskCount} subtasks completed">${completedSubtasks}/${subtaskCount}</span>` : ''}
                 </div>
             `;
         };
@@ -520,17 +535,17 @@ const App = {
             content = UI.emptyState('No Tasks Yet', 'Tap the + button to create your first task and start getting things done.');
         } else {
             content = `
-                <div class="todo-list" id="todo-list">
+                <div class="todo-list" id="todo-list" role="list" aria-label="Active tasks">
                     ${activeTodos.map(renderTodoItem).join('')}
                 </div>
                 ${completedTodos.length > 0 ? `
                     <div style="margin-top: var(--space-lg);">
-                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-sm); cursor: pointer;" data-action="toggle-completed">
+                        <button style="display: flex; width: 100%; align-items: center; justify-content: space-between; margin-bottom: var(--space-sm); cursor: pointer; background: none; border: none; padding: 0; text-align: left;" data-action="toggle-completed" aria-expanded="${this.state.showCompleted}" aria-label="${this.state.showCompleted ? 'Hide' : 'Show'} completed tasks">
                             <p class="subheader" style="margin: 0;">COMPLETED (${completedTodos.length})</p>
-                            <span style="color: var(--text-tertiary); font-size: 20px; transform: rotate(${this.state.showCompleted ? '180deg' : '0deg'}); transition: transform 0.2s;">▼</span>
-                        </div>
+                            <span style="color: var(--text-tertiary); font-size: 20px; transform: rotate(${this.state.showCompleted ? '180deg' : '0deg'}); transition: transform 0.2s;" aria-hidden="true">▼</span>
+                        </button>
                         ${this.state.showCompleted ? `
-                            <div class="todo-list">
+                            <div class="todo-list" role="list" aria-label="Completed tasks">
                                 ${completedTodos.map(renderTodoItem).join('')}
                             </div>
                         ` : ''}
@@ -1477,6 +1492,40 @@ const App = {
                     const newInput = document.getElementById('add-subtask-text');
                     if (newInput) newInput.focus();
                 }, 50);
+            }
+        });
+
+        // Keyboard shortcuts for todo modal (power user features)
+        app.addEventListener('keydown', (e) => {
+            // Only apply when todo modal is open
+            const todoModal = document.getElementById('modal-todo-detail');
+            if (!todoModal || !todoModal.classList.contains('active')) return;
+
+            // Don't interfere with input fields (except for save shortcuts)
+            const isInInput = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA';
+
+            // Escape: Close modal (trigger close button to ensure save logic runs)
+            if (e.key === 'Escape' && !isInInput) {
+                e.preventDefault();
+                const closeBtn = todoModal.querySelector('[data-close="modal-todo-detail"]');
+                if (closeBtn) closeBtn.click();
+                return;
+            }
+
+            // Ctrl/Cmd + Enter: Quick save and close
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                const saveBtn = document.getElementById('btn-save-todo');
+                if (saveBtn) saveBtn.click();
+                return;
+            }
+
+            // Ctrl/Cmd + Backspace: Delete task
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Backspace') {
+                e.preventDefault();
+                const deleteBtn = document.getElementById('btn-delete-todo');
+                if (deleteBtn) deleteBtn.click();
+                return;
             }
         });
 
