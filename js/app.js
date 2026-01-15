@@ -658,7 +658,7 @@ const App = {
 
         return `
             <div class="modal-overlay active" id="modal-todo-detail">
-                <div class="modal-sheet" style="max-height: 95vh; height: 95vh; overflow-y: auto; display: flex; flex-direction: column;">
+                <div class="modal-sheet" style="max-height: 75vh; overflow-y: auto; display: flex; flex-direction: column; padding-top: var(--space-xl);">
 
                     <!-- Header: Checkbox + Title + Close -->
                     <div style="display: flex; align-items: flex-start; gap: var(--space-md); margin-bottom: var(--space-lg); flex-shrink: 0;">
@@ -738,7 +738,7 @@ const App = {
                             ${this.state.isEditingTodoNotes ? `
                                 <textarea id="todo-notes-edit" placeholder="Add notes, links, or details..." style="width: 100%; min-height: 500px; padding: var(--space-md); background: var(--inactive-bg); border: 2px solid var(--accent-color); border-radius: var(--radius-md); font-size: var(--text-sm); resize: vertical; color: inherit;">${escapeHtml(todo.notes || '')}</textarea>
                             ` : `
-                                <div id="notes-view" style="min-height: 100px; padding: var(--space-md); background: var(--inactive-bg); border-radius: var(--radius-md); cursor: pointer; font-size: var(--text-sm); color: inherit;">
+                                <div id="notes-view" style="min-height: 60px; padding: var(--space-md); background: var(--inactive-bg); border-radius: var(--radius-md); cursor: pointer; font-size: var(--text-sm); color: inherit; text-align: left;">
                                     ${todo.notes ? formatTextWithLinks(todo.notes) : '<span style="color: var(--text-tertiary); font-style: italic;">Add notes, links, or details...</span>'}
                                 </div>
                             `}
@@ -2056,7 +2056,7 @@ const App = {
                 // Create view div to replace textarea
                 const viewDiv = document.createElement('div');
                 viewDiv.id = 'notes-view';
-                viewDiv.style.cssText = 'min-height: 100px; padding: var(--space-md); background: var(--inactive-bg); border-radius: var(--radius-md); cursor: pointer; font-size: var(--text-sm); color: inherit;';
+                viewDiv.style.cssText = 'min-height: 60px; padding: var(--space-md); background: var(--inactive-bg); border-radius: var(--radius-md); cursor: pointer; font-size: var(--text-sm); color: inherit; text-align: left;';
                 viewDiv.innerHTML = newNotes
                     ? formatTextWithLinks(newNotes)
                     : '<span style="color: var(--text-tertiary); font-style: italic;">Add notes, links, or details...</span>';

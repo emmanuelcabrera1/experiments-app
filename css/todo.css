@@ -384,6 +384,8 @@
 .note-link {
     color: var(--active-bg);
     text-decoration: underline;
+    display: inline;
+    word-break: break-all;
 }
 
 /* ========================================
