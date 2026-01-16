@@ -849,7 +849,7 @@ const App = {
                     <div class="todo-content" data-action="open-detail" role="button" tabindex="0">
                         <div class="todo-title ${todo.completed ? 'completed' : ''}">${escapeHtml(todo.title)}</div>
                     </div>
-                    ${todo.sourceSubtaskId ? `<span class="todo-followup-icon" data-action="goto-source" data-source-task-id="${todo.sourceTaskId}" data-source-subtask-id="${todo.sourceSubtaskId}" style="color: var(--accent-color); opacity: 0.8; cursor: pointer; font-size: 14px; margin-right: 6px;" title="Follow-up task - click to view source" aria-label="Follow-up task">↪</span>` : ''}
+                    ${todo.sourceSubtaskId ? `<span class="todo-followup-icon" data-action="goto-source" data-source-task-id="${todo.sourceTaskId}" data-source-subtask-id="${todo.sourceSubtaskId}" style="color: var(--accent-color); opacity: 0.8; cursor: pointer; font-size: 14px; margin-right: 3px;" title="Follow-up task - click to view source" aria-label="Follow-up task">↪</span>` : ''}
                     ${subtaskCount > 0 ? `<span class="todo-subtask-count" aria-label="${completedSubtasks} of ${subtaskCount} subtasks completed">${completedSubtasks}/${subtaskCount}</span>` : ''}
                 </div>
             </div>

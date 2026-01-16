@@ -608,7 +608,7 @@
     opacity: 0.8;
     cursor: pointer;
     font-size: 14px;
-    margin-right: 6px;
+    margin-right: 3px;
     transition: opacity 0.2s ease, transform 0.2s ease;
     display: inline-flex;
     align-items: center;
