@@ -819,7 +819,6 @@ const App = {
                 </div>
                 <!-- Todo row -->
                 <div class="todo-item todo-row" data-todo-id="${escapeHtml(todo.id)}" role="listitem" aria-label="${escapeHtml(todo.title)}, ${statusText}${subtaskText}">
-                    <div class="todo-grip" draggable="true" aria-label="Drag to reorder" role="button" tabindex="0">${UI.icons.grip}</div>
                     <div class="todo-checkbox ${todo.completed ? 'completed' : ''}" data-action="toggle-todo" role="checkbox" aria-checked="${todo.completed}" aria-label="Mark as ${todo.completed ? 'incomplete' : 'complete'}" tabindex="0">
                         ${todo.completed ? UI.icons.check : ''}
                     </div>
