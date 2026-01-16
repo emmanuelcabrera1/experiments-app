@@ -53,6 +53,12 @@ const TodoManager = {
                         }
                     });
                 }
+
+                // MIGRATION: Add delegated property (Split Hidden Tasks)
+                if (!t.hasOwnProperty('delegated')) {
+                    t.delegated = false;
+                    needsSave = true;
+                }
             });
 
             // Save if migrations were applied
@@ -93,6 +99,7 @@ const TodoManager = {
             checklists: [], // Start with empty checklists array
             completed: false,
             hidden: todoData.hidden || false,
+            delegated: todoData.delegated || false,
             createdAt: new Date().toISOString(),
             sourceSubtaskId: todoData.sourceSubtaskId || null,
             sourceTaskId: todoData.sourceTaskId || null

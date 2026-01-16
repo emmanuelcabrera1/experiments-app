@@ -668,19 +668,40 @@ const App = {
         }
 
         // Hidden section (always show if there are hidden todos)
-        const hiddenSection = hiddenTodos.length > 0 ? `
-            <div style="margin-top: var(--space-lg);">
-                <button style="display: flex; width: 100%; align-items: center; justify-content: space-between; margin-bottom: var(--space-sm); cursor: pointer; background: none; border: none; padding: 0; text-align: left;" data-action="toggle-hidden" aria-expanded="${this.state.showHidden}" aria-label="${this.state.showHidden ? 'Hide' : 'Show'} hidden tasks">
-                    <p class="subheader" style="margin: 0; color: var(--text-tertiary);">HIDDEN (${hiddenTodos.length})</p>
-                    <span style="color: var(--text-tertiary); font-size: 20px; font-weight: bold;" aria-hidden="true">${this.state.showHidden ? '−' : '+'}</span>
-                </button>
-                <div style="max-height: ${this.state.showHidden ? '10000px' : '0'}; opacity: ${this.state.showHidden ? '1' : '0'}; ${!this.state.showHidden ? 'display: none;' : ''}">
-                    <div class="todo-list" role="list" aria-label="Hidden tasks" style="opacity: 0.7;">
-                        ${hiddenTodos.map(t => this.renderTodoItem(t)).join('')}
+        let hiddenSectionContent = '';
+        if (hiddenTodos.length > 0) {
+            const personalUnknown = hiddenTodos.filter(t => !t.delegated);
+            const delegated = hiddenTodos.filter(t => t.delegated);
+
+            hiddenSectionContent += `
+                <div style="margin-top: var(--space-lg);">
+                    <button style="display: flex; width: 100%; align-items: center; justify-content: space-between; margin-bottom: var(--space-sm); cursor: pointer; background: none; border: none; padding: 0; text-align: left;" data-action="toggle-hidden" aria-expanded="${this.state.showHidden}" aria-label="${this.state.showHidden ? 'Hide' : 'Show'} hidden tasks">
+                        <p class="subheader" style="margin: 0; color: var(--text-tertiary);">HIDDEN (${hiddenTodos.length})</p>
+                        <span style="color: var(--text-tertiary); font-size: 20px; font-weight: bold;" aria-hidden="true">${this.state.showHidden ? '−' : '+'}\u003c/span>
+                    </button>
+                    <div style="max-height: ${this.state.showHidden ? '10000px' : '0'}; opacity: ${this.state.showHidden ? '1' : '0'}; ${!this.state.showHidden ? 'display: none;' : ''}">
+                        
+                        <!-- Personal Hidden Tasks -->
+                        <div class="todo-list" role="list" aria-label="Personal hidden tasks" style="opacity: 0.7;">
+                            ${personalUnknown.map(t => this.renderTodoItem(t)).join('')}
+                        </div>
+
+                        <!-- Spacer / Delegated Section -->
+                        ${(personalUnknown.length > 0 && delegated.length > 0) ? '<div class="delegation-separator" style="height: 40px;"></div>' : ''}
+
+                        <!-- Delegated Hidden Tasks -->
+                        ${delegated.length > 0 ? `
+                            <div class="todo-list" role="list" aria-label="Delegated hidden tasks" style="opacity: 0.7;">
+                                ${delegated.map(t => this.renderTodoItem(t)).join('')}
+                            </div>
+                        ` : ''}
+
                     </div>
                 </div>
-            </div>
-        ` : '';
+            `;
+        }
+
+        const hiddenSection = hiddenSectionContent;
 
         const today = new Date();
         const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
@@ -748,7 +769,17 @@ const App = {
                         </div>
                         <div style="flex: 1;">
                             <input type="text" id="todo-detail-title" class="todo-detail-title" value="${escapeHtml(todo.title)}" placeholder="What do you want to accomplish?" maxlength="100" style="width: 100%; font-size: var(--text-xl); font-weight: var(--weight-bold); border: none; background: transparent; padding: 0; color: inherit;">
-                            <div style="font-size: var(--text-xs); color: var(--text-tertiary); letter-spacing: 0.5px; margin-top: 4px;">${formattedDate}</div>
+                            <div style="display: flex; align-items: center; gap: 12px; margin-top: 8px;">
+                                <div style="font-size: var(--text-xs); color: var(--text-tertiary); letter-spacing: 0.5px;">${formattedDate}</div>
+                                
+                                ${todo.hidden ? `
+                                    <!-- Delegated Toggle -->
+                                    <div class="delegated-toggle" style="display: flex; background: var(--inactive-bg); border-radius: 6px; padding: 2px;">
+                                        <button type="button" data-action="set-delegated-false" style="border: none; background: ${!todo.delegated ? 'var(--surface-color)' : 'transparent'}; box-shadow: ${!todo.delegated ? '0 1px 2px rgba(0,0,0,0.1)' : 'none'}; border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: 600; color: ${!todo.delegated ? 'var(--text-primary)' : 'var(--text-tertiary)'}; cursor: pointer;">Me</button>
+                                        <button type="button" data-action="set-delegated-true" style="border: none; background: ${todo.delegated ? 'var(--surface-color)' : 'transparent'}; box-shadow: ${todo.delegated ? '0 1px 2px rgba(0,0,0,0.1)' : 'none'}; border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: 600; color: ${todo.delegated ? 'var(--text-primary)' : 'var(--text-tertiary)'}; cursor: pointer;">Delegated</button>
+                                    </div>
+                                ` : ''}
+                            </div>
                         </div>
                         <button class="modal-close" aria-label="Close modal" data-close="modal-todo-detail" style="flex-shrink: 0;">${UI.icons.x}</button>
                     </div>
@@ -858,6 +889,12 @@ const App = {
                         <span class="swipe-btn-icon">${hideIcon}</span>
                         <span class="swipe-btn-label">${hideLabel}</span>
                     </button>
+                    ${todo.hidden ? `
+                        <button class="swipe-btn" data-action="toggle-delegated" style="background-color: ${todo.delegated ? '#2196F3' : '#9C27B0'};" aria-label="${todo.delegated ? 'Reclaim' : 'Delegate'} task">
+                            <span class="swipe-btn-icon">${todo.delegated ? '👤' : '👋'}</span>
+                            <span class="swipe-btn-label">${todo.delegated ? 'Me' : 'Delegate'}</span>
+                        </button>
+                    ` : ''}
                 </div>
                 <!-- Right actions (swipe left reveals) -->
                 <div class="swipe-actions-right">
@@ -1744,6 +1781,43 @@ const App = {
                 this.state.currentTodo = null;
                 this.state.isEditingTodoNotes = false;
                 this.render();
+                return;
+            }
+        });
+
+        // Todo detail modal: Delegated Toggle
+        app.addEventListener('click', (e) => {
+            const setDelegatedFalse = e.target.closest('[data-action="set-delegated-false"]');
+            const setDelegatedTrue = e.target.closest('[data-action="set-delegated-true"]');
+
+            if (setDelegatedFalse || setDelegatedTrue) {
+                e.stopPropagation();
+                if (this.state.currentTodo) {
+                    const isDelegated = !!setDelegatedTrue;
+                    TodoManager.update(this.state.currentTodo, { delegated: isDelegated });
+                    this.render(); // Re-render to update toggle styles and background list
+                }
+                return;
+            }
+        });
+
+        // Swipe Action: Delegated Toggle
+        app.addEventListener('click', (e) => {
+            const toggleDelegatedBtn = e.target.closest('[data-action="toggle-delegated"]');
+            if (toggleDelegatedBtn) {
+                e.stopPropagation();
+                const swipeContainer = toggleDelegatedBtn.closest('.swipe-container');
+                const todoId = swipeContainer ? swipeContainer.dataset.swipeId : null;
+
+                if (todoId) {
+                    const todo = TodoManager.getAll().find(t => t.id === todoId);
+                    if (todo) {
+                        const newDelegatedState = !todo.delegated;
+                        TodoManager.update(todoId, { delegated: newDelegatedState });
+                        this.refreshTodoScreenOnly();
+                        this.showToast(newDelegatedState ? 'Task Delegated' : 'Task Reclaimed');
+                    }
+                }
                 return;
             }
         });
