@@ -15,6 +15,9 @@
 
 .todo-list .swipe-container {
     margin-bottom: 0;
+    overflow: hidden;
+    isolation: isolate;
+    /* Creates new stacking context */
 }
 
 .todo-item {
