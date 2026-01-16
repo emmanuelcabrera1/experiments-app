@@ -3668,7 +3668,7 @@ const App = {
      */
     async loadAppVersion() {
         try {
-            const response = await fetch('./manifest.json');
+            const response = await fetch(`./manifest.json?v=${Date.now()}`);
             const manifest = await response.json();
             this.state.appVersion = manifest.version || '1.0.0';
         } catch {
