@@ -2675,8 +2675,9 @@ const App = {
 
             // Hard limits with slight elasticity (optional, but good for feel)
             // For now, sticking to 1:1 until max width, then resistance
-            if (newX > leftWidth) newX = leftWidth + (newX - leftWidth) * 0.2;
-            if (newX < -rightWidth) newX = -rightWidth + (newX + rightWidth) * 0.2;
+            // Rubber banding: heavier resistance (0.15) past snap points
+            if (newX > leftWidth) newX = leftWidth + (newX - leftWidth) * 0.15;
+            if (newX < -rightWidth) newX = -rightWidth + (newX + rightWidth) * 0.15;
 
             this.swipeState.currentX = newX;
 
@@ -2698,8 +2699,8 @@ const App = {
 
             row.classList.remove('swiping');
 
-            // "Slow Glide" transition
-            row.style.transition = 'transform 0.8s cubic-bezier(0.25, 1, 0.5, 1)';
+            // Quintic Ease Out: faster start, very soft landing
+            row.style.transition = 'transform 0.6s cubic-bezier(0.23, 1, 0.32, 1)';
 
             let targetX = 0;
             let revealedState = null;
