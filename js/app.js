@@ -2665,12 +2665,10 @@ const App = {
             let hasLeft = !!leftActions;
             let hasRight = !!rightActions;
 
-            // FIX: Explicitly enforce config for known types to avoid DOM/layout race conditions
-            if (swipeType === 'todo') {
-                hasLeft = true;
-                leftWidth = 80; // Button (60) + gap (8) + padding (8) + buffer
-                hasRight = false; // Todos don't have right actions currently
-            }
+            // DYNAMIC CALCULATION: Width is derived from rendered buttons.
+            // Minimum safeguard: If DOM returns 0 but container exists, use defaults.
+            if (leftActions && leftWidth === 0) leftWidth = 66; // 50 + 8 + 8
+            if (rightActions && rightWidth === 0) rightWidth = 66; // 50 + 8 + 8
 
             // Determine initial state
             const currentTransform = new WebKitCSSMatrix(window.getComputedStyle(row).transform);
