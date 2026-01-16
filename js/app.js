@@ -340,8 +340,8 @@ const App = {
         return `
             <div class="screen active" id="screen-experiments">
                 <div class="header">
-                    <h1>Today</h1>
-                    <p class="subheader">${dayName} ${dateStr}</p>
+                    <h1>Experiments</h1>
+                    <p class="subheader">The lab of your life.</p>
                 </div>
                 
                 <div class="filter-pills" role="group" aria-label="Filter experiments">
@@ -651,11 +651,15 @@ const App = {
             </div>
         ` : '';
 
+        const today = new Date();
+        const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
+        const dateStr = today.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }).toUpperCase();
+
         return `
             <div class="screen ${this.state.currentTab === 'todo' ? 'active' : ''}" id="screen-todo">
                 <div class="header">
-                    <h1>Tasks</h1>
-                    <p class="subheader">Get things done</p>
+                    <h1>Today</h1>
+                    <p class="subheader">${dayName} ${dateStr}</p>
                 </div>
                 ${content}
                 ${hiddenSection}
@@ -1081,10 +1085,10 @@ const App = {
      */
     renderTabBar() {
         const allTabs = [
+            { id: 'todo', label: 'Todo', icon: UI.icons.todo },
             { id: 'experiments', label: 'Lab', icon: UI.icons.flask },
             { id: 'gallery', label: 'Gallery', icon: UI.icons.sparkles },
             { id: 'insights', label: 'Insights', icon: UI.icons.chart },
-            { id: 'todo', label: 'Todo', icon: UI.icons.todo },
             { id: 'settings', label: 'Settings', icon: UI.icons.settings }
         ];
 
