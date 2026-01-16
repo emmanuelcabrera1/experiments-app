@@ -648,7 +648,7 @@ const App = {
             <div style="margin-top: var(--space-lg);">
                 <button style="display: flex; width: 100%; align-items: center; justify-content: space-between; margin-bottom: var(--space-sm); cursor: pointer; background: none; border: none; padding: 0; text-align: left;" data-action="toggle-hidden" aria-expanded="${this.state.showHidden}" aria-label="${this.state.showHidden ? 'Hide' : 'Show'} hidden tasks">
                     <p class="subheader" style="margin: 0; color: var(--text-tertiary);">HIDDEN (${hiddenTodos.length})</p>
-                    <span style="color: var(--text-tertiary); font-size: 20px; transform: rotate(${this.state.showHidden ? '180deg' : '0deg'}); transition: transform 0.2s;" aria-hidden="true">▼</span>
+                    <span style="color: var(--text-tertiary); font-size: 20px; font-weight: bold;" aria-hidden="true">${this.state.showHidden ? '−' : '+'}</span>
                 </button>
                 <div style="max-height: ${this.state.showHidden ? '10000px' : '0'}; opacity: ${this.state.showHidden ? '1' : '0'}; ${!this.state.showHidden ? 'display: none;' : ''}">
                     <div class="todo-list" role="list" aria-label="Hidden tasks" style="opacity: 0.7;">
@@ -815,6 +815,13 @@ const App = {
                     <button class="swipe-btn swipe-btn-hide" data-action="hide" aria-label="${hideLabel} task">
                         <span class="swipe-btn-icon">${hideIcon}</span>
                         <span class="swipe-btn-label">${hideLabel}</span>
+                    </button>
+                </div>
+                <!-- Right actions (swipe left reveals) -->
+                <div class="swipe-actions-right">
+                    <button class="swipe-btn swipe-btn-delete" data-action="delete" aria-label="Delete task">
+                        <span class="swipe-btn-icon">🗑️</span>
+                        <span class="swipe-btn-label">Delete</span>
                     </button>
                 </div>
                 <!-- Todo row -->
@@ -2295,10 +2302,9 @@ const App = {
         // Todo Drag-and-Drop: dragstart
         // Todo Drag-and-Drop: dragstart
         app.addEventListener('dragstart', (e) => {
-            // FIX: Get the container, not just the item
             const container = e.target.closest('.swipe-container');
-            // Ensure we are dragging by the grip
-            if (container && e.target.closest('.todo-grip')) {
+            // Ensure container is ready to drag (via long-press)
+            if (container && container.classList.contains('ready-to-drag')) {
                 e.dataTransfer.effectAllowed = 'move';
                 e.dataTransfer.setData('text/plain', container.dataset.swipeId);
 
@@ -2338,6 +2344,8 @@ const App = {
             const container = e.target.closest('.swipe-container');
             if (container) {
                 container.classList.remove('dragging');
+                container.classList.remove('ready-to-drag');
+                container.removeAttribute('draggable');
 
                 // Save new order
                 const todoList = document.getElementById('todo-list');
@@ -2538,6 +2546,55 @@ const App = {
                 return;
             }
         });
+
+        // ========================================
+        // LONG-PRESS DRAG DETECTION (TODO REORDER)
+        // ========================================
+
+        let longPressTimer = null;
+        let longPressContainer = null;
+        const LONG_PRESS_DURATION = 500; // ms
+
+        // Start long-press timer on touchstart
+        app.addEventListener('touchstart', (e) => {
+            const container = e.target.closest('.swipe-container[data-swipe-type="todo"]');
+            if (!container) return;
+
+            // Don't trigger if touching buttons or checkbox
+            if (e.target.closest('.swipe-btn, .todo-checkbox')) return;
+
+            longPressContainer = container;
+
+            longPressTimer = setTimeout(() => {
+                if (longPressContainer) {
+                    // Add ready-to-drag class for visual feedback
+                    longPressContainer.classList.add('ready-to-drag');
+                    longPressContainer.setAttribute('draggable', 'true');
+
+                    // Haptic feedback
+                    if (navigator.vibrate) {
+                        navigator.vibrate(30);
+                    }
+                }
+            }, LONG_PRESS_DURATION);
+        }, { passive: true });
+
+        // Cancel long-press on touchmove (user is scrolling/swiping)
+        app.addEventListener('touchmove', (e) => {
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+            }
+        }, { passive: true });
+
+        // Cancel long-press on touchend
+        app.addEventListener('touchend', (e) => {
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+            }
+            // Note: ready-to-drag is cleared in dragend
+        }, { passive: true });
 
         // ========================================
         // SWIPE-TO-REVEAL GESTURE HANDLING
@@ -2798,6 +2855,27 @@ const App = {
 
                     this.render();
                     this.showToast(isHidden ? 'Task unhidden' : 'Task hidden');
+                } else if (action === 'delete') {
+                    // Get full todo for undo
+                    const deletedTodo = TodoManager.getAll().find(t => t.id === swipeId);
+
+                    // Delete the task
+                    TodoManager.delete(swipeId);
+                    this.render();
+
+                    // Show undo toast
+                    this.showToast('Task deleted', {
+                        duration: 5000,
+                        undo: () => {
+                            if (deletedTodo) {
+                                const todos = TodoManager.getAll();
+                                todos.push(deletedTodo);
+                                TodoManager.save(todos);
+                                this.showToast('Task restored');
+                                this.render();
+                            }
+                        }
+                    });
                 }
                 return;
             }
