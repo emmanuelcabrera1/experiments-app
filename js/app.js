@@ -2616,11 +2616,16 @@ const App = {
                 hasRight = false; // Todos don't have right actions currently
             }
 
+            // Determine initial state
+            const currentTransform = new WebKitCSSMatrix(window.getComputedStyle(row).transform);
+            const initialTranslateX = currentTransform.m41;
+
             this.swipeState = {
                 active: true,
                 startX: touch.clientX,
                 startY: touch.clientY,
-                currentX: 0,
+                initialTranslateX: initialTranslateX,
+                currentX: initialTranslateX,
                 direction: null,
                 container: container,
                 row: row,
@@ -2633,7 +2638,8 @@ const App = {
                 hapticTriggered: false
             };
 
-            triggerHaptic('light');
+            // Remove transition for instant drag
+            row.style.transition = 'none';
         }, { passive: true });
 
         // Touch move
@@ -2657,123 +2663,94 @@ const App = {
             // Prevent scroll during horizontal swipe
             e.preventDefault();
 
-            // Apply rubber-band effect beyond buttons width
-            let effectiveX = deltaX;
-            const state = this.swipeState;
+            // 1:1 Movement logic
+            const { startX, initialTranslateX, leftWidth, rightWidth, hasLeft, hasRight } = this.swipeState;
+            const currentDelta = touch.clientX - startX;
+            let newX = initialTranslateX + currentDelta;
 
-            // Direction constraints and resistance
-            if (deltaX > 0) { // Swiping Right (reveal Left)
-                if (!state.hasLeft) {
-                    // Resist hard if no left actions
-                    effectiveX = deltaX * 0.1;
-                } else if (deltaX > state.leftWidth) {
-                    // Rubber band past width
-                    const overshoot = deltaX - state.leftWidth;
-                    effectiveX = state.leftWidth + (overshoot * 0.15);
-                }
-            } else { // Swiping Left (reveal Right)
-                if (!state.hasRight) {
-                    // Resist hard if no right actions
-                    effectiveX = deltaX * 0.1;
-                } else if (Math.abs(deltaX) > state.rightWidth) {
-                    // Rubber band past width
-                    const overshoot = Math.abs(deltaX) - state.rightWidth;
-                    effectiveX = -(state.rightWidth + (overshoot * 0.15));
-                }
-            }
+            // Constrain movement based on available actions
+            // Allow slight resistance overshoot but generally stick to 1:1
+            if (newX > 0 && !hasLeft) newX = newX * 0.2; // Resistance if no left actions
+            if (newX < 0 && !hasRight) newX = newX * 0.2; // Resistance if no right actions
 
-            this.swipeState.currentX = effectiveX;
+            // Hard limits with slight elasticity (optional, but good for feel)
+            // For now, sticking to 1:1 until max width, then resistance
+            if (newX > leftWidth) newX = leftWidth + (newX - leftWidth) * 0.2;
+            if (newX < -rightWidth) newX = -rightWidth + (newX + rightWidth) * 0.2;
 
-            // Apply transform
+            this.swipeState.currentX = newX;
+
+            // Apply transform 1:1
             const row = this.swipeState.row;
             row.classList.add('swiping');
-            row.style.transform = `translateX(${effectiveX}px)`;
+            row.style.transform = `translateX(${newX}px)`;
 
-            // Haptic feedback at commit threshold (variable based on side)
-            const targetWidth = effectiveX > 0 ? state.leftWidth : state.rightWidth;
-            const threshold = targetWidth * 0.5; // Trigger at 50% open
-
-            if (!this.swipeState.hapticTriggered && Math.abs(effectiveX) >= threshold) {
-                triggerHaptic('strong');
-                this.swipeState.hapticTriggered = true;
-            }
-
-            this.swipeState.didSwipe = Math.abs(effectiveX) > 10;
+            this.swipeState.didSwipe = Math.abs(currentDelta) > 5;
         }, { passive: false });
 
         // Touch end
         app.addEventListener('touchend', (e) => {
             if (!this.swipeState.active) return;
 
-            const { currentX, container, row, startTime, leftWidth, rightWidth, hasLeft, hasRight } = this.swipeState;
+            const { currentX, row, initialTranslateX, leftWidth, rightWidth } = this.swipeState;
+            const distanceMoved = currentX - initialTranslateX;
+            const HAIR_TRIGGER = 15;
 
-            // Calculate velocity
-            const elapsed = Date.now() - startTime;
-            const velocity = Math.abs(currentX) / elapsed;
+            row.classList.remove('swiping');
 
-            // Check if revealed (support both 'open' legacy and directional 'left'/'right')
-            const isRevealed = row.dataset.revealed === 'open' || row.dataset.revealed === 'right' || row.dataset.revealed === 'left';
+            // "Slow Glide" transition
+            row.style.transition = 'transform 0.8s cubic-bezier(0.25, 1, 0.5, 1)';
 
-            // Handle swipe based on direction and state
-            if (isRevealed) {
-                // Already open - check if we should close
-                const isSwipedRight = row.dataset.revealed === 'right' || row.dataset.revealed === 'open'; // Opened left actions
-                const isSwipedLeft = row.dataset.revealed === 'left'; // Opened right actions
+            let targetX = 0;
+            let revealedState = null;
 
-                let shouldClose = false;
-
-                if (isSwipedRight) {
-                    // Was open with positive transform. Need negative movement to close.
-                    shouldClose = currentX < -COMMIT_THRESHOLD || (currentX < 0 && velocity > VELOCITY_THRESHOLD);
-                } else if (isSwipedLeft) {
-                    // Was open with negative transform. Need positive movement to close.
-                    shouldClose = currentX > COMMIT_THRESHOLD || (currentX > 0 && velocity > VELOCITY_THRESHOLD);
-                }
-
-                if (shouldClose) {
-                    // Close
-                    row.classList.remove('swiping');
-                    row.style.transform = '';
-                    delete row.dataset.revealed;
-                    triggerHaptic('medium');
+            if (initialTranslateX === 0) {
+                // STARTING CLOSED
+                if (distanceMoved > HAIR_TRIGGER && this.swipeState.hasLeft) {
+                    // Open Left
+                    targetX = leftWidth;
+                    revealedState = 'right'; // Content moves right to reveal left actions
+                } else if (distanceMoved < -HAIR_TRIGGER && this.swipeState.hasRight) {
+                    // Open Right
+                    targetX = -rightWidth;
+                    revealedState = 'left'; // Content moves left to reveal right actions
                 } else {
-                    // Stay open (restore position)
-                    row.classList.remove('swiping');
-                    if (isSwipedRight) {
-                        row.style.transform = `translateX(${leftWidth}px)`;
-                    } else {
-                        row.style.transform = `translateX(-${rightWidth}px)`;
-                    }
+                    // Revert
+                    targetX = 0;
                 }
             } else {
-                // Not open - check if swipe to open
-                if (currentX > 0 && hasLeft) {
-                    // Swiping Right -> Open Left Actions
-                    if (currentX > (leftWidth * 0.4) || (velocity > VELOCITY_THRESHOLD && currentX > 10)) {
-                        row.classList.remove('swiping');
-                        row.style.transform = `translateX(${leftWidth}px)`;
-                        row.dataset.revealed = 'right';
-                        triggerHaptic('medium');
+                // STARTING OPEN
+                // If moved backwards > 15px, close it. Otherwise stay open.
+                // Note: "Backwards" means towards 0.
+
+                if (initialTranslateX > 0) {
+                    // Was Open Left (Positive X). Backwards is Negative movement.
+                    if (distanceMoved < -HAIR_TRIGGER) {
+                        targetX = 0; // Close
                     } else {
-                        row.classList.remove('swiping');
-                        row.style.transform = '';
-                    }
-                } else if (currentX < 0 && hasRight) {
-                    // Swiping Left -> Open Right Actions
-                    if (currentX < -(rightWidth * 0.4) || (velocity > VELOCITY_THRESHOLD && currentX < -10)) {
-                        row.classList.remove('swiping');
-                        row.style.transform = `translateX(-${rightWidth}px)`;
-                        row.dataset.revealed = 'left';
-                        triggerHaptic('medium');
-                    } else {
-                        row.classList.remove('swiping');
-                        row.style.transform = '';
+                        targetX = leftWidth; // Stay Open
+                        revealedState = 'right';
                     }
                 } else {
-                    // Not enough movement - stay closed
-                    row.classList.remove('swiping');
-                    row.style.transform = '';
+                    // Was Open Right (Negative X). Backwards is Positive movement.
+                    if (distanceMoved > HAIR_TRIGGER) {
+                        targetX = 0; // Close
+                    } else {
+                        targetX = -rightWidth; // Stay Open
+                        revealedState = 'left';
+                    }
                 }
+            }
+
+            // Apply Final State
+            row.style.transform = targetX === 0 ? '' : `translateX(${targetX}px)`;
+
+            if (revealedState) {
+                row.dataset.revealed = revealedState;
+                if (targetX !== initialTranslateX) triggerHaptic('medium');
+            } else {
+                delete row.dataset.revealed;
+                if (targetX !== initialTranslateX) triggerHaptic('light');
             }
 
             this.swipeState.active = false;
