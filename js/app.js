@@ -16,6 +16,7 @@ const App = {
         isEditingTodoNotes: false, // Track if notes are in edit mode
         showCompleted: true, // Show/hide completed tasks (collapsible)
         showHidden: localStorage.getItem('experiments_show_hidden') === 'true', // Load state from storage
+        showDelegated: localStorage.getItem('experiments_show_delegated') === 'true', // Load state for delegated section
         showChecklists: localStorage.getItem('experiments_show_checklists') !== 'false', // Default to true (expanded)
         deletedTodo: null, // Temporarily store deleted todo for undo
         undoTimeout: null // Timeout ID for undo operation
@@ -639,69 +640,61 @@ const App = {
 
         // Active and completed from visible only
         const activeTodos = visibleTodos.filter(t => !t.completed);
-        const completedTodos = visibleTodos.filter(t => t.completed);
+        // REMOVED: completedTodos - No longer rendering completed section
 
         let content = '';
         if (todos.length === 0) {
             content = UI.emptyState('No Tasks Yet', 'Tap the + button to create your first task and start getting things done.');
         } else if (visibleTodos.length === 0 && hiddenTodos.length > 0) {
-            content = UI.emptyState('All Tasks Hidden', 'Open the Hidden section below to see your hidden tasks.');
+            content = UI.emptyState('All Tasks Hidden', 'Open the Personal or Delegated sections below to see your hidden tasks.');
         } else {
             content = `
                 <div class="todo-list" id="todo-list" role="list" aria-label="Active tasks">
                     ${activeTodos.map(t => this.renderTodoItem(t)).join('')}
                 </div>
-                ${completedTodos.length > 0 ? `
-                    <div style="margin-top: var(--space-lg);">
-                        <button style="display: flex; width: 100%; align-items: center; justify-content: space-between; margin-bottom: var(--space-sm); cursor: pointer; background: none; border: none; padding: 0; text-align: left;" data-action="toggle-completed" aria-expanded="${this.state.showCompleted}" aria-label="${this.state.showCompleted ? 'Hide' : 'Show'} completed tasks">
-                            <p class="subheader" style="margin: 0;">COMPLETED (${completedTodos.length})</p>
-                            <span class="completed-chevron" style="color: var(--text-tertiary); font-size: 20px; transform: rotate(${this.state.showCompleted ? '180deg' : '0deg'}); transition: transform 0.2s;" aria-hidden="true">▼</span>
-                        </button>
-                        <div class="completed-list-container" style="max-height: ${this.state.showCompleted ? '10000px' : '0'}; opacity: ${this.state.showCompleted ? '1' : '0'}; ${!this.state.showCompleted ? 'display: none;' : ''}">
-                            <div class="todo-list" role="list" aria-label="Completed tasks">
-                                ${completedTodos.map(t => this.renderTodoItem(t)).join('')}
-                            </div>
-                        </div>
-                    </div>
-                ` : ''}
             `;
+            // REMOVED: completedTodos section
         }
 
-        // Hidden section (always show if there are hidden todos)
-        let hiddenSectionContent = '';
-        if (hiddenTodos.length > 0) {
-            const personalUnknown = hiddenTodos.filter(t => !t.delegated);
-            const delegated = hiddenTodos.filter(t => t.delegated);
-
-            hiddenSectionContent += `
+        // Personal section (non-delegated hidden tasks)
+        const personalTodos = hiddenTodos.filter(t => !t.delegated);
+        let personalSectionContent = '';
+        if (personalTodos.length > 0) {
+            personalSectionContent = `
                 <div style="margin-top: var(--space-lg);">
-                    <button style="display: flex; width: 100%; align-items: center; justify-content: space-between; margin-bottom: var(--space-sm); cursor: pointer; background: none; border: none; padding: 0; text-align: left;" data-action="toggle-hidden" aria-expanded="${this.state.showHidden}" aria-label="${this.state.showHidden ? 'Hide' : 'Show'} hidden tasks">
-                        <p class="subheader" style="margin: 0; color: var(--text-tertiary);">HIDDEN (${hiddenTodos.length})</p>
-                        <span style="color: var(--text-tertiary); font-size: 20px; font-weight: bold;" aria-hidden="true">${this.state.showHidden ? '−' : '+'}\u003c/span>
+                    <button style="display: flex; width: 100%; align-items: center; justify-content: space-between; margin-bottom: var(--space-sm); cursor: pointer; background: none; border: none; padding: 0; text-align: left;" data-action="toggle-hidden" aria-expanded="${this.state.showHidden}" aria-label="${this.state.showHidden ? 'Hide' : 'Show'} personal tasks">
+                        <p class="subheader" style="margin: 0; color: var(--text-tertiary);">PERSONAL (${personalTodos.length})</p>
+                        <span style="color: var(--text-tertiary); font-size: 20px; font-weight: bold;" aria-hidden="true">${this.state.showHidden ? '−' : '+'}</span>
                     </button>
                     <div style="max-height: ${this.state.showHidden ? '10000px' : '0'}; opacity: ${this.state.showHidden ? '1' : '0'}; ${!this.state.showHidden ? 'display: none;' : ''}">
-                        
-                        <!-- Personal Hidden Tasks -->
-                        <div class="todo-list" role="list" aria-label="Personal hidden tasks" style="opacity: 0.7;">
-                            ${personalUnknown.map(t => this.renderTodoItem(t)).join('')}
+                        <div class="todo-list" role="list" aria-label="Personal tasks" style="opacity: 0.7;">
+                            ${personalTodos.map(t => this.renderTodoItem(t)).join('')}
                         </div>
-
-                        <!-- Spacer / Delegated Section -->
-                        ${(personalUnknown.length > 0 && delegated.length > 0) ? '<div class="delegation-separator" style="height: 40px;"></div>' : ''}
-
-                        <!-- Delegated Hidden Tasks -->
-                        ${delegated.length > 0 ? `
-                            <div class="todo-list" role="list" aria-label="Delegated hidden tasks" style="opacity: 0.7;">
-                                ${delegated.map(t => this.renderTodoItem(t)).join('')}
-                            </div>
-                        ` : ''}
-
                     </div>
                 </div>
             `;
         }
 
-        const hiddenSection = hiddenSectionContent;
+        // Delegated section (delegated hidden tasks)
+        const delegatedTodos = hiddenTodos.filter(t => t.delegated);
+        let delegatedSectionContent = '';
+        if (delegatedTodos.length > 0) {
+            delegatedSectionContent = `
+                <div style="margin-top: var(--space-lg);">
+                    <button style="display: flex; width: 100%; align-items: center; justify-content: space-between; margin-bottom: var(--space-sm); cursor: pointer; background: none; border: none; padding: 0; text-align: left;" data-action="toggle-delegated-section" aria-expanded="${this.state.showDelegated}" aria-label="${this.state.showDelegated ? 'Hide' : 'Show'} delegated tasks">
+                        <p class="subheader" style="margin: 0; color: var(--text-tertiary);">DELEGATED (${delegatedTodos.length})</p>
+                        <span style="color: var(--text-tertiary); font-size: 20px; font-weight: bold;" aria-hidden="true">${this.state.showDelegated ? '−' : '+'}</span>
+                    </button>
+                    <div style="max-height: ${this.state.showDelegated ? '10000px' : '0'}; opacity: ${this.state.showDelegated ? '1' : '0'}; ${!this.state.showDelegated ? 'display: none;' : ''}">
+                        <div class="todo-list" role="list" aria-label="Delegated tasks" style="opacity: 0.7;">
+                            ${delegatedTodos.map(t => this.renderTodoItem(t)).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        const hiddenSection = personalSectionContent + delegatedSectionContent;
 
         const today = new Date();
         const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
@@ -1668,6 +1661,17 @@ const App = {
                 e.stopPropagation();
                 this.state.showHidden = !this.state.showHidden;
                 localStorage.setItem('experiments_show_hidden', this.state.showHidden);
+                this.render();
+                return;
+            }
+        });
+
+        // Toggle delegated section visibility
+        app.addEventListener('click', (e) => {
+            if (e.target.closest('[data-action="toggle-delegated-section"]')) {
+                e.stopPropagation();
+                this.state.showDelegated = !this.state.showDelegated;
+                localStorage.setItem('experiments_show_delegated', this.state.showDelegated);
                 this.render();
                 return;
             }
