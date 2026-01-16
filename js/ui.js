@@ -125,10 +125,12 @@ const UI = {
                  aria-label="Swipe to reveal actions">
                 <!-- Left swipe reveals these buttons on the right -->
                 <div class="swipe-actions-right">
-                    <button class="swipe-btn swipe-btn-archive" data-action="archive" aria-label="Archive experiment">
-                        <span class="swipe-btn-icon">📦</span>
-                        <span class="swipe-btn-label">Archive</span>
+                    ${experiment.status !== 'draft' ? `
+                    <button class="swipe-btn swipe-btn-archive" data-action="archive" aria-label="Move to Later">
+                        <span class="swipe-btn-icon">⏸️</span>
+                        <span class="swipe-btn-label">Later</span>
                     </button>
+                    ` : ''}
                     <button class="swipe-btn swipe-btn-delete" data-action="delete" aria-label="Delete experiment">
                         <span class="swipe-btn-icon">🗑️</span>
                         <span class="swipe-btn-label">Delete</span>
@@ -140,9 +142,11 @@ const UI = {
                         <span class="swipe-btn-icon">✏️</span>
                         <span class="swipe-btn-label">Edit</span>
                     </button>
-                    <button class="swipe-btn swipe-btn-complete" data-action="complete" aria-label="Mark as complete">
-                        <span class="swipe-btn-icon">✓</span>
-                        <span class="swipe-btn-label">Done</span>
+                    <button class="swipe-btn swipe-btn-complete" data-action="complete" 
+                            aria-label="${experiment.status === 'draft' ? 'Move to NOW' : 'Mark as complete'}"
+                            style="${experiment.status === 'draft' ? 'background-color: var(--success-color);' : ''}">
+                        <span class="swipe-btn-icon">${experiment.status === 'draft' ? '➕' : '✓'}</span>
+                        <span class="swipe-btn-label">${experiment.status === 'draft' ? 'Add' : 'Done'}</span>
                     </button>
                 </div>
                 <div class="experiment-row" data-id="${escapeHtml(experiment.id)}">

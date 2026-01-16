@@ -297,18 +297,23 @@ const App = {
      * Render Experiments tab
      */
     renderExperimentsScreen() {
-        let experiments = DataManager.getExperiments();
-        const today = new Date();
-        const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
-        const dateStr = today.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }).toUpperCase();
-
-        // Apply filter if not "ALL"
+        // Determine list of experiments to show based on filter
+        let experiments;
         const filter = this.state.currentFilter;
-        if (filter !== 'ALL') {
-            experiments = experiments.filter(e =>
+
+        if (filter === 'NOW') {
+            // "NOW" filter shows ACTIVE experiments
+            experiments = DataManager.getExperimentsByStatus('active');
+        } else {
+            // Category filters show DRAFT experiments (waiting to be started)
+            experiments = DataManager.getExperimentsByStatus('draft').filter(e =>
                 e.category && e.category.toUpperCase() === filter
             );
         }
+
+        const today = new Date();
+        const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
+        const dateStr = today.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }).toUpperCase();
 
         // Sort experiments: those without scheduled time first, then by time
         experiments.sort((a, b) => {
@@ -324,10 +329,10 @@ const App = {
 
         let content = '';
         if (experiments.length === 0) {
-            if (filter === 'ALL') {
-                content = UI.emptyState('Idle Station', 'No active protocols running.');
+            if (filter === 'NOW') {
+                content = UI.emptyState('No Active Experiments', 'Select a category to start a new experiment.');
             } else {
-                content = UI.emptyState('No Results', `No ${filter.toLowerCase()} experiments found.`);
+                content = UI.emptyState('No Drafts', `No pending experiments in ${filter.toLowerCase()}. Add one!`);
             }
         } else {
             content = experiments.map(e => UI.experimentRow(e)).join('');
@@ -337,6 +342,9 @@ const App = {
         const isActive = (filter) => this.state.currentFilter === filter ? 'active' : '';
         const categories = DataManager.getCategories();
 
+        // Initialize filter to NOW if it was ALL
+        if (this.state.currentFilter === 'ALL') this.state.currentFilter = 'NOW';
+
         return `
             <div class="screen active" id="screen-experiments">
                 <div class="header">
@@ -345,7 +353,7 @@ const App = {
                 </div>
                 
                 <div class="filter-pills" role="group" aria-label="Filter experiments">
-                    <button class="pill ${isActive('ALL')}" data-filter="ALL" aria-pressed="${this.state.currentFilter === 'ALL'}">ALL</button>
+                    <button class="pill ${isActive('NOW')}" data-filter="NOW" aria-pressed="${this.state.currentFilter === 'NOW'}">NOW</button>
                     ${categories.map(cat => `
                         <button class="pill ${isActive(cat.toUpperCase())}" data-filter="${cat.toUpperCase()}" aria-pressed="${this.state.currentFilter === cat.toUpperCase()}">${cat.toUpperCase()}</button>
                     `).join('')}
@@ -2830,7 +2838,16 @@ const App = {
                     this.handleEditExperiment(swipeId);
                     break;
                 case 'complete':
-                    this.handleCompleteExperiment(swipeId);
+                    {
+                        const exp = DataManager.getExperiment(swipeId);
+                        if (exp && exp.status === 'draft') {
+                            DataManager.activateExperiment(swipeId);
+                            this.render();
+                            this.showToast('Experiment moved to NOW');
+                        } else {
+                            this.handleCompleteExperiment(swipeId);
+                        }
+                    }
                     break;
             }
         });
@@ -3346,7 +3363,7 @@ const App = {
     },
 
     /**
-     * Handle swipe-to-archive action
+     * Handle swipe-to-archive action (Move to Draft/Later)
      */
     handleSwipeArchive(experimentId, container) {
         const experiment = DataManager.getExperiment(experimentId);
@@ -3374,15 +3391,15 @@ const App = {
             });
         }, 200);
 
-        // Archive after animation
+        // Deactivate (Draft) after animation
         setTimeout(() => {
-            DataManager.archiveExperiment(experimentId);
+            DataManager.deactivateExperiment(experimentId);
             this.render();
 
             // Show toast with undo
-            this.showToast('Experiment archived', {
+            this.showToast('Experiment moved to Later', {
                 undo: () => {
-                    DataManager.updateExperiment(experimentId, { status: 'active' });
+                    DataManager.activateExperiment(experimentId);
                     this.render();
                 }
             });
