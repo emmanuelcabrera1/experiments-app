@@ -16,6 +16,7 @@ const App = {
         isEditingTodoNotes: false, // Track if notes are in edit mode
         showCompleted: true, // Show/hide completed tasks (collapsible)
         showHidden: localStorage.getItem('experiments_show_hidden') === 'true', // Load state from storage
+        showChecklists: localStorage.getItem('experiments_show_checklists') !== 'false', // Default to true (expanded)
         deletedTodo: null, // Temporarily store deleted todo for undo
         undoTimeout: null // Timeout ID for undo operation
     },
@@ -715,57 +716,65 @@ const App = {
                         
                         <!-- CHECKLISTS Section -->
                         <div style="margin-bottom: var(--space-lg);">
-                            <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm);">
-                                <span style="color: var(--text-tertiary);">${UI.icons.list || '☰'}</span>
-                                <span style="font-size: var(--text-xs); color: var(--text-tertiary); font-weight: var(--weight-semibold); letter-spacing: 0.5px;">CHECKLISTS</span>
-                            </div>
-                            
-                            <!-- Checklists Container -->
-                            <div id="checklists-container">
-                                ${checklists.map(cl => `
-                                    <div class="checklist-section" data-checklist-id="${cl.id}" draggable="true" style="margin-bottom: var(--space-md); background: var(--inactive-bg); border-radius: var(--radius-md); overflow: hidden;">
-                                        
-                                        <!-- Checklist Header -->
-                                        <div class="checklist-header" style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm) var(--space-md); background: rgba(0,0,0,0.03);">
-                                            <div class="checklist-grip" style="cursor: grab; color: var(--text-tertiary); display: flex; align-items: center;">${UI.icons.grip}</div>
-                                            <span class="checklist-toggle" data-action="toggle-checklist-collapse" style="font-family: monospace; font-weight: bold; color: var(--text-secondary); width: 20px; text-align: center; font-size: 16px; cursor: pointer;">
-                                                ${cl.isCollapsed ? '+' : '−'}
-                                            </span>
-                                            <span class="checklist-title" contenteditable="true" data-action="edit-checklist-title" style="flex: 1; font-weight: 600; font-size: var(--text-sm); color: var(--text-secondary); outline: none; padding: 2px 4px; border-radius: 4px; border: 1px solid transparent;">${escapeHtml(cl.title)}</span>
-                                            <button class="checklist-delete" data-action="delete-checklist" style="opacity: 0.3; padding: 4px; border: none; background: transparent; cursor: pointer;">${UI.icons.x}</button>
-                                        </div>
-                                        
-                                        <!-- Checklist Content (Items + Add Row) -->
-                                        <div class="checklist-content" style="display: ${cl.isCollapsed ? 'none' : 'block'}; padding: var(--space-xs);">
-                                            
-                                            <!-- Subtask List -->
-                                            <div class="subtask-list" id="list-${cl.id}">
-                                                ${(cl.items || []).map(subtask => `
-                                                    <div class="subtask-item" data-subtask-id="${subtask.id}" draggable="true" style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm); background: var(--surface-color); border-radius: var(--radius-sm); margin-bottom: var(--space-xs);">
-                                                        <div class="todo-grip subtask-grip" style="cursor: grab; color: var(--text-tertiary);">${UI.icons.grip}</div>
-                                                        <div class="subtask-checkbox ${subtask.completed ? 'completed' : ''}" data-action="toggle-subtask" style="width: 18px; height: 18px;">
-                                                            ${subtask.completed ? UI.icons.check : ''}
-                                                        </div>
-                                                        <span class="subtask-text" data-action="edit-subtask-inline" style="flex: 1; cursor: text; ${subtask.completed ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${escapeHtml(subtask.text)}</span>
-                                                        <button class="subtask-delete" data-action="delete-subtask" style="opacity: 0.5;">${UI.icons.x}</button>
-                                                    </div>
-                                                `).join('')}
-                                            </div>
-                                            
-                                            <!-- Add Subtask Row -->
-                                            <div style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm); background: var(--surface-color); border-radius: var(--radius-sm); margin-top: var(--space-xs);">
-                                                <span style="color: var(--text-tertiary); font-weight: bold;">+</span>
-                                                <input type="text" class="add-subtask-text" placeholder="Add item..." maxlength="200" style="flex: 1; border: none; background: transparent; font-size: var(--text-sm); color: inherit; padding: 0; outline: none;">
-                                            </div>
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
-
-                            <!-- Add New Checklist Button -->
-                            <button id="btn-add-checklist" style="width: 100%; padding: var(--space-md); background: var(--inactive-bg); border: 2px dashed var(--border-color); border-radius: var(--radius-md); color: var(--text-tertiary); cursor: pointer; font-size: var(--text-sm); margin-top: var(--space-sm); transition: all 0.2s;">
-                                + Add New Checklist
+                            <button style="display: flex; width: 100%; align-items: center; justify-content: space-between; margin-bottom: var(--space-sm); cursor: pointer; background: none; border: none; padding: 0; text-align: left;" data-action="toggle-checklists-section" aria-label="Toggle checklists">
+                                <div style="display: flex; align-items: center; gap: var(--space-sm);">
+                                    <span style="color: var(--text-tertiary);">${UI.icons.list || '☰'}</span>
+                                    <span style="font-size: var(--text-xs); color: var(--text-tertiary); font-weight: var(--weight-semibold); letter-spacing: 0.5px;">CHECKLISTS (${checklists.length})</span>
+                                </div>
+                                <span class="toggle-icon" style="color: var(--text-tertiary); font-size: 20px; font-weight: bold;" aria-hidden="true">${this.state.showChecklists ? '−' : '+'}</span>
                             </button>
+                            
+                            <!-- Collapsible Wrapper -->
+                            <div id="checklists-wrapper" style="display: ${this.state.showChecklists ? 'block' : 'none'};">
+                                <!-- Checklists Container -->
+                                <div id="checklists-container">
+                                    ${checklists.map(cl => `
+                                        <div class="checklist-section" data-checklist-id="${cl.id}" draggable="true" style="margin-bottom: var(--space-md); background: var(--inactive-bg); border-radius: var(--radius-md); overflow: hidden;">
+                                            
+                                            <!-- Checklist Header -->
+                                            <div class="checklist-header" style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm) var(--space-md); background: rgba(0,0,0,0.03);">
+                                                <div class="checklist-grip" style="cursor: grab; color: var(--text-tertiary); display: flex; align-items: center;">${UI.icons.grip}</div>
+                                                <span class="checklist-toggle" data-action="toggle-checklist-collapse" style="font-family: monospace; font-weight: bold; color: var(--text-secondary); width: 20px; text-align: center; font-size: 16px; cursor: pointer;">
+                                                    ${cl.isCollapsed ? '+' : '−'}
+                                                </span>
+                                                <span class="checklist-title" contenteditable="true" data-action="edit-checklist-title" style="flex: 1; font-weight: 600; font-size: var(--text-sm); color: var(--text-secondary); outline: none; padding: 2px 4px; border-radius: 4px; border: 1px solid transparent;">${escapeHtml(cl.title)}</span>
+                                                <button class="checklist-delete" data-action="delete-checklist" aria-label="Delete checklist" style="opacity: 0.6; padding: 6px; border: none; background: transparent; cursor: pointer; color: var(--text-tertiary); display: flex; align-items: center;">
+                                                    ${UI.icons.x}
+                                                </button>
+                                            </div>
+                                            
+                                            <!-- Checklist Content (Items + Add Row) -->
+                                            <div class="checklist-content" style="display: ${cl.isCollapsed ? 'none' : 'block'}; padding: var(--space-xs);">
+                                                
+                                                <!-- Subtask List -->
+                                                <div class="subtask-list" id="list-${cl.id}">
+                                                    ${(cl.items || []).map(subtask => `
+                                                        <div class="subtask-item" data-subtask-id="${subtask.id}" draggable="true" style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm); background: var(--surface-color); border-radius: var(--radius-sm); margin-bottom: var(--space-xs);">
+                                                            <div class="todo-grip subtask-grip" style="cursor: grab; color: var(--text-tertiary);">${UI.icons.grip}</div>
+                                                            <div class="subtask-checkbox ${subtask.completed ? 'completed' : ''}" data-action="toggle-subtask" style="width: 18px; height: 18px;">
+                                                                ${subtask.completed ? UI.icons.check : ''}
+                                                            </div>
+                                                            <span class="subtask-text" data-action="edit-subtask-inline" style="flex: 1; cursor: text; ${subtask.completed ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${escapeHtml(subtask.text)}</span>
+                                                            <button class="subtask-delete" data-action="delete-subtask" style="opacity: 0.5;">${UI.icons.x}</button>
+                                                        </div>
+                                                    `).join('')}
+                                                </div>
+                                                
+                                                <!-- Add Subtask Row -->
+                                                <div style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm); background: var(--surface-color); border-radius: var(--radius-sm); margin-top: var(--space-xs);">
+                                                    <span style="color: var(--text-tertiary); font-weight: bold;">+</span>
+                                                    <input type="text" class="add-subtask-text" placeholder="Add item..." maxlength="200" style="flex: 1; border: none; background: transparent; font-size: var(--text-sm); color: inherit; padding: 0; outline: none;">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+
+                                <!-- Add New Checklist Button -->
+                                <button id="btn-add-checklist" style="width: 100%; padding: var(--space-md); background: var(--inactive-bg); border: 2px dashed var(--border-color); border-radius: var(--radius-md); color: var(--text-tertiary); cursor: pointer; font-size: var(--text-sm); margin-top: var(--space-sm); transition: all 0.2s;">
+                                    + Add New Checklist
+                                </button>
+                            </div>
                         </div>
 
                         <!-- DETAILS & ANNOTATIONS Section -->
@@ -1589,6 +1598,32 @@ const App = {
                 this.state.showHidden = !this.state.showHidden;
                 localStorage.setItem('experiments_show_hidden', this.state.showHidden);
                 this.render();
+                return;
+            }
+        });
+
+        // Toggle Checklists section visibility (Selective DOM Update)
+        app.addEventListener('click', (e) => {
+            const toggle = e.target.closest('[data-action="toggle-checklists-section"]');
+            if (toggle) {
+                e.stopPropagation();
+                this.state.showChecklists = !this.state.showChecklists;
+                localStorage.setItem('experiments_show_checklists', this.state.showChecklists);
+
+                const container = document.getElementById('checklists-wrapper');
+                const icon = toggle.querySelector('.toggle-icon');
+
+                if (icon) {
+                    icon.textContent = this.state.showChecklists ? '−' : '+';
+                }
+
+                if (container) {
+                    if (this.state.showChecklists) {
+                        container.style.display = 'block';
+                    } else {
+                        container.style.display = 'none';
+                    }
+                }
                 return;
             }
         });

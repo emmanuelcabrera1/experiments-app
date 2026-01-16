@@ -13,7 +13,12 @@
 | `js/app.js` | Logic, Routing, Events, State updates. | Defining UI HTML (Use `ui.js`). |
 | `js/ui.js` | HTML Templates, Classes, Icons. | Logic or Event handling. |
 | `js/data.js` | Default Templates (`TEMPLATES`), Storage keys. | UI rendering. |
-| `sw.js` | Caching patterns. | DOM access (runs in worker). |
+| `js/sw.js` | Caching patterns. | DOM access (runs in worker). |
+| `sw.js` | Service Worker Logic. | **HIGH STAKES**: See `HIGH_STAKES_SOP.md`. |
+
+> [!CRITICAL]
+> **HIGH STAKES MODE**: Checking `documentation/protocols/HIGH_STAKES_SOP.md` is **MANDATORY** before editing `sw.js` or `data.js`.
+
 
 ## 🛠️ Common Tasks (Cheat Sheet)
 

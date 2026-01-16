@@ -2,6 +2,13 @@
 
 ## How-To Workflows
 
+### 🛑 High-Stakes Updates (SOP)
+**Touching `sw.js`, `data.js`, or `app.js`?**
+👉 **[READ THIS FIRST: High-Stakes SOP](../../../documentation/protocols/HIGH_STAKES_SOP.md)**
+1.  **Plan**: Create RFC (Migration + Kill Switch).
+2.  **Verify**: Run "Pre-Flight" (Incognito vs. Upgrade).
+3.  **Sync**: If pulling from GitHub, treat it as a broken build until verified.
+
 ### 🧪 Adding a New Experiment Template
 Experiments are defined in `js/data.js`. To add a new default idea:
 1.  Open `js/data.js`.
