@@ -239,6 +239,10 @@ const App = {
      * Main render function
      */
     render() {
+        console.groupCollapsed('🔥 App.render() Triggered');
+        console.trace('Call Stack');
+        console.groupEnd();
+
         // Capture focus before re-render
         const activeEl = document.activeElement;
         let focusedSelector = null;
@@ -274,6 +278,18 @@ const App = {
             if (el) {
                 el.focus();
             }
+        }
+    },
+
+    /**
+     * Optimized re-render for Todo Screen only
+     * Use this when background list needs update but modal is open
+     */
+    refreshTodoScreenOnly() {
+        const screen = document.getElementById('screen-todo');
+        if (screen) {
+            const newContent = this.renderTodoScreen();
+            screen.outerHTML = newContent;
         }
     },
 
@@ -683,6 +699,25 @@ const App = {
     },
 
     /**
+     * Helper to render subtask items for a checklist
+     */
+    renderSubtaskItems(checklist) {
+        if (!checklist || !checklist.items) return '';
+
+        return checklist.items.map(subtask => `
+            <div class="subtask-item" data-subtask-id="${subtask.id}" draggable="true" style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm); background: var(--surface-color); border-radius: var(--radius-sm); margin-bottom: var(--space-xs);">
+                <div class="todo-grip subtask-grip" style="cursor: grab; color: var(--text-tertiary);">${UI.icons.grip}</div>
+                <div class="subtask-checkbox ${subtask.completed ? 'completed' : ''}" data-action="toggle-subtask" style="width: 18px; height: 18px;">
+                    ${subtask.completed ? UI.icons.check : ''}
+                </div>
+                <span class="subtask-text" data-action="edit-subtask-inline" style="flex: 1; cursor: text; ${subtask.completed ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${escapeHtml(subtask.text)}</span>
+                ${subtask.followUpTaskId ? `<button class="subtask-followup-indicator" data-action="goto-followup" data-followup-id="${subtask.followUpTaskId}" aria-label="Go to follow-up task" title="Go to follow-up task" style="padding: 4px 6px; background: none; border: none; cursor: pointer; color: var(--accent-color); font-size: 14px; display: flex; align-items: center; opacity: 0.8; transition: opacity 0.2s;">↪</button>` : ''}
+                <button class="subtask-delete" data-action="delete-subtask" style="opacity: 0.5;">${UI.icons.x}</button>
+            </div>
+        `).join('');
+    },
+
+    /**
      * Render Todo Detail Modal - Redesigned with CHECKLIST and DETAILS sections
      */
     renderTodoDetailModal() {
@@ -755,17 +790,7 @@ const App = {
                                                 
                                                 <!-- Subtask List -->
                                                 <div class="subtask-list" id="list-${cl.id}">
-                                                    ${(cl.items || []).map(subtask => `
-                                                        <div class="subtask-item" data-subtask-id="${subtask.id}" draggable="true" style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm); background: var(--surface-color); border-radius: var(--radius-sm); margin-bottom: var(--space-xs);">
-                                                            <div class="todo-grip subtask-grip" style="cursor: grab; color: var(--text-tertiary);">${UI.icons.grip}</div>
-                                                            <div class="subtask-checkbox ${subtask.completed ? 'completed' : ''}" data-action="toggle-subtask" style="width: 18px; height: 18px;">
-                                                                ${subtask.completed ? UI.icons.check : ''}
-                                                            </div>
-                                                            <span class="subtask-text" data-action="edit-subtask-inline" style="flex: 1; cursor: text; ${subtask.completed ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${escapeHtml(subtask.text)}</span>
-                                                            ${subtask.followUpTaskId ? `<button class="subtask-followup-indicator" data-action="goto-followup" data-followup-id="${subtask.followUpTaskId}" aria-label="Go to follow-up task" title="Go to follow-up task" style="padding: 4px 6px; background: none; border: none; cursor: pointer; color: var(--accent-color); font-size: 14px; display: flex; align-items: center; opacity: 0.8; transition: opacity 0.2s;">↪</button>` : ''}
-                                                            <button class="subtask-delete" data-action="delete-subtask" style="opacity: 0.5;">${UI.icons.x}</button>
-                                                        </div>
-                                                    `).join('')}
+                                                    ${this.renderSubtaskItems(cl)}
                                                 </div>
                                                 
                                                 <!-- Add Subtask Row -->
@@ -1954,27 +1979,7 @@ const App = {
             }
         });
 
-        // Toggle Subtask Item
-        app.addEventListener('click', (e) => {
-            const checkbox = e.target.closest('[data-action="toggle-subtask"]');
-            if (checkbox && this.state.currentTodo) {
-                const item = checkbox.closest('.subtask-item');
-                const subtaskId = item.dataset.subtaskId;
-                TodoManager.toggleSubtaskItem(this.state.currentTodo, subtaskId);
-                this.render();
-            }
-        });
 
-        // Delete Subtask Item
-        app.addEventListener('click', (e) => {
-            const btn = e.target.closest('[data-action="delete-subtask"]');
-            if (btn && this.state.currentTodo) {
-                const item = btn.closest('.subtask-item');
-                const subtaskId = item.dataset.subtaskId;
-                TodoManager.deleteSubtaskItem(this.state.currentTodo, subtaskId);
-                this.render();
-            }
-        });
 
         // Keyboard shortcuts for todo modal (power user features)
         app.addEventListener('keydown', (e) => {
@@ -2289,15 +2294,47 @@ const App = {
                 const result = TodoManager.findSubtaskInTodo(todo, subtaskId);
                 const willCreateFollowUp = result && !result.item.completed;
 
-                TodoManager.toggleSubtask(this.state.currentTodo, subtaskId);
+                TodoManager.toggleSubtaskItem(this.state.currentTodo, subtaskId);
 
                 // Auto-expand hidden section if a follow-up was just created
                 if (willCreateFollowUp) {
                     this.state.showHidden = true;
                     localStorage.setItem('showHidden', 'true');
+
+                    // REFRESH BACKGROUND LIST:
+                    // We need to show the new hidden task, but we must NOT
+                    // re-render the whole app (which would match the modal).
+                    this.refreshTodoScreenOnly();
+
+                    // We also need to update the parent row using surgical update below
+                    // because refreshTodoScreenOnly might replace the DOM, but let's be safe.
+                    // Strictly speaking, refreshTodoScreenOnly replaces the whole list,
+                    // so the parent row IN THE LIST is updated.
+                    // BUT the checkbox inside the modal needs the surgical update below.
                 }
 
-                this.render();
+                // OPTIMIZATION: Selective DOM Update
+                const checkbox = toggleAction;
+                const text = subtaskItem.querySelector('.subtask-text');
+
+                // toggle visual state
+                const isCompleted = !result.item.completed; // It was just toggled in manager, so get new state
+
+                checkbox.classList.toggle('completed', result.item.completed);
+                checkbox.innerHTML = result.item.completed ? UI.icons.check : '';
+
+                if (text) {
+                    if (result.item.completed) {
+                        text.style.textDecoration = 'line-through';
+                        text.style.opacity = '0.6';
+                    } else {
+                        text.style.textDecoration = 'none';
+                        text.style.opacity = '1';
+                    }
+                }
+
+                // Update parent todo metadata in the background list
+                this.updateTodoItemDOM(this.state.currentTodo);
                 return;
             }
         });
@@ -2315,7 +2352,7 @@ const App = {
 
                 // Wait for animation to complete, then delete
                 setTimeout(() => {
-                    TodoManager.deleteSubtask(this.state.currentTodo, subtaskId);
+                    TodoManager.deleteSubtaskItem(this.state.currentTodo, subtaskId);
                     this.render();
                 }, 250); // Match animation duration in CSS
 
