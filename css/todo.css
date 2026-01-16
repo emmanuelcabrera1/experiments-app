@@ -13,6 +13,13 @@
     gap: var(--space-sm);
 }
 
+.todo-list .swipe-container {
+    margin-bottom: 0;
+    overflow: hidden;
+    isolation: isolate;
+    /* Creates new stacking context */
+}
+
 .todo-item {
     display: flex;
     align-items: center;
@@ -310,6 +317,14 @@
 /* ========================================
    DRAG AND DROP STATE
 ======================================== */
+
+/* Long-press ready state - subtle lift effect */
+.swipe-container.ready-to-drag {
+    transform: scale(1.02);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    z-index: 100;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
 
 .todo-item.dragging {
     opacity: 0.95;

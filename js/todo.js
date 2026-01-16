@@ -115,10 +115,17 @@ const TodoManager = {
 
     reorder(orderedIds) {
         const todos = this.load();
+
+        // Items in the new order
         const reordered = orderedIds
             .map(id => todos.find(t => t.id === id))
             .filter(Boolean);
-        this.save(reordered);
+
+        // FIX: Items NOT in the new order (e.g., hidden tasks)
+        // Preserve these instead of deleting them.
+        const others = todos.filter(t => !orderedIds.includes(t.id));
+
+        this.save([...reordered, ...others]);
     },
 
     // --- Checklist Methods ---

@@ -4,7 +4,7 @@
  * Version-based cache invalidation
  */
 
-const CACHE_VERSION = 'v1.0.8';
+const CACHE_VERSION = 'v1.0.22';
 const CACHE_NAME = `experiments-${CACHE_VERSION}`;
 
 // Assets to cache on install (relative paths for GitHub Pages subdirectory support)
@@ -34,7 +34,15 @@ self.addEventListener('install', (event) => {
         caches.open(CACHE_NAME)
             .then((cache) => {
                 console.log('[SW] Caching static assets');
-                return cache.addAll(STATIC_ASSETS);
+                // Force network fetch to bypass browser HTTP cache
+                const stack = STATIC_ASSETS.map(url =>
+                    fetch(new Request(url, { cache: 'reload' }))
+                        .then(response => {
+                            if (!response.ok) throw new Error(`Fetch failed for ${url}`);
+                            return cache.put(url, response);
+                        })
+                );
+                return Promise.all(stack);
             })
             .then(() => {
                 // Skip waiting to activate immediately

@@ -10,12 +10,13 @@ const App = {
         currentTab: 'experiments',
         currentExperiment: null,
         calendarMonth: new Date(),
-        currentFilter: 'ALL', // Track active filter
+        currentFilter: 'NOW', // Track active filter
         dockConfig: ['experiments', 'gallery', 'insights', 'todo'], // Configurable tabs
         currentTodo: null, // Currently viewed todo in detail modal
         isEditingTodoNotes: false, // Track if notes are in edit mode
         showCompleted: true, // Show/hide completed tasks (collapsible)
         showHidden: localStorage.getItem('experiments_show_hidden') === 'true', // Load state from storage
+        showChecklists: localStorage.getItem('experiments_show_checklists') !== 'false', // Default to true (expanded)
         deletedTodo: null, // Temporarily store deleted todo for undo
         undoTimeout: null // Timeout ID for undo operation
     },
@@ -297,18 +298,23 @@ const App = {
      * Render Experiments tab
      */
     renderExperimentsScreen() {
-        let experiments = DataManager.getExperiments();
-        const today = new Date();
-        const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
-        const dateStr = today.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }).toUpperCase();
-
-        // Apply filter if not "ALL"
+        // Determine list of experiments to show based on filter
+        let experiments;
         const filter = this.state.currentFilter;
-        if (filter !== 'ALL') {
-            experiments = experiments.filter(e =>
+
+        if (filter === 'NOW') {
+            // "NOW" filter shows ACTIVE experiments
+            experiments = DataManager.getExperimentsByStatus('active');
+        } else {
+            // Category filters show DRAFT experiments (waiting to be started)
+            experiments = DataManager.getExperimentsByStatus('draft').filter(e =>
                 e.category && e.category.toUpperCase() === filter
             );
         }
+
+        const today = new Date();
+        const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
+        const dateStr = today.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }).toUpperCase();
 
         // Sort experiments: those without scheduled time first, then by time
         experiments.sort((a, b) => {
@@ -324,10 +330,10 @@ const App = {
 
         let content = '';
         if (experiments.length === 0) {
-            if (filter === 'ALL') {
-                content = UI.emptyState('Idle Station', 'No active protocols running.');
+            if (filter === 'NOW') {
+                content = UI.emptyState('No Active Experiments', 'Select a category to start a new experiment.');
             } else {
-                content = UI.emptyState('No Results', `No ${filter.toLowerCase()} experiments found.`);
+                content = UI.emptyState('No Drafts', `No pending experiments in ${filter.toLowerCase()}. Add one!`);
             }
         } else {
             content = experiments.map(e => UI.experimentRow(e)).join('');
@@ -337,15 +343,17 @@ const App = {
         const isActive = (filter) => this.state.currentFilter === filter ? 'active' : '';
         const categories = DataManager.getCategories();
 
+
+
         return `
             <div class="screen active" id="screen-experiments">
                 <div class="header">
-                    <h1>Today</h1>
-                    <p class="subheader">${dayName} ${dateStr}</p>
+                    <h1>Experiments</h1>
+                    <p class="subheader">The lab of your life.</p>
                 </div>
                 
                 <div class="filter-pills" role="group" aria-label="Filter experiments">
-                    <button class="pill ${isActive('ALL')}" data-filter="ALL" aria-pressed="${this.state.currentFilter === 'ALL'}">ALL</button>
+                    <button class="pill ${isActive('NOW')}" data-filter="NOW" aria-pressed="${this.state.currentFilter === 'NOW'}">NOW</button>
                     ${categories.map(cat => `
                         <button class="pill ${isActive(cat.toUpperCase())}" data-filter="${cat.toUpperCase()}" aria-pressed="${this.state.currentFilter === cat.toUpperCase()}">${cat.toUpperCase()}</button>
                     `).join('')}
@@ -641,7 +649,7 @@ const App = {
             <div style="margin-top: var(--space-lg);">
                 <button style="display: flex; width: 100%; align-items: center; justify-content: space-between; margin-bottom: var(--space-sm); cursor: pointer; background: none; border: none; padding: 0; text-align: left;" data-action="toggle-hidden" aria-expanded="${this.state.showHidden}" aria-label="${this.state.showHidden ? 'Hide' : 'Show'} hidden tasks">
                     <p class="subheader" style="margin: 0; color: var(--text-tertiary);">HIDDEN (${hiddenTodos.length})</p>
-                    <span style="color: var(--text-tertiary); font-size: 20px; transform: rotate(${this.state.showHidden ? '180deg' : '0deg'}); transition: transform 0.2s;" aria-hidden="true">▼</span>
+                    <span style="color: var(--text-tertiary); font-size: 20px; font-weight: bold;" aria-hidden="true">${this.state.showHidden ? '−' : '+'}</span>
                 </button>
                 <div style="max-height: ${this.state.showHidden ? '10000px' : '0'}; opacity: ${this.state.showHidden ? '1' : '0'}; ${!this.state.showHidden ? 'display: none;' : ''}">
                     <div class="todo-list" role="list" aria-label="Hidden tasks" style="opacity: 0.7;">
@@ -651,11 +659,15 @@ const App = {
             </div>
         ` : '';
 
+        const today = new Date();
+        const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
+        const dateStr = today.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }).toUpperCase();
+
         return `
             <div class="screen ${this.state.currentTab === 'todo' ? 'active' : ''}" id="screen-todo">
                 <div class="header">
-                    <h1>Tasks</h1>
-                    <p class="subheader">Get things done</p>
+                    <h1>Today</h1>
+                    <p class="subheader">${dayName} ${dateStr}</p>
                 </div>
                 ${content}
                 ${hiddenSection}
@@ -704,57 +716,65 @@ const App = {
                         
                         <!-- CHECKLISTS Section -->
                         <div style="margin-bottom: var(--space-lg);">
-                            <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm);">
-                                <span style="color: var(--text-tertiary);">${UI.icons.list || '☰'}</span>
-                                <span style="font-size: var(--text-xs); color: var(--text-tertiary); font-weight: var(--weight-semibold); letter-spacing: 0.5px;">CHECKLISTS</span>
-                            </div>
-                            
-                            <!-- Checklists Container -->
-                            <div id="checklists-container">
-                                ${checklists.map(cl => `
-                                    <div class="checklist-section" data-checklist-id="${cl.id}" draggable="true" style="margin-bottom: var(--space-md); background: var(--inactive-bg); border-radius: var(--radius-md); overflow: hidden;">
-                                        
-                                        <!-- Checklist Header -->
-                                        <div class="checklist-header" style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm) var(--space-md); background: rgba(0,0,0,0.03);">
-                                            <div class="checklist-grip" style="cursor: grab; color: var(--text-tertiary); display: flex; align-items: center;">${UI.icons.grip}</div>
-                                            <span class="checklist-toggle" data-action="toggle-checklist-collapse" style="font-family: monospace; font-weight: bold; color: var(--text-secondary); width: 20px; text-align: center; font-size: 16px; cursor: pointer;">
-                                                ${cl.isCollapsed ? '+' : '−'}
-                                            </span>
-                                            <span class="checklist-title" contenteditable="true" data-action="edit-checklist-title" style="flex: 1; font-weight: 600; font-size: var(--text-sm); color: var(--text-secondary); outline: none; padding: 2px 4px; border-radius: 4px; border: 1px solid transparent;">${escapeHtml(cl.title)}</span>
-                                            <button class="checklist-delete" data-action="delete-checklist" style="opacity: 0.3; padding: 4px; border: none; background: transparent; cursor: pointer;">${UI.icons.x}</button>
-                                        </div>
-                                        
-                                        <!-- Checklist Content (Items + Add Row) -->
-                                        <div class="checklist-content" style="display: ${cl.isCollapsed ? 'none' : 'block'}; padding: var(--space-xs);">
-                                            
-                                            <!-- Subtask List -->
-                                            <div class="subtask-list" id="list-${cl.id}">
-                                                ${(cl.items || []).map(subtask => `
-                                                    <div class="subtask-item" data-subtask-id="${subtask.id}" draggable="true" style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm); background: var(--surface-color); border-radius: var(--radius-sm); margin-bottom: var(--space-xs);">
-                                                        <div class="todo-grip subtask-grip" style="cursor: grab; color: var(--text-tertiary);">${UI.icons.grip}</div>
-                                                        <div class="subtask-checkbox ${subtask.completed ? 'completed' : ''}" data-action="toggle-subtask" style="width: 18px; height: 18px;">
-                                                            ${subtask.completed ? UI.icons.check : ''}
-                                                        </div>
-                                                        <span class="subtask-text" data-action="edit-subtask-inline" style="flex: 1; cursor: text; ${subtask.completed ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${escapeHtml(subtask.text)}</span>
-                                                        <button class="subtask-delete" data-action="delete-subtask" style="opacity: 0.5;">${UI.icons.x}</button>
-                                                    </div>
-                                                `).join('')}
-                                            </div>
-                                            
-                                            <!-- Add Subtask Row -->
-                                            <div style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm); background: var(--surface-color); border-radius: var(--radius-sm); margin-top: var(--space-xs);">
-                                                <span style="color: var(--text-tertiary); font-weight: bold;">+</span>
-                                                <input type="text" class="add-subtask-text" placeholder="Add item..." maxlength="200" style="flex: 1; border: none; background: transparent; font-size: var(--text-sm); color: inherit; padding: 0; outline: none;">
-                                            </div>
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
-
-                            <!-- Add New Checklist Button -->
-                            <button id="btn-add-checklist" style="width: 100%; padding: var(--space-md); background: var(--inactive-bg); border: 2px dashed var(--border-color); border-radius: var(--radius-md); color: var(--text-tertiary); cursor: pointer; font-size: var(--text-sm); margin-top: var(--space-sm); transition: all 0.2s;">
-                                + Add New Checklist
+                            <button style="display: flex; width: 100%; align-items: center; justify-content: space-between; margin-bottom: var(--space-sm); cursor: pointer; background: none; border: none; padding: 0; text-align: left;" data-action="toggle-checklists-section" aria-label="Toggle checklists">
+                                <div style="display: flex; align-items: center; gap: var(--space-sm);">
+                                    <span style="color: var(--text-tertiary);">${UI.icons.list || '☰'}</span>
+                                    <span style="font-size: var(--text-xs); color: var(--text-tertiary); font-weight: var(--weight-semibold); letter-spacing: 0.5px;">CHECKLISTS (${checklists.length})</span>
+                                </div>
+                                <span class="toggle-icon" style="color: var(--text-tertiary); font-size: 20px; font-weight: bold;" aria-hidden="true">${this.state.showChecklists ? '−' : '+'}</span>
                             </button>
+                            
+                            <!-- Collapsible Wrapper -->
+                            <div id="checklists-wrapper" style="display: ${this.state.showChecklists ? 'block' : 'none'};">
+                                <!-- Checklists Container -->
+                                <div id="checklists-container">
+                                    ${checklists.map(cl => `
+                                        <div class="checklist-section" data-checklist-id="${cl.id}" draggable="true" style="margin-bottom: var(--space-md); background: var(--inactive-bg); border-radius: var(--radius-md); overflow: hidden;">
+                                            
+                                            <!-- Checklist Header -->
+                                            <div class="checklist-header" style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm) var(--space-md); background: rgba(0,0,0,0.03);">
+                                                <div class="checklist-grip" style="cursor: grab; color: var(--text-tertiary); display: flex; align-items: center;">${UI.icons.grip}</div>
+                                                <span class="checklist-toggle" data-action="toggle-checklist-collapse" style="font-family: monospace; font-weight: bold; color: var(--text-secondary); width: 20px; text-align: center; font-size: 16px; cursor: pointer;">
+                                                    ${cl.isCollapsed ? '+' : '−'}
+                                                </span>
+                                                <span class="checklist-title" contenteditable="true" data-action="edit-checklist-title" style="flex: 1; font-weight: 600; font-size: var(--text-sm); color: var(--text-secondary); outline: none; padding: 2px 4px; border-radius: 4px; border: 1px solid transparent;">${escapeHtml(cl.title)}</span>
+                                                <button class="checklist-delete" data-action="delete-checklist" aria-label="Delete checklist" style="opacity: 0.9; padding: 6px; border: none; background: transparent; cursor: pointer; color: var(--text-tertiary); display: flex; align-items: center;">
+                                                    <div style="width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;">${UI.icons.x}</div>
+                                                </button>
+                                            </div>
+                                            
+                                            <!-- Checklist Content (Items + Add Row) -->
+                                            <div class="checklist-content" style="display: ${cl.isCollapsed ? 'none' : 'block'}; padding: var(--space-xs);">
+                                                
+                                                <!-- Subtask List -->
+                                                <div class="subtask-list" id="list-${cl.id}">
+                                                    ${(cl.items || []).map(subtask => `
+                                                        <div class="subtask-item" data-subtask-id="${subtask.id}" draggable="true" style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm); background: var(--surface-color); border-radius: var(--radius-sm); margin-bottom: var(--space-xs);">
+                                                            <div class="todo-grip subtask-grip" style="cursor: grab; color: var(--text-tertiary);">${UI.icons.grip}</div>
+                                                            <div class="subtask-checkbox ${subtask.completed ? 'completed' : ''}" data-action="toggle-subtask" style="width: 18px; height: 18px;">
+                                                                ${subtask.completed ? UI.icons.check : ''}
+                                                            </div>
+                                                            <span class="subtask-text" data-action="edit-subtask-inline" style="flex: 1; cursor: text; ${subtask.completed ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${escapeHtml(subtask.text)}</span>
+                                                            <button class="subtask-delete" data-action="delete-subtask" style="opacity: 0.5;">${UI.icons.x}</button>
+                                                        </div>
+                                                    `).join('')}
+                                                </div>
+                                                
+                                                <!-- Add Subtask Row -->
+                                                <div style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm); background: var(--surface-color); border-radius: var(--radius-sm); margin-top: var(--space-xs);">
+                                                    <span style="color: var(--text-tertiary); font-weight: bold;">+</span>
+                                                    <input type="text" class="add-subtask-text" placeholder="Add item..." maxlength="200" style="flex: 1; border: none; background: transparent; font-size: var(--text-sm); color: inherit; padding: 0; outline: none;">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+
+                                <!-- Add New Checklist Button -->
+                                <button id="btn-add-checklist" style="width: 100%; padding: var(--space-md); background: var(--inactive-bg); border: 2px dashed var(--border-color); border-radius: var(--radius-md); color: var(--text-tertiary); cursor: pointer; font-size: var(--text-sm); margin-top: var(--space-sm); transition: all 0.2s;">
+                                    + Add New Checklist
+                                </button>
+                            </div>
                         </div>
 
                         <!-- DETAILS & ANNOTATIONS Section -->
@@ -806,9 +826,15 @@ const App = {
                         <span class="swipe-btn-label">${hideLabel}</span>
                     </button>
                 </div>
+                <!-- Right actions (swipe left reveals) -->
+                <div class="swipe-actions-right">
+                    <button class="swipe-btn swipe-btn-delete" data-action="delete" aria-label="Delete task">
+                        <span class="swipe-btn-icon">🗑️</span>
+                        <span class="swipe-btn-label">Delete</span>
+                    </button>
+                </div>
                 <!-- Todo row -->
                 <div class="todo-item todo-row" data-todo-id="${escapeHtml(todo.id)}" role="listitem" aria-label="${escapeHtml(todo.title)}, ${statusText}${subtaskText}">
-                    <div class="todo-grip" draggable="true" aria-label="Drag to reorder" role="button" tabindex="0">${UI.icons.grip}</div>
                     <div class="todo-checkbox ${todo.completed ? 'completed' : ''}" data-action="toggle-todo" role="checkbox" aria-checked="${todo.completed}" aria-label="Mark as ${todo.completed ? 'incomplete' : 'complete'}" tabindex="0">
                         ${todo.completed ? UI.icons.check : ''}
                     </div>
@@ -1081,10 +1107,10 @@ const App = {
      */
     renderTabBar() {
         const allTabs = [
+            { id: 'todo', label: 'Todo', icon: UI.icons.todo },
             { id: 'experiments', label: 'Lab', icon: UI.icons.flask },
             { id: 'gallery', label: 'Gallery', icon: UI.icons.sparkles },
             { id: 'insights', label: 'Insights', icon: UI.icons.chart },
-            { id: 'todo', label: 'Todo', icon: UI.icons.todo },
             { id: 'settings', label: 'Settings', icon: UI.icons.settings }
         ];
 
@@ -1454,7 +1480,7 @@ const App = {
                 e.stopPropagation();
                 this.state.currentTab = tabItem.dataset.tab;
                 this.state.currentExperiment = null;
-                this.state.currentFilter = 'ALL';
+                this.state.currentFilter = 'NOW';
                 this.render();
                 return;
             }
@@ -1572,6 +1598,32 @@ const App = {
                 this.state.showHidden = !this.state.showHidden;
                 localStorage.setItem('experiments_show_hidden', this.state.showHidden);
                 this.render();
+                return;
+            }
+        });
+
+        // Toggle Checklists section visibility (Selective DOM Update)
+        app.addEventListener('click', (e) => {
+            const toggle = e.target.closest('[data-action="toggle-checklists-section"]');
+            if (toggle) {
+                e.stopPropagation();
+                this.state.showChecklists = !this.state.showChecklists;
+                localStorage.setItem('experiments_show_checklists', this.state.showChecklists);
+
+                const container = document.getElementById('checklists-wrapper');
+                const icon = toggle.querySelector('.toggle-icon');
+
+                if (icon) {
+                    icon.textContent = this.state.showChecklists ? '−' : '+';
+                }
+
+                if (container) {
+                    if (this.state.showChecklists) {
+                        container.style.display = 'block';
+                    } else {
+                        container.style.display = 'none';
+                    }
+                }
                 return;
             }
         });
@@ -2285,10 +2337,9 @@ const App = {
         // Todo Drag-and-Drop: dragstart
         // Todo Drag-and-Drop: dragstart
         app.addEventListener('dragstart', (e) => {
-            // FIX: Get the container, not just the item
             const container = e.target.closest('.swipe-container');
-            // Ensure we are dragging by the grip
-            if (container && e.target.closest('.todo-grip')) {
+            // Ensure container is ready to drag (via long-press)
+            if (container && container.classList.contains('ready-to-drag')) {
                 e.dataTransfer.effectAllowed = 'move';
                 e.dataTransfer.setData('text/plain', container.dataset.swipeId);
 
@@ -2328,6 +2379,8 @@ const App = {
             const container = e.target.closest('.swipe-container');
             if (container) {
                 container.classList.remove('dragging');
+                container.classList.remove('ready-to-drag');
+                container.removeAttribute('draggable');
 
                 // Save new order
                 const todoList = document.getElementById('todo-list');
@@ -2530,6 +2583,55 @@ const App = {
         });
 
         // ========================================
+        // LONG-PRESS DRAG DETECTION (TODO REORDER)
+        // ========================================
+
+        let longPressTimer = null;
+        let longPressContainer = null;
+        const LONG_PRESS_DURATION = 500; // ms
+
+        // Start long-press timer on touchstart
+        app.addEventListener('touchstart', (e) => {
+            const container = e.target.closest('.swipe-container[data-swipe-type="todo"]');
+            if (!container) return;
+
+            // Don't trigger if touching buttons or checkbox
+            if (e.target.closest('.swipe-btn, .todo-checkbox')) return;
+
+            longPressContainer = container;
+
+            longPressTimer = setTimeout(() => {
+                if (longPressContainer) {
+                    // Add ready-to-drag class for visual feedback
+                    longPressContainer.classList.add('ready-to-drag');
+                    longPressContainer.setAttribute('draggable', 'true');
+
+                    // Haptic feedback
+                    if (navigator.vibrate) {
+                        navigator.vibrate(30);
+                    }
+                }
+            }, LONG_PRESS_DURATION);
+        }, { passive: true });
+
+        // Cancel long-press on touchmove (user is scrolling/swiping)
+        app.addEventListener('touchmove', (e) => {
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+            }
+        }, { passive: true });
+
+        // Cancel long-press on touchend
+        app.addEventListener('touchend', (e) => {
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+            }
+            // Note: ready-to-drag is cleared in dragend
+        }, { passive: true });
+
+        // ========================================
         // SWIPE-TO-REVEAL GESTURE HANDLING
         // ========================================
 
@@ -2598,18 +2700,21 @@ const App = {
             let hasLeft = !!leftActions;
             let hasRight = !!rightActions;
 
-            // FIX: Explicitly enforce config for known types to avoid DOM/layout race conditions
-            if (swipeType === 'todo') {
-                hasLeft = true;
-                leftWidth = 80; // Button (60) + gap (8) + padding (8) + buffer
-                hasRight = false; // Todos don't have right actions currently
-            }
+            // DYNAMIC CALCULATION: Width is derived from rendered buttons.
+            // Minimum safeguard: If DOM returns 0 but container exists, use defaults.
+            if (leftActions && leftWidth === 0) leftWidth = 66; // 50 + 8 + 8
+            if (rightActions && rightWidth === 0) rightWidth = 66; // 50 + 8 + 8
+
+            // Determine initial state
+            const currentTransform = new WebKitCSSMatrix(window.getComputedStyle(row).transform);
+            const initialTranslateX = currentTransform.m41;
 
             this.swipeState = {
                 active: true,
                 startX: touch.clientX,
                 startY: touch.clientY,
-                currentX: 0,
+                initialTranslateX: initialTranslateX,
+                currentX: initialTranslateX,
                 direction: null,
                 container: container,
                 row: row,
@@ -2622,7 +2727,8 @@ const App = {
                 hapticTriggered: false
             };
 
-            triggerHaptic('light');
+            // Remove transition for instant drag
+            row.style.transition = 'none';
         }, { passive: true });
 
         // Touch move
@@ -2646,123 +2752,95 @@ const App = {
             // Prevent scroll during horizontal swipe
             e.preventDefault();
 
-            // Apply rubber-band effect beyond buttons width
-            let effectiveX = deltaX;
-            const state = this.swipeState;
+            // 1:1 Movement logic
+            const { startX, initialTranslateX, leftWidth, rightWidth, hasLeft, hasRight } = this.swipeState;
+            const currentDelta = touch.clientX - startX;
+            let newX = initialTranslateX + currentDelta;
 
-            // Direction constraints and resistance
-            if (deltaX > 0) { // Swiping Right (reveal Left)
-                if (!state.hasLeft) {
-                    // Resist hard if no left actions
-                    effectiveX = deltaX * 0.1;
-                } else if (deltaX > state.leftWidth) {
-                    // Rubber band past width
-                    const overshoot = deltaX - state.leftWidth;
-                    effectiveX = state.leftWidth + (overshoot * 0.15);
-                }
-            } else { // Swiping Left (reveal Right)
-                if (!state.hasRight) {
-                    // Resist hard if no right actions
-                    effectiveX = deltaX * 0.1;
-                } else if (Math.abs(deltaX) > state.rightWidth) {
-                    // Rubber band past width
-                    const overshoot = Math.abs(deltaX) - state.rightWidth;
-                    effectiveX = -(state.rightWidth + (overshoot * 0.15));
-                }
-            }
+            // Constrain movement based on available actions
+            // Allow slight resistance overshoot but generally stick to 1:1
+            if (newX > 0 && !hasLeft) newX = newX * 0.2; // Resistance if no left actions
+            if (newX < 0 && !hasRight) newX = newX * 0.2; // Resistance if no right actions
 
-            this.swipeState.currentX = effectiveX;
+            // Hard limits with slight elasticity (optional, but good for feel)
+            // For now, sticking to 1:1 until max width, then resistance
+            // Rubber banding: heavier resistance (0.15) past snap points
+            if (newX > leftWidth) newX = leftWidth + (newX - leftWidth) * 0.15;
+            if (newX < -rightWidth) newX = -rightWidth + (newX + rightWidth) * 0.15;
 
-            // Apply transform
+            this.swipeState.currentX = newX;
+
+            // Apply transform 1:1
             const row = this.swipeState.row;
             row.classList.add('swiping');
-            row.style.transform = `translateX(${effectiveX}px)`;
+            row.style.transform = `translateX(${newX}px)`;
 
-            // Haptic feedback at commit threshold (variable based on side)
-            const targetWidth = effectiveX > 0 ? state.leftWidth : state.rightWidth;
-            const threshold = targetWidth * 0.5; // Trigger at 50% open
-
-            if (!this.swipeState.hapticTriggered && Math.abs(effectiveX) >= threshold) {
-                triggerHaptic('strong');
-                this.swipeState.hapticTriggered = true;
-            }
-
-            this.swipeState.didSwipe = Math.abs(effectiveX) > 10;
+            this.swipeState.didSwipe = Math.abs(currentDelta) > 5;
         }, { passive: false });
 
         // Touch end
         app.addEventListener('touchend', (e) => {
             if (!this.swipeState.active) return;
 
-            const { currentX, container, row, startTime, leftWidth, rightWidth, hasLeft, hasRight } = this.swipeState;
+            const { currentX, row, initialTranslateX, leftWidth, rightWidth } = this.swipeState;
+            const distanceMoved = currentX - initialTranslateX;
+            const HAIR_TRIGGER = 15;
 
-            // Calculate velocity
-            const elapsed = Date.now() - startTime;
-            const velocity = Math.abs(currentX) / elapsed;
+            row.classList.remove('swiping');
 
-            // Check if revealed (support both 'open' legacy and directional 'left'/'right')
-            const isRevealed = row.dataset.revealed === 'open' || row.dataset.revealed === 'right' || row.dataset.revealed === 'left';
+            // Quintic Ease Out: faster start, very soft landing
+            row.style.transition = 'transform 0.6s cubic-bezier(0.23, 1, 0.32, 1)';
 
-            // Handle swipe based on direction and state
-            if (isRevealed) {
-                // Already open - check if we should close
-                const isSwipedRight = row.dataset.revealed === 'right' || row.dataset.revealed === 'open'; // Opened left actions
-                const isSwipedLeft = row.dataset.revealed === 'left'; // Opened right actions
+            let targetX = 0;
+            let revealedState = null;
 
-                let shouldClose = false;
-
-                if (isSwipedRight) {
-                    // Was open with positive transform. Need negative movement to close.
-                    shouldClose = currentX < -COMMIT_THRESHOLD || (currentX < 0 && velocity > VELOCITY_THRESHOLD);
-                } else if (isSwipedLeft) {
-                    // Was open with negative transform. Need positive movement to close.
-                    shouldClose = currentX > COMMIT_THRESHOLD || (currentX > 0 && velocity > VELOCITY_THRESHOLD);
-                }
-
-                if (shouldClose) {
-                    // Close
-                    row.classList.remove('swiping');
-                    row.style.transform = '';
-                    delete row.dataset.revealed;
-                    triggerHaptic('medium');
+            if (initialTranslateX === 0) {
+                // STARTING CLOSED
+                if (distanceMoved > HAIR_TRIGGER && this.swipeState.hasLeft) {
+                    // Open Left
+                    targetX = leftWidth;
+                    revealedState = 'right'; // Content moves right to reveal left actions
+                } else if (distanceMoved < -HAIR_TRIGGER && this.swipeState.hasRight) {
+                    // Open Right
+                    targetX = -rightWidth;
+                    revealedState = 'left'; // Content moves left to reveal right actions
                 } else {
-                    // Stay open (restore position)
-                    row.classList.remove('swiping');
-                    if (isSwipedRight) {
-                        row.style.transform = `translateX(${leftWidth}px)`;
-                    } else {
-                        row.style.transform = `translateX(-${rightWidth}px)`;
-                    }
+                    // Revert
+                    targetX = 0;
                 }
             } else {
-                // Not open - check if swipe to open
-                if (currentX > 0 && hasLeft) {
-                    // Swiping Right -> Open Left Actions
-                    if (currentX > (leftWidth * 0.4) || (velocity > VELOCITY_THRESHOLD && currentX > 10)) {
-                        row.classList.remove('swiping');
-                        row.style.transform = `translateX(${leftWidth}px)`;
-                        row.dataset.revealed = 'right';
-                        triggerHaptic('medium');
+                // STARTING OPEN
+                // If moved backwards > 15px, close it. Otherwise stay open.
+                // Note: "Backwards" means towards 0.
+
+                if (initialTranslateX > 0) {
+                    // Was Open Left (Positive X). Backwards is Negative movement.
+                    if (distanceMoved < -HAIR_TRIGGER) {
+                        targetX = 0; // Close
                     } else {
-                        row.classList.remove('swiping');
-                        row.style.transform = '';
-                    }
-                } else if (currentX < 0 && hasRight) {
-                    // Swiping Left -> Open Right Actions
-                    if (currentX < -(rightWidth * 0.4) || (velocity > VELOCITY_THRESHOLD && currentX < -10)) {
-                        row.classList.remove('swiping');
-                        row.style.transform = `translateX(-${rightWidth}px)`;
-                        row.dataset.revealed = 'left';
-                        triggerHaptic('medium');
-                    } else {
-                        row.classList.remove('swiping');
-                        row.style.transform = '';
+                        targetX = leftWidth; // Stay Open
+                        revealedState = 'right';
                     }
                 } else {
-                    // Not enough movement - stay closed
-                    row.classList.remove('swiping');
-                    row.style.transform = '';
+                    // Was Open Right (Negative X). Backwards is Positive movement.
+                    if (distanceMoved > HAIR_TRIGGER) {
+                        targetX = 0; // Close
+                    } else {
+                        targetX = -rightWidth; // Stay Open
+                        revealedState = 'left';
+                    }
                 }
+            }
+
+            // Apply Final State
+            row.style.transform = targetX === 0 ? '' : `translateX(${targetX}px)`;
+
+            if (revealedState) {
+                row.dataset.revealed = revealedState;
+                if (targetX !== initialTranslateX) triggerHaptic('medium');
+            } else {
+                delete row.dataset.revealed;
+                if (targetX !== initialTranslateX) triggerHaptic('light');
             }
 
             this.swipeState.active = false;
@@ -2810,6 +2888,27 @@ const App = {
 
                     this.render();
                     this.showToast(isHidden ? 'Task unhidden' : 'Task hidden');
+                } else if (action === 'delete') {
+                    // Get full todo for undo
+                    const deletedTodo = TodoManager.getAll().find(t => t.id === swipeId);
+
+                    // Delete the task
+                    TodoManager.delete(swipeId);
+                    this.render();
+
+                    // Show undo toast
+                    this.showToast('Task deleted', {
+                        duration: 5000,
+                        undo: () => {
+                            if (deletedTodo) {
+                                const todos = TodoManager.getAll();
+                                todos.push(deletedTodo);
+                                TodoManager.save(todos);
+                                this.showToast('Task restored');
+                                this.render();
+                            }
+                        }
+                    });
                 }
                 return;
             }
@@ -2826,7 +2925,16 @@ const App = {
                     this.handleEditExperiment(swipeId);
                     break;
                 case 'complete':
-                    this.handleCompleteExperiment(swipeId);
+                    {
+                        const exp = DataManager.getExperiment(swipeId);
+                        if (exp && exp.status === 'draft') {
+                            DataManager.activateExperiment(swipeId);
+                            this.render();
+                            this.showToast('Experiment moved to NOW');
+                        } else {
+                            this.handleCompleteExperiment(swipeId);
+                        }
+                    }
                     break;
             }
         });
@@ -2901,6 +3009,9 @@ const App = {
             } else if (form.id === 'form-checkin') {
                 e.preventDefault();
                 this.handleCheckin(form);
+            } else if (form.id === 'form-edit-entry') {
+                e.preventDefault();
+                this.handleSaveEntry(form);
             }
         });
 
@@ -3286,7 +3397,7 @@ const App = {
         });
 
         this.state.currentTab = 'experiments';
-        this.state.currentFilter = 'ALL';
+        this.state.currentFilter = 'NOW';
         this.showToast(`Started: ${template.title}`);
         this.render();
     },
@@ -3342,7 +3453,7 @@ const App = {
     },
 
     /**
-     * Handle swipe-to-archive action
+     * Handle swipe-to-archive action (Move to Draft/Later)
      */
     handleSwipeArchive(experimentId, container) {
         const experiment = DataManager.getExperiment(experimentId);
@@ -3370,15 +3481,15 @@ const App = {
             });
         }, 200);
 
-        // Archive after animation
+        // Deactivate (Draft) after animation
         setTimeout(() => {
-            DataManager.archiveExperiment(experimentId);
+            DataManager.deactivateExperiment(experimentId);
             this.render();
 
             // Show toast with undo
-            this.showToast('Experiment archived', {
+            this.showToast('Experiment moved to Later', {
                 undo: () => {
-                    DataManager.updateExperiment(experimentId, { status: 'active' });
+                    DataManager.activateExperiment(experimentId);
                     this.render();
                 }
             });
@@ -3668,7 +3779,7 @@ const App = {
      */
     async loadAppVersion() {
         try {
-            const response = await fetch('./manifest.json');
+            const response = await fetch(`./manifest.json?v=${Date.now()}`);
             const manifest = await response.json();
             this.state.appVersion = manifest.version || '1.0.0';
         } catch {

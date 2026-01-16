@@ -472,6 +472,14 @@ const DataManager = {
     },
 
     /**
+     * Get experiments by status
+     */
+    getExperimentsByStatus(status) {
+        const data = this.load();
+        return data.experiments.filter(e => e.status === status);
+    },
+
+    /**
      * Create a new experiment
      */
     createExperiment(experiment) {
@@ -479,7 +487,7 @@ const DataManager = {
         const newExp = {
             id: this.generateId(),
             ...experiment,
-            status: 'active',
+            status: 'draft',
             entries: [],
             reflections: [],
             createdAt: new Date().toISOString(),
@@ -488,6 +496,20 @@ const DataManager = {
         data.experiments.push(newExp);
         this.save(data);
         return newExp;
+    },
+
+    /**
+     * Activate an experiment (move to NOW)
+     */
+    activateExperiment(id) {
+        return this.updateExperiment(id, { status: 'active' });
+    },
+
+    /**
+     * Deactivate an experiment (move to Draft/Category)
+     */
+    deactivateExperiment(id) {
+        return this.updateExperiment(id, { status: 'draft' });
     },
 
     /**
@@ -638,9 +660,9 @@ const DataManager = {
         const custom = JSON.parse(localStorage.getItem('experiments_categories') || '[]');
         const defaultCategories = ['Health', 'Work', 'Parenting', 'Relationships', 'Learning', 'Hobbies', 'Emotions', 'Money'];
 
-        // Get categories currently in use by active experiments
-        const activeExperiments = this.getExperiments();
-        const usedCategories = activeExperiments.map(e => e.category).filter(Boolean);
+        // Get categories currently in use by ALL experiments (active or draft)
+        const data = this.load();
+        const usedCategories = data.experiments.map(e => e.category).filter(Boolean);
 
         // Merge and deduplicate
         const allCategories = [...new Set([...defaultCategories, ...custom, ...usedCategories])];
