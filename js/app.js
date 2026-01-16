@@ -2922,6 +2922,9 @@ const App = {
             } else if (form.id === 'form-checkin') {
                 e.preventDefault();
                 this.handleCheckin(form);
+            } else if (form.id === 'form-edit-entry') {
+                e.preventDefault();
+                this.handleSaveEntry(form);
             }
         });
 
