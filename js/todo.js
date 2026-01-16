@@ -14,7 +14,9 @@ const TodoManager = {
             const parsed = JSON.parse(raw);
             if (!Array.isArray(parsed)) return [];
 
-            // MIGRATION: 
+            let needsSave = false;
+
+            // MIGRATION:
             // Convert legacy 'subtasks' array to 'checklists' array structure
             parsed.forEach(t => {
                 // If has subtasks but no checklists, migrate
@@ -26,10 +28,37 @@ const TodoManager = {
                         items: t.subtasks
                     }];
                     delete t.subtasks;
+                    needsSave = true;
                 }
                 // Ensure checklists array exists
                 if (!t.checklists) t.checklists = [];
+
+                // MIGRATION: Add follow-up task properties
+                if (!t.hasOwnProperty('sourceSubtaskId')) {
+                    t.sourceSubtaskId = null;
+                    t.sourceTaskId = null;
+                    needsSave = true;
+                }
+
+                // MIGRATION: Add followUpTaskId to all subtask items
+                if (t.checklists) {
+                    t.checklists.forEach(checklist => {
+                        if (checklist.items) {
+                            checklist.items.forEach(item => {
+                                if (!item.hasOwnProperty('followUpTaskId')) {
+                                    item.followUpTaskId = null;
+                                    needsSave = true;
+                                }
+                            });
+                        }
+                    });
+                }
             });
+
+            // Save if migrations were applied
+            if (needsSave) {
+                this.save(parsed);
+            }
 
             return parsed;
         } catch (error) {
@@ -63,8 +92,10 @@ const TodoManager = {
             notes: todoData.notes || '',
             checklists: [], // Start with empty checklists array
             completed: false,
-            hidden: false,
-            createdAt: new Date().toISOString()
+            hidden: todoData.hidden || false,
+            createdAt: new Date().toISOString(),
+            sourceSubtaskId: todoData.sourceSubtaskId || null,
+            sourceTaskId: todoData.sourceTaskId || null
         };
         // Add default checklist if subtasks provided
         if (todoData.subtasks && todoData.subtasks.length > 0) {
@@ -93,8 +124,41 @@ const TodoManager = {
 
     delete(id) {
         const todos = this.load();
+        const taskToDelete = todos.find(t => t.id === id);
+        if (!taskToDelete) return false;
+
+        // CASCADE DELETE: If deleting a parent task, delete all its follow-up tasks
+        if (taskToDelete.checklists) {
+            const followUpIds = [];
+            taskToDelete.checklists.forEach(checklist => {
+                checklist.items.forEach(item => {
+                    if (item.followUpTaskId) {
+                        followUpIds.push(item.followUpTaskId);
+                    }
+                });
+            });
+
+            // Remove the main task and all follow-ups
+            const filtered = todos.filter(t =>
+                t.id !== id && !followUpIds.includes(t.id)
+            );
+            this.save(filtered);
+            return true;
+        }
+
+        // CLEANUP: If deleting a follow-up task, clear the subtask reference
+        if (taskToDelete.sourceTaskId && taskToDelete.sourceSubtaskId) {
+            const parentTask = todos.find(t => t.id === taskToDelete.sourceTaskId);
+            if (parentTask) {
+                const result = this.findSubtaskInTodo(parentTask, taskToDelete.sourceSubtaskId);
+                if (result && result.item.followUpTaskId === id) {
+                    result.item.followUpTaskId = null;
+                }
+            }
+        }
+
+        // Remove the task
         const filtered = todos.filter(t => t.id !== id);
-        if (filtered.length === todos.length) return false;
         this.save(filtered);
         return true;
     },
@@ -180,7 +244,8 @@ const TodoManager = {
         checklists[checklistIndex].items.push({
             id: this.generateId('sub'),
             text: text,
-            completed: false
+            completed: false,
+            followUpTaskId: null
         });
 
         return this.update(todoId, { checklists });
@@ -222,15 +287,77 @@ const TodoManager = {
     },
 
     toggleSubtaskItem(todoId, subtaskId) {
-        const todo = this.load().find(t => t.id === todoId);
+        const todos = this.load();
+        const todo = todos.find(t => t.id === todoId);
         if (!todo) return null;
 
-        // Find the item to get current status
-        const allItems = this.getAllSubtasks(todo);
-        const item = allItems.find(i => i.id === subtaskId);
-        if (!item) return null;
+        // Find the item and its checklist
+        const result = this.findSubtaskInTodo(todo, subtaskId);
+        if (!result) return null;
 
-        return this.updateSubtaskItem(todoId, subtaskId, { completed: !item.completed });
+        const { checklist, item } = result;
+        const newCompletedState = !item.completed;
+
+        // FOLLOW-UP LOGIC
+        if (newCompletedState === true) {
+            // ✅ Subtask just checked → Create follow-up task
+
+            // Create new hidden task
+            const followUpTask = {
+                id: this.generateId('todo'),
+                title: item.text,
+                notes: `Follow-up from: ${todo.title}${checklist.title ? ' → ' + checklist.title : ''}`,
+                checklists: [],
+                completed: false,
+                hidden: true, // Start in hidden section
+                createdAt: new Date().toISOString(),
+                sourceSubtaskId: subtaskId,
+                sourceTaskId: todoId
+            };
+
+            // Add to todos array
+            todos.push(followUpTask);
+
+            // Update subtask item with reference
+            item.completed = true;
+            item.followUpTaskId = followUpTask.id;
+
+            // Save all changes
+            this.save(todos);
+
+            // Show notification if App is available
+            if (window.App && window.App.showToast) {
+                window.App.showToast(`Follow-up created: ${item.text}`, 'success');
+            }
+
+            return todo;
+
+        } else if (newCompletedState === false && item.followUpTaskId) {
+            // ❌ Subtask unchecked → Delete follow-up task
+
+            // Find and remove follow-up task
+            const filteredTodos = todos.filter(t => t.id !== item.followUpTaskId);
+
+            // Update subtask item
+            item.completed = false;
+            item.followUpTaskId = null;
+
+            // Save all changes
+            this.save(filteredTodos);
+
+            // Show notification
+            if (window.App && window.App.showToast) {
+                window.App.showToast('Follow-up task removed', 'info');
+            }
+
+            return todo;
+
+        } else {
+            // Normal toggle without follow-up
+            item.completed = newCompletedState;
+            this.save(todos);
+            return todo;
+        }
     },
 
     reorderSubtaskItems(todoId, checklistId, orderedIds) {
@@ -279,5 +406,147 @@ const TodoManager = {
     getAllSubtasks(todo) {
         if (!todo || !todo.checklists) return [];
         return todo.checklists.flatMap(cl => cl.items || []);
+    },
+
+    /**
+     * Get the follow-up task for a given subtask
+     * @param {string} subtaskId - ID of the subtask
+     * @returns {Object|null} The follow-up task or null if not found
+     */
+    getFollowUpTask(subtaskId) {
+        const todos = this.load();
+
+        // Find the subtask item first to get its followUpTaskId
+        for (const todo of todos) {
+            const allItems = this.getAllSubtasks(todo);
+            const item = allItems.find(i => i.id === subtaskId);
+            if (item && item.followUpTaskId) {
+                // Find and return the follow-up task
+                return todos.find(t => t.id === item.followUpTaskId) || null;
+            }
+        }
+
+        return null;
+    },
+
+    /**
+     * Get the source subtask and parent task for a follow-up task
+     * @param {string} taskId - ID of the follow-up task
+     * @returns {Object|null} Object with {parentTask, checklist, subtask} or null
+     */
+    getSourceSubtask(taskId) {
+        const todos = this.load();
+        const followUpTask = todos.find(t => t.id === taskId);
+
+        if (!followUpTask || !followUpTask.sourceTaskId || !followUpTask.sourceSubtaskId) {
+            return null;
+        }
+
+        const parentTask = todos.find(t => t.id === followUpTask.sourceTaskId);
+        if (!parentTask) return null;
+
+        // Find the subtask and its checklist
+        for (const checklist of (parentTask.checklists || [])) {
+            const subtask = checklist.items.find(i => i.id === followUpTask.sourceSubtaskId);
+            if (subtask) {
+                return {
+                    parentTask,
+                    checklist,
+                    subtask
+                };
+            }
+        }
+
+        return null;
+    },
+
+    /**
+     * Find a subtask item within a todo and return both the item and its checklist
+     * @param {Object} todo - The todo object
+     * @param {string} subtaskId - ID of the subtask
+     * @returns {Object|null} Object with {checklist, item} or null
+     */
+    findSubtaskInTodo(todo, subtaskId) {
+        if (!todo || !todo.checklists) return null;
+
+        for (const checklist of todo.checklists) {
+            const item = checklist.items.find(i => i.id === subtaskId);
+            if (item) {
+                return { checklist, item };
+            }
+        }
+
+        return null;
+    },
+
+    /**
+     * Clean up orphaned follow-up tasks and broken references
+     * Run this on app initialization to maintain data integrity
+     * @returns {Object} Cleanup statistics
+     */
+    cleanupOrphanedFollowUps() {
+        const todos = this.load();
+        let orphanedTasksRemoved = 0;
+        let brokenReferencesFixed = 0;
+
+        // Step 1: Find all valid follow-up task IDs
+        const validFollowUpIds = new Set();
+        todos.forEach(todo => {
+            if (todo.checklists) {
+                todo.checklists.forEach(checklist => {
+                    checklist.items.forEach(item => {
+                        if (item.followUpTaskId) {
+                            validFollowUpIds.add(item.followUpTaskId);
+                        }
+                    });
+                });
+            }
+        });
+
+        // Step 2: Remove follow-up tasks with broken source references
+        const tasksToKeep = todos.filter(todo => {
+            // If it's a follow-up task
+            if (todo.sourceTaskId && todo.sourceSubtaskId) {
+                // Check if parent task still exists
+                const parentExists = todos.some(t => t.id === todo.sourceTaskId);
+                if (!parentExists) {
+                    orphanedTasksRemoved++;
+                    return false; // Remove this orphaned task
+                }
+
+                // Check if it's still referenced by its source subtask
+                if (!validFollowUpIds.has(todo.id)) {
+                    orphanedTasksRemoved++;
+                    return false; // Remove unreferenced follow-up
+                }
+            }
+            return true; // Keep the task
+        });
+
+        // Step 3: Fix subtask references pointing to non-existent follow-ups
+        const allTaskIds = new Set(tasksToKeep.map(t => t.id));
+        tasksToKeep.forEach(todo => {
+            if (todo.checklists) {
+                todo.checklists.forEach(checklist => {
+                    checklist.items.forEach(item => {
+                        if (item.followUpTaskId && !allTaskIds.has(item.followUpTaskId)) {
+                            item.followUpTaskId = null;
+                            brokenReferencesFixed++;
+                        }
+                    });
+                });
+            }
+        });
+
+        // Save if anything changed
+        if (orphanedTasksRemoved > 0 || brokenReferencesFixed > 0) {
+            this.save(tasksToKeep);
+        }
+
+        return {
+            orphanedTasksRemoved,
+            brokenReferencesFixed,
+            totalCleaned: orphanedTasksRemoved + brokenReferencesFixed
+        };
     }
 };

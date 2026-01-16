@@ -140,6 +140,13 @@ const App = {
         this.loadTheme();
         this.loadDockConfig();
         this.setupServiceWorker();
+
+        // Cleanup orphaned follow-up tasks on app start
+        const cleanupResult = TodoManager.cleanupOrphanedFollowUps();
+        if (cleanupResult.totalCleaned > 0) {
+            console.log(`Cleaned up ${cleanupResult.orphanedTasksRemoved} orphaned tasks and ${cleanupResult.brokenReferencesFixed} broken references`);
+        }
+
         this.render();
         this.bindEvents();
 
@@ -755,6 +762,7 @@ const App = {
                                                                 ${subtask.completed ? UI.icons.check : ''}
                                                             </div>
                                                             <span class="subtask-text" data-action="edit-subtask-inline" style="flex: 1; cursor: text; ${subtask.completed ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${escapeHtml(subtask.text)}</span>
+                                                            ${subtask.followUpTaskId ? `<button class="subtask-followup-indicator" data-action="goto-followup" data-followup-id="${subtask.followUpTaskId}" aria-label="Go to follow-up task" title="Go to follow-up task" style="padding: 4px 6px; background: none; border: none; cursor: pointer; color: var(--accent-color); font-size: 14px; display: flex; align-items: center; opacity: 0.8; transition: opacity 0.2s;">↪</button>` : ''}
                                                             <button class="subtask-delete" data-action="delete-subtask" style="opacity: 0.5;">${UI.icons.x}</button>
                                                         </div>
                                                     `).join('')}
@@ -840,6 +848,10 @@ const App = {
                     </div>
                     <div class="todo-content" data-action="open-detail" role="button" tabindex="0">
                         <div class="todo-title ${todo.completed ? 'completed' : ''}">${escapeHtml(todo.title)}</div>
+                        ${todo.sourceSubtaskId ? `<div class="todo-followup-badge" data-action="goto-source" data-source-task-id="${todo.sourceTaskId}" data-source-subtask-id="${todo.sourceSubtaskId}" style="display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--accent-color); margin-top: 2px; opacity: 0.7; cursor: pointer;" title="Click to view source task">
+                            <span>↪</span>
+                            <span>Follow-up</span>
+                        </div>` : ''}
                     </div>
                     ${subtaskCount > 0 ? `<span class="todo-subtask-count" aria-label="${completedSubtasks} of ${subtaskCount} subtasks completed">${completedSubtasks}/${subtaskCount}</span>` : ''}
                 </div>
@@ -2274,7 +2286,20 @@ const App = {
             if (subtaskItem && toggleAction && this.state.currentTodo) {
                 e.stopPropagation();
                 const subtaskId = subtaskItem.dataset.subtaskId;
+
+                // Check if this will create a follow-up (checking a currently unchecked item)
+                const todo = TodoManager.getAll().find(t => t.id === this.state.currentTodo);
+                const result = TodoManager.findSubtaskInTodo(todo, subtaskId);
+                const willCreateFollowUp = result && !result.item.completed;
+
                 TodoManager.toggleSubtask(this.state.currentTodo, subtaskId);
+
+                // Auto-expand hidden section if a follow-up was just created
+                if (willCreateFollowUp) {
+                    this.state.showHidden = true;
+                    localStorage.setItem('showHidden', 'true');
+                }
+
                 this.render();
                 return;
             }
@@ -2297,6 +2322,65 @@ const App = {
                     this.render();
                 }, 250); // Match animation duration in CSS
 
+                return;
+            }
+        });
+
+        // Todo detail modal: Go to follow-up task from subtask indicator
+        app.addEventListener('click', (e) => {
+            const gotoFollowup = e.target.closest('[data-action="goto-followup"]');
+            if (gotoFollowup) {
+                e.stopPropagation();
+                const followUpId = gotoFollowup.dataset.followupId;
+
+                // Close current modal and open follow-up task
+                this.state.currentTodo = followUpId;
+
+                // Ensure hidden section is expanded if the follow-up is hidden
+                const followUpTask = TodoManager.getAll().find(t => t.id === followUpId);
+                if (followUpTask && followUpTask.hidden) {
+                    this.state.showHidden = true;
+                    localStorage.setItem('showHidden', 'true');
+                }
+
+                this.render();
+                this.showToast('Viewing follow-up task', 'info');
+                return;
+            }
+        });
+
+        // Main list: Go to source task from follow-up badge
+        app.addEventListener('click', (e) => {
+            const gotoSource = e.target.closest('[data-action="goto-source"]');
+            if (gotoSource) {
+                e.stopPropagation();
+                const sourceTaskId = gotoSource.dataset.sourceTaskId;
+                const sourceSubtaskId = gotoSource.dataset.sourceSubtaskId;
+
+                // Open the source task
+                this.state.currentTodo = sourceTaskId;
+                this.render();
+
+                // Highlight the source subtask briefly
+                setTimeout(() => {
+                    const subtaskItem = document.querySelector(`[data-subtask-id="${sourceSubtaskId}"]`);
+                    if (subtaskItem) {
+                        // Scroll into view
+                        subtaskItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                        // Add highlight animation
+                        subtaskItem.style.background = 'var(--accent-color)';
+                        subtaskItem.style.opacity = '0.3';
+                        subtaskItem.style.transition = 'all 0.3s ease';
+
+                        setTimeout(() => {
+                            subtaskItem.style.background = '';
+                            subtaskItem.style.opacity = '';
+                        }, 1000);
+                    }
+                }, 100);
+
+                this.showToast('Viewing source task', 'info');
                 return;
             }
         });
