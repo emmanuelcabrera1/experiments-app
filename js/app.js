@@ -738,8 +738,8 @@ const App = {
                                                     ${cl.isCollapsed ? '+' : '−'}
                                                 </span>
                                                 <span class="checklist-title" contenteditable="true" data-action="edit-checklist-title" style="flex: 1; font-weight: 600; font-size: var(--text-sm); color: var(--text-secondary); outline: none; padding: 2px 4px; border-radius: 4px; border: 1px solid transparent;">${escapeHtml(cl.title)}</span>
-                                                <button class="checklist-delete" data-action="delete-checklist" aria-label="Delete checklist" style="opacity: 0.6; padding: 6px; border: none; background: transparent; cursor: pointer; color: var(--text-tertiary); display: flex; align-items: center;">
-                                                    ${UI.icons.x}
+                                                <button class="checklist-delete" data-action="delete-checklist" aria-label="Delete checklist" style="opacity: 0.9; padding: 6px; border: none; background: transparent; cursor: pointer; color: var(--text-tertiary); display: flex; align-items: center;">
+                                                    <div style="width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;">${UI.icons.x}</div>
                                                 </button>
                                             </div>
                                             
