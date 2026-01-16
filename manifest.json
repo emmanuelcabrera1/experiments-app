@@ -1,6 +1,6 @@
 {
     "name": "Experiments",
-    "version": "1.0.15",
+    "version": "1.0.16",
     "short_name": "Experiments",
     "description": "Track your life experiments using the Tiny Experiments Framework",
     "start_url": "./",

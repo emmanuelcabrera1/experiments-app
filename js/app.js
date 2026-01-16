@@ -1465,7 +1465,7 @@ const App = {
                 e.stopPropagation();
                 this.state.currentTab = tabItem.dataset.tab;
                 this.state.currentExperiment = null;
-                this.state.currentFilter = 'ALL';
+                this.state.currentFilter = 'NOW';
                 this.render();
                 return;
             }
