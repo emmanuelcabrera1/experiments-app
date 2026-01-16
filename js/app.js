@@ -10,7 +10,7 @@ const App = {
         currentTab: 'experiments',
         currentExperiment: null,
         calendarMonth: new Date(),
-        currentFilter: 'ALL', // Track active filter
+        currentFilter: 'NOW', // Track active filter
         dockConfig: ['experiments', 'gallery', 'insights', 'todo'], // Configurable tabs
         currentTodo: null, // Currently viewed todo in detail modal
         isEditingTodoNotes: false, // Track if notes are in edit mode
@@ -342,8 +342,7 @@ const App = {
         const isActive = (filter) => this.state.currentFilter === filter ? 'active' : '';
         const categories = DataManager.getCategories();
 
-        // Initialize filter to NOW if it was ALL
-        if (this.state.currentFilter === 'ALL') this.state.currentFilter = 'NOW';
+
 
         return `
             <div class="screen active" id="screen-experiments">
@@ -3310,7 +3309,7 @@ const App = {
         });
 
         this.state.currentTab = 'experiments';
-        this.state.currentFilter = 'ALL';
+        this.state.currentFilter = 'NOW';
         this.showToast(`Started: ${template.title}`);
         this.render();
     },
