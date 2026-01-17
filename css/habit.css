@@ -11,11 +11,12 @@
     padding-bottom: calc(var(--tab-bar-height) + var(--space-xl));
 }
 
-/* Week header with day columns */
+/* Week header with day columns - must align with habit entries */
 .habit-week-header {
     display: flex;
     justify-content: flex-end;
-    padding: 0 var(--space-md);
+    /* Match habit-item padding (var(--space-md) = 16px) on right side */
+    padding-right: calc(var(--space-md) + 2px);
     margin-bottom: var(--space-md);
     gap: var(--space-sm);
 }
@@ -23,8 +24,8 @@
 .habit-week-day {
     width: 36px;
     text-align: center;
-    font-size: var(--text-sm);
-    font-weight: var(--weight-medium);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-semibold);
     color: var(--text-tertiary);
     text-transform: uppercase;
 }
@@ -126,15 +127,18 @@
 
 /* Habit title section */
 .habit-content {
-    flex: 1;
-    min-width: 0;
+    flex: 1 1 0;
+    min-width: 60px;
     display: flex;
     align-items: center;
+    overflow: hidden;
+    margin-right: var(--space-sm);
 }
 
 .habit-title {
     font-weight: var(--weight-medium);
     color: var(--text-primary);
+    font-size: var(--text-base);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -383,13 +387,27 @@
 }
 
 /* ========================================
-   SWIPE ACTIONS (Reuse from components)
+   SWIPE ACTIONS (Match components.css patterns)
 ======================================== */
 
 .habit-list .swipe-container {
     margin-bottom: 0;
     overflow: hidden;
     isolation: isolate;
+}
+
+/* CRITICAL: Habit row must sit above swipe actions */
+.swipe-container .habit-row {
+    margin-bottom: 0;
+    position: relative;
+    z-index: 2;
+    background: var(--surface-color);
+    transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    touch-action: pan-y;
+}
+
+.swipe-container .habit-row.swiping {
+    transition: none;
 }
 
 /* ========================================
@@ -506,7 +524,37 @@
    RESPONSIVE ADJUSTMENTS
 ======================================== */
 
+/* Small phones */
 @media (max-width: 380px) {
+    .habit-entry {
+        width: 28px;
+        height: 28px;
+    }
+
+    .habit-week-day {
+        width: 28px;
+        font-size: 10px;
+    }
+
+    .habit-entries {
+        gap: 4px;
+    }
+
+    .habit-week-header {
+        gap: 4px;
+    }
+
+    .habit-content {
+        min-width: 50px;
+    }
+
+    .habit-title {
+        font-size: var(--text-sm);
+    }
+}
+
+/* Medium phones (default 36px entries) */
+@media (min-width: 381px) and (max-width: 430px) {
     .habit-entry {
         width: 32px;
         height: 32px;
@@ -514,15 +562,14 @@
 
     .habit-week-day {
         width: 32px;
-        font-size: var(--text-xs);
     }
 
     .habit-entries {
-        gap: 4px;
+        gap: 6px;
     }
 
-    .habit-content {
-        max-width: 120px;
+    .habit-week-header {
+        gap: 6px;
     }
 }
 
