@@ -833,8 +833,6 @@ const App = {
      * Render a single habit item with weekly entries
      */
     renderHabitItem(habit, weekDates, today, todayIndex) {
-        const streak = HabitManager.getStreak(habit.id);
-
         // Build entry cells for each day of the week
         const entryCells = weekDates.map((dateKey, index) => {
             const state = HabitManager.getEntry(habit.id, dateKey);
@@ -864,24 +862,16 @@ const App = {
         }).join('');
 
         return `
-            <div class="swipe-container" data-swipe-id="${escapeHtml(habit.id)}">
+            <div class="swipe-container" data-swipe-id="${escapeHtml(habit.id)}" data-time-slot="${habit.timeSlot}">
                 <div class="swipe-actions-right">
-                    <button class="swipe-btn swipe-btn-archive" data-action="archive-habit" aria-label="Archive habit">
-                        ${UI.icons.archive}
-                    </button>
                     <button class="swipe-btn swipe-btn-delete" data-action="delete-habit" aria-label="Delete habit">
                         ${UI.icons.trash}
                     </button>
                 </div>
-                <div class="habit-item habit-row" data-habit-id="${habit.id}" data-action="open-habit-detail">
-                    <div class="habit-content">
+                <div class="habit-item habit-row" data-habit-id="${habit.id}" draggable="true">
+                    <div class="habit-grip" data-action="drag-habit">${UI.icons.grip}</div>
+                    <div class="habit-content" data-action="open-habit-detail">
                         <span class="habit-title">${escapeHtml(habit.title)}</span>
-                        ${streak > 0 ? `
-                            <span class="habit-streak">
-                                ${UI.icons.flame}
-                                <span>${streak}</span>
-                            </span>
-                        ` : ''}
                     </div>
                     <div class="habit-entries">
                         ${entryCells}
@@ -3073,16 +3063,20 @@ const App = {
             }
         });
 
-        // Habit item click - open detail modal
+        // Habit item click - open detail modal (only on content area)
         app.addEventListener('click', (e) => {
-            const habitItem = e.target.closest('.habit-item');
+            const habitContent = e.target.closest('[data-action="open-habit-detail"]');
             const isEntryBtn = e.target.closest('[data-action="cycle-habit-entry"]');
+            const isGrip = e.target.closest('.habit-grip');
 
-            if (habitItem && !isEntryBtn) {
+            if (habitContent && !isEntryBtn && !isGrip) {
                 e.stopPropagation();
-                const habitId = habitItem.dataset.habitId;
-                this.state.currentHabit = habitId;
-                this.render();
+                const habitItem = habitContent.closest('.habit-item');
+                if (habitItem) {
+                    const habitId = habitItem.dataset.habitId;
+                    this.state.currentHabit = habitId;
+                    this.render();
+                }
                 return;
             }
         });
@@ -3174,6 +3168,63 @@ const App = {
                 this.state.collapsedTimeSlots[slot] = !this.state.collapsedTimeSlots[slot];
                 this.render();
                 return;
+            }
+        });
+
+        // Habit Drag-and-Drop: dragstart
+        app.addEventListener('dragstart', (e) => {
+            const habitItem = e.target.closest('.habit-item');
+            if (habitItem && this.state.currentTab === 'habit') {
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', habitItem.dataset.habitId);
+                habitItem.classList.add('dragging');
+                // Store the time slot for reordering within same slot
+                const swipeContainer = habitItem.closest('.swipe-container');
+                if (swipeContainer) {
+                    e.dataTransfer.setData('application/timeslot', swipeContainer.dataset.timeSlot);
+                }
+            }
+        });
+
+        // Habit Drag-and-Drop: dragover
+        app.addEventListener('dragover', (e) => {
+            const habitList = e.target.closest('.habit-list');
+            if (habitList && this.state.currentTab === 'habit') {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+
+                const dragging = document.querySelector('.habit-item.dragging');
+                if (dragging) {
+                    const swipeContainer = dragging.closest('.swipe-container');
+                    const afterElement = this.getDragAfterElement(habitList, e.clientY, '.swipe-container');
+                    if (afterElement == null) {
+                        habitList.appendChild(swipeContainer);
+                    } else {
+                        habitList.insertBefore(swipeContainer, afterElement);
+                    }
+                }
+            }
+        });
+
+        // Habit Drag-and-Drop: dragend
+        app.addEventListener('dragend', (e) => {
+            const habitItem = e.target.closest('.habit-item');
+            if (habitItem && this.state.currentTab === 'habit') {
+                habitItem.classList.remove('dragging');
+
+                // Get the habit list and extract new order
+                const habitList = habitItem.closest('.habit-list');
+                const timeSlotSection = habitItem.closest('.habit-time-slot');
+                if (habitList && timeSlotSection) {
+                    const timeSlot = timeSlotSection.dataset.timeSlot;
+                    const orderedIds = Array.from(habitList.querySelectorAll('.swipe-container'))
+                        .map(container => container.dataset.swipeId)
+                        .filter(Boolean);
+
+                    if (orderedIds.length > 0) {
+                        HabitManager.reorder(orderedIds, timeSlot);
+                    }
+                }
             }
         });
 
@@ -3369,13 +3420,13 @@ const App = {
             if (e.target.closest('.swipe-btn')) return;
 
             // Prevent swipe if touching the drag grip
-            if (e.target.closest('.todo-grip, .grip-handler')) return;
+            if (e.target.closest('.todo-grip, .habit-grip, .grip-handler')) return;
 
             const touch = e.touches[0];
-            const row = container.querySelector('.experiment-row, .todo-row');
+            const row = container.querySelector('.experiment-row, .todo-row, .habit-row');
 
-            // Close any other open swipes (both experiments and todos)
-            document.querySelectorAll('.experiment-row[data-revealed], .todo-row[data-revealed]').forEach(otherRow => {
+            // Close any other open swipes (experiments, todos, and habits)
+            document.querySelectorAll('.experiment-row[data-revealed], .todo-row[data-revealed], .habit-row[data-revealed]').forEach(otherRow => {
                 if (otherRow !== row) {
                     otherRow.style.transform = '';
                     delete otherRow.dataset.revealed;
@@ -3652,7 +3703,7 @@ const App = {
 
             // Close all revealed swipes if clicking anywhere else
             if (!e.target.closest('.swipe-container')) {
-                document.querySelectorAll('.experiment-row[data-revealed], .todo-row[data-revealed]').forEach(row => {
+                document.querySelectorAll('.experiment-row[data-revealed], .todo-row[data-revealed], .habit-row[data-revealed]').forEach(row => {
                     row.style.transform = '';
                     delete row.dataset.revealed;
                 });
@@ -3662,7 +3713,7 @@ const App = {
         // Close other swipes when opening a new one (already handled in touchstart)
         // Add helper to close all swipes
         this.closeAllSwipes = () => {
-            document.querySelectorAll('.experiment-row[data-revealed], .todo-row[data-revealed]').forEach(row => {
+            document.querySelectorAll('.experiment-row[data-revealed], .todo-row[data-revealed], .habit-row[data-revealed]').forEach(row => {
                 row.style.transform = '';
                 delete row.dataset.revealed;
             });

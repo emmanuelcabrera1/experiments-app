@@ -111,32 +111,52 @@
     background: var(--surface-color);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-sm);
-    cursor: pointer;
-    min-height: 52px;
+    min-height: 48px;
     transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
                 box-shadow 0.2s ease,
                 opacity 0.2s ease;
 }
 
-.habit-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+/* Drag Handle */
+.habit-grip {
+    width: 16px;
+    height: 16px;
+    color: var(--text-tertiary);
+    cursor: grab;
+    flex-shrink: 0;
+    transition: color 0.2s ease;
+    opacity: 0.5;
 }
 
-.habit-item:active {
+.habit-grip:hover {
+    color: var(--text-primary);
+    opacity: 1;
+}
+
+.habit-grip:active {
+    cursor: grabbing;
+}
+
+.habit-grip svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Dragging state */
+.habit-item.dragging {
+    opacity: 0.5;
     transform: scale(0.98);
 }
 
-/* Habit title section */
+/* Habit title section - clickable area */
 .habit-content {
     flex: 1 1 0;
     min-width: 0;
     display: flex;
-    flex-direction: column;
-    justify-content: center;
+    align-items: center;
     overflow: hidden;
-    margin-right: var(--space-sm);
-    gap: 2px;
+    cursor: pointer;
+    padding: var(--space-xs) 0;
 }
 
 .habit-title {
@@ -146,23 +166,6 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    line-height: 1.3;
-}
-
-/* Streak badge - positioned below title */
-.habit-streak {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    font-size: 10px;
-    color: var(--text-tertiary);
-    width: fit-content;
-}
-
-.habit-streak svg {
-    width: 10px;
-    height: 10px;
-    color: #FF9500;
 }
 
 /* ========================================
