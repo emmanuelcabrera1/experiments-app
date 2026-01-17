@@ -11,8 +11,10 @@ const App = {
         currentExperiment: null,
         calendarMonth: new Date(),
         currentFilter: 'NOW', // Track active filter
-        dockConfig: ['experiments', 'gallery', 'insights', 'todo'], // Configurable tabs
+        dockConfig: ['experiments', 'gallery', 'insights', 'todo', 'habit'], // Configurable tabs
         currentTodo: null, // Currently viewed todo in detail modal
+        currentHabit: null, // Currently viewed habit in detail modal
+        collapsedTimeSlots: {}, // Track collapsed time slots in habit view
         isEditingTodoNotes: false, // Track if notes are in edit mode
         showCompleted: true, // Show/hide completed tasks (collapsible)
         showHidden: localStorage.getItem('experiments_show_hidden') === 'true', // Load state from storage
@@ -129,6 +131,29 @@ const App = {
                 setTimeout(() => {
                     if (counterEl.parentElement) counterEl.remove();
                 }, 200);
+            }
+        }
+    },
+
+    /**
+     * Update habit summary without full re-render
+     */
+    updateHabitSummary() {
+        const summary = HabitManager.getTodaysSummary();
+        const summaryEl = document.querySelector('.habit-summary');
+        if (summaryEl && summary.total > 0) {
+            const textEl = summaryEl.querySelector('.habit-summary-text');
+            const fillEl = summaryEl.querySelector('.habit-progress-fill');
+            const percentEl = summaryEl.querySelector('.habit-progress-percent');
+
+            if (textEl) {
+                textEl.innerHTML = `<strong>${summary.completed}</strong> of <strong>${summary.total}</strong> habits completed today`;
+            }
+            if (fillEl) {
+                fillEl.style.width = `${summary.percentage}%`;
+            }
+            if (percentEl) {
+                percentEl.textContent = `${summary.percentage}%`;
             }
         }
     },
@@ -270,6 +295,8 @@ const App = {
             ${this.renderFAB()}
             ${this.renderModals()}
             ${this.renderTodoDetailModal()}
+            ${this.renderHabitDetailModal()}
+            ${this.renderCreateHabitModal()}
             <div id="aria-live-region" class="sr-only" aria-live="polite" aria-atomic="true"></div>
         `;
 
@@ -311,6 +338,8 @@ const App = {
                 return this.renderInsightsScreen();
             case 'todo':
                 return this.renderTodoScreen();
+            case 'habit':
+                return this.renderHabitScreen();
             case 'settings':
                 return this.renderSettingsScreen();
             default:
@@ -713,6 +742,255 @@ const App = {
     },
 
     /**
+     * Render Habit Screen - Weekly habit tracker with time-of-day sections
+     */
+    renderHabitScreen() {
+        const grouped = HabitManager.getGroupedByTimeSlot();
+        const weekDates = HabitManager.getWeekDates();
+        const weekdayLabels = HabitManager.getWeekdayLabels();
+        const today = HabitManager.getDateKey();
+        const todayIndex = weekDates.indexOf(today);
+        const summary = HabitManager.getTodaysSummary();
+
+        // Build weekday header
+        const weekHeader = `
+            <div class="habit-week-header">
+                ${weekdayLabels.map((label, i) => `
+                    <div class="habit-week-day ${weekDates[i] === today ? 'today' : ''}">${label}</div>
+                `).join('')}
+            </div>
+        `;
+
+        // Build progress summary
+        const progressSummary = summary.total > 0 ? `
+            <div class="habit-summary">
+                <div class="habit-summary-text">
+                    <strong>${summary.completed}</strong> of <strong>${summary.total}</strong> habits completed today
+                </div>
+                <div class="habit-summary-progress">
+                    <div class="habit-progress-bar">
+                        <div class="habit-progress-fill" style="width: ${summary.percentage}%;"></div>
+                    </div>
+                    <span class="habit-progress-percent">${summary.percentage}%</span>
+                </div>
+            </div>
+        ` : '';
+
+        // Build time slot sections
+        const timeSlotLabels = {
+            morning: 'MORNING',
+            evening: 'EVENING',
+            night: 'NIGHT'
+        };
+
+        let timeSlotSections = '';
+        const timeSlots = ['morning', 'evening', 'night'];
+
+        timeSlots.forEach(slot => {
+            const habits = grouped[slot];
+            const isCollapsed = this.state.collapsedTimeSlots[slot] || false;
+
+            // Only show section if there are habits or it's the first section
+            if (habits.length > 0 || slot === 'morning') {
+                timeSlotSections += `
+                    <div class="habit-time-slot ${isCollapsed ? 'collapsed' : ''}" data-time-slot="${slot}">
+                        <button class="habit-time-slot-header" data-action="toggle-time-slot" data-slot="${slot}" aria-expanded="${!isCollapsed}">
+                            <span class="habit-time-slot-title">${timeSlotLabels[slot]}</span>
+                            <span class="habit-time-slot-toggle" aria-hidden="true">${isCollapsed ? '+' : '−'}</span>
+                        </button>
+                        <div class="habit-time-slot-content" style="${isCollapsed ? 'max-height: 0; opacity: 0;' : ''}">
+                            ${habits.length > 0 ? `
+                                <div class="habit-list" role="list" aria-label="${timeSlotLabels[slot]} habits">
+                                    ${habits.map(h => this.renderHabitItem(h, weekDates, today, todayIndex)).join('')}
+                                </div>
+                            ` : `
+                                <div class="habit-empty-slot">No ${slot} habits yet</div>
+                            `}
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
+        // Build empty state
+        const totalHabits = Object.values(grouped).flat().length;
+        const emptyState = totalHabits === 0 ? UI.emptyState('No Habits Yet', 'Tap the + button to create your first habit and start building consistency.') : '';
+
+        return `
+            <div class="screen habit-screen ${this.state.currentTab === 'habit' ? 'active' : ''}" id="screen-habit">
+                <div class="header">
+                    <h1>Habits</h1>
+                    <p class="subheader">Build consistency</p>
+                </div>
+                ${progressSummary}
+                ${totalHabits > 0 ? weekHeader : ''}
+                ${emptyState || timeSlotSections}
+            </div>
+        `;
+    },
+
+    /**
+     * Render a single habit item with weekly entries
+     */
+    renderHabitItem(habit, weekDates, today, todayIndex) {
+        const streak = HabitManager.getStreak(habit.id);
+
+        // Build entry cells for each day of the week
+        const entryCells = weekDates.map((dateKey, index) => {
+            const state = HabitManager.getEntry(habit.id, dateKey);
+            const isToday = dateKey === today;
+            const isFuture = index > todayIndex;
+
+            let stateClass = state;
+            if (isFuture) stateClass += ' future';
+            if (isToday) stateClass += ' today';
+
+            let innerContent = '';
+            if (state === 'completed') {
+                innerContent = UI.icons.check;
+            }
+            // skipped and pending use CSS ::after pseudo-elements
+
+            return `
+                <button class="habit-entry ${stateClass}"
+                        data-action="cycle-habit-entry"
+                        data-habit-id="${habit.id}"
+                        data-date="${dateKey}"
+                        aria-label="${habit.title} - ${dateKey}: ${state}"
+                        ${isFuture ? 'disabled' : ''}>
+                    ${innerContent}
+                </button>
+            `;
+        }).join('');
+
+        return `
+            <div class="swipe-container" data-swipe-id="${escapeHtml(habit.id)}">
+                <div class="swipe-actions-right">
+                    <button class="swipe-btn swipe-btn-archive" data-action="archive-habit" aria-label="Archive habit">
+                        ${UI.icons.archive}
+                    </button>
+                    <button class="swipe-btn swipe-btn-delete" data-action="delete-habit" aria-label="Delete habit">
+                        ${UI.icons.trash}
+                    </button>
+                </div>
+                <div class="habit-item habit-row" data-habit-id="${habit.id}" data-action="open-habit-detail">
+                    <div class="habit-content">
+                        <span class="habit-title">${escapeHtml(habit.title)}</span>
+                        ${streak > 0 ? `
+                            <span class="habit-streak">
+                                ${UI.icons.flame}
+                                <span>${streak}</span>
+                            </span>
+                        ` : ''}
+                    </div>
+                    <div class="habit-entries">
+                        ${entryCells}
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+
+    /**
+     * Render Habit Detail Modal
+     */
+    renderHabitDetailModal() {
+        if (!this.state.currentHabit) return '';
+
+        const habit = HabitManager.getAll().find(h => h.id === this.state.currentHabit);
+        if (!habit) return '';
+
+        const stats = HabitManager.getStats(habit.id);
+        const streak = HabitManager.getStreak(habit.id);
+
+        // Format creation date
+        const createdDate = new Date(habit.createdAt);
+        const day = createdDate.getDate();
+        const suffix = day === 1 || day === 21 || day === 31 ? 'ST' :
+            day === 2 || day === 22 ? 'ND' :
+                day === 3 || day === 23 ? 'RD' : 'TH';
+        const formattedDate = `CREATED ${createdDate.toLocaleDateString('en-US', { month: 'long' }).toUpperCase()} ${day}${suffix}, ${createdDate.getFullYear()}`;
+
+        return `
+            <div class="modal-overlay active" id="modal-habit-detail">
+                <div class="modal-sheet" style="max-height: 75vh; overflow-y: auto; display: flex; flex-direction: column; padding-top: var(--space-xl);">
+                    <!-- Header -->
+                    <div style="display: flex; align-items: flex-start; gap: var(--space-md); margin-bottom: var(--space-lg); flex-shrink: 0;">
+                        <div style="flex: 1;">
+                            <input type="text" id="habit-detail-title" class="habit-detail-title" value="${escapeHtml(habit.title)}" placeholder="Habit name" maxlength="50">
+                            <div style="font-size: var(--text-xs); color: var(--text-tertiary); letter-spacing: 0.5px; margin-top: var(--space-sm);">${formattedDate}</div>
+                        </div>
+                        <button class="modal-close" aria-label="Close modal" data-close="modal-habit-detail">${UI.icons.x}</button>
+                    </div>
+
+                    <!-- Time Slot Selector -->
+                    <div style="margin-bottom: var(--space-lg);">
+                        <label style="font-size: var(--text-xs); font-weight: var(--weight-semibold); color: var(--text-tertiary); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: var(--space-sm); display: block;">Time of Day</label>
+                        <div class="habit-time-slot-selector">
+                            <button type="button" class="habit-time-slot-option ${habit.timeSlot === 'morning' ? 'selected' : ''}" data-action="set-habit-timeslot" data-slot="morning">Morning</button>
+                            <button type="button" class="habit-time-slot-option ${habit.timeSlot === 'evening' ? 'selected' : ''}" data-action="set-habit-timeslot" data-slot="evening">Evening</button>
+                            <button type="button" class="habit-time-slot-option ${habit.timeSlot === 'night' ? 'selected' : ''}" data-action="set-habit-timeslot" data-slot="night">Night</button>
+                        </div>
+                    </div>
+
+                    <!-- Stats -->
+                    <div class="habit-detail-stats">
+                        <div class="habit-stat">
+                            <div class="habit-stat-value">${streak}</div>
+                            <div class="habit-stat-label">Streak</div>
+                        </div>
+                        <div class="habit-stat">
+                            <div class="habit-stat-value">${stats ? stats.completed : 0}</div>
+                            <div class="habit-stat-label">This Week</div>
+                        </div>
+                        <div class="habit-stat">
+                            <div class="habit-stat-value">${stats ? stats.completionRate : 0}%</div>
+                            <div class="habit-stat-label">Rate</div>
+                        </div>
+                    </div>
+
+                    <!-- Delete Button -->
+                    <div style="margin-top: auto; padding-top: var(--space-lg);">
+                        <button class="btn" style="width: 100%; background: var(--error-color); color: white;" data-action="delete-habit-confirm">Delete Habit</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+
+    /**
+     * Render Create Habit Modal
+     */
+    renderCreateHabitModal() {
+        return `
+            <div class="modal-overlay" id="modal-create-habit">
+                <div class="modal-sheet">
+                    <div class="modal-header">
+                        <h2>New Habit</h2>
+                        <button class="modal-close" aria-label="Close modal" data-close="modal-create-habit">${UI.icons.x}</button>
+                    </div>
+                    <form id="form-create-habit">
+                        <div class="form-group">
+                            <label class="form-label" for="create-habit-title">Habit Name</label>
+                            <input class="form-input" id="create-habit-title" name="title" placeholder="e.g., Meditate for 10 minutes" required maxlength="50">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Time of Day</label>
+                            <div class="habit-time-slot-selector">
+                                <button type="button" class="habit-time-slot-option selected" data-slot="morning">Morning</button>
+                                <button type="button" class="habit-time-slot-option" data-slot="evening">Evening</button>
+                                <button type="button" class="habit-time-slot-option" data-slot="night">Night</button>
+                            </div>
+                            <input type="hidden" id="create-habit-timeslot" name="timeSlot" value="morning">
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: var(--space-md);">Create Habit</button>
+                    </form>
+                </div>
+            </div>
+        `;
+    },
+
+    /**
      * Helper to render subtask items for a checklist
      */
     renderSubtaskItems(checklist) {
@@ -984,6 +1262,11 @@ const App = {
                             <div class="settings-label">Todo</div>
                             <div class="ios-toggle ${this.state.dockConfig.includes('todo') ? 'active' : ''}"></div>
                         </div>
+                        <div class="settings-row" style="cursor: pointer;" data-dock-toggle="habit">
+                            <div class="settings-icon" style="background: #E0F7FA;">🔄</div>
+                            <div class="settings-label">Habits</div>
+                            <div class="ios-toggle ${this.state.dockConfig.includes('habit') ? 'active' : ''}"></div>
+                        </div>
                         <div class="settings-row">
                             <div class="settings-icon" style="background: var(--inactive-bg);">⚙️</div>
                             <div class="settings-label">Settings</div>
@@ -1172,6 +1455,7 @@ const App = {
     renderTabBar() {
         const allTabs = [
             { id: 'todo', label: 'Todo', icon: UI.icons.todo },
+            { id: 'habit', label: 'Habits', icon: UI.icons.habit },
             { id: 'experiments', label: 'Lab', icon: UI.icons.flask },
             { id: 'gallery', label: 'Gallery', icon: UI.icons.sparkles },
             { id: 'insights', label: 'Insights', icon: UI.icons.chart },
@@ -1213,6 +1497,9 @@ const App = {
         }
         if (this.state.currentTab === 'todo') {
             return `<button class="fab" id="fab-add-todo" aria-label="Add new task">${UI.icons.plus}</button>`;
+        }
+        if (this.state.currentTab === 'habit') {
+            return `<button class="fab" id="fab-add-habit" aria-label="Add new habit">${UI.icons.plus}</button>`;
         }
         return '';
     },
@@ -2684,6 +2971,215 @@ const App = {
                 }
             }
         });
+
+        // ============================================
+        // HABIT EVENT HANDLERS
+        // ============================================
+
+        // Habit FAB - Add new habit
+        app.addEventListener('click', (e) => {
+            if (e.target.closest('#fab-add-habit')) {
+                e.stopPropagation();
+                this.openModal('modal-create-habit');
+                // Focus the title input after modal opens
+                requestAnimationFrame(() => {
+                    const titleInput = document.getElementById('create-habit-title');
+                    if (titleInput) {
+                        titleInput.focus();
+                    }
+                });
+                return;
+            }
+        });
+
+        // Habit create form - Time slot selector
+        app.addEventListener('click', (e) => {
+            const timeSlotOption = e.target.closest('#modal-create-habit .habit-time-slot-option');
+            if (timeSlotOption) {
+                e.stopPropagation();
+                const slot = timeSlotOption.dataset.slot;
+                // Update hidden input
+                const hiddenInput = document.getElementById('create-habit-timeslot');
+                if (hiddenInput) hiddenInput.value = slot;
+                // Update visual state
+                document.querySelectorAll('#modal-create-habit .habit-time-slot-option').forEach(btn => {
+                    btn.classList.remove('selected');
+                });
+                timeSlotOption.classList.add('selected');
+                return;
+            }
+        });
+
+        // Habit create form - Submit
+        app.addEventListener('submit', (e) => {
+            if (e.target.id === 'form-create-habit') {
+                e.preventDefault();
+                const titleInput = document.getElementById('create-habit-title');
+                const timeSlotInput = document.getElementById('create-habit-timeslot');
+
+                if (titleInput && titleInput.value.trim()) {
+                    HabitManager.add({
+                        title: titleInput.value.trim(),
+                        timeSlot: timeSlotInput ? timeSlotInput.value : 'morning'
+                    });
+                    this.closeModal('modal-create-habit');
+                    e.target.reset();
+                    // Reset time slot selector visual state
+                    document.querySelectorAll('#modal-create-habit .habit-time-slot-option').forEach((btn, i) => {
+                        btn.classList.toggle('selected', i === 0);
+                    });
+                    document.getElementById('create-habit-timeslot').value = 'morning';
+                    this.render();
+                    this.showToast('Habit created');
+                }
+                return;
+            }
+        });
+
+        // Habit entry - Cycle state (pending -> completed -> skipped -> pending)
+        app.addEventListener('click', (e) => {
+            const entryBtn = e.target.closest('[data-action="cycle-habit-entry"]');
+            if (entryBtn) {
+                e.stopPropagation();
+                const habitId = entryBtn.dataset.habitId;
+                const dateKey = entryBtn.dataset.date;
+
+                // Get current state before cycling
+                const oldState = HabitManager.getEntry(habitId, dateKey);
+
+                // Cycle the state
+                HabitManager.cycleEntry(habitId, dateKey);
+
+                // Get new state
+                const newState = HabitManager.getEntry(habitId, dateKey);
+
+                // Update the button class
+                entryBtn.classList.remove('pending', 'completed', 'skipped');
+                entryBtn.classList.add(newState);
+
+                // Update inner content
+                if (newState === 'completed') {
+                    entryBtn.innerHTML = UI.icons.check;
+                    entryBtn.classList.add('just-completed');
+                    setTimeout(() => entryBtn.classList.remove('just-completed'), 600);
+                } else {
+                    entryBtn.innerHTML = '';
+                }
+
+                // Update progress summary without full re-render
+                this.updateHabitSummary();
+
+                return;
+            }
+        });
+
+        // Habit item click - open detail modal
+        app.addEventListener('click', (e) => {
+            const habitItem = e.target.closest('.habit-item');
+            const isEntryBtn = e.target.closest('[data-action="cycle-habit-entry"]');
+
+            if (habitItem && !isEntryBtn) {
+                e.stopPropagation();
+                const habitId = habitItem.dataset.habitId;
+                this.state.currentHabit = habitId;
+                this.render();
+                return;
+            }
+        });
+
+        // Habit detail modal - Close and save
+        app.addEventListener('click', (e) => {
+            if (e.target.closest('[data-close="modal-habit-detail"]')) {
+                e.stopPropagation();
+                // Save title if changed
+                const titleInput = document.getElementById('habit-detail-title');
+                if (titleInput && this.state.currentHabit) {
+                    const trimmedTitle = titleInput.value.trim();
+                    if (trimmedTitle) {
+                        HabitManager.update(this.state.currentHabit, { title: trimmedTitle });
+                    }
+                }
+                this.state.currentHabit = null;
+                this.render();
+                return;
+            }
+        });
+
+        // Habit detail modal - Time slot selector
+        app.addEventListener('click', (e) => {
+            const timeSlotOption = e.target.closest('#modal-habit-detail [data-action="set-habit-timeslot"]');
+            if (timeSlotOption && this.state.currentHabit) {
+                e.stopPropagation();
+                const slot = timeSlotOption.dataset.slot;
+                HabitManager.update(this.state.currentHabit, { timeSlot: slot });
+                // Update visual state
+                document.querySelectorAll('#modal-habit-detail .habit-time-slot-option').forEach(btn => {
+                    btn.classList.toggle('selected', btn.dataset.slot === slot);
+                });
+                return;
+            }
+        });
+
+        // Habit detail modal - Delete confirmation
+        app.addEventListener('click', (e) => {
+            if (e.target.closest('[data-action="delete-habit-confirm"]') && this.state.currentHabit) {
+                e.stopPropagation();
+                const habitId = this.state.currentHabit;
+                HabitManager.delete(habitId);
+                this.state.currentHabit = null;
+                this.render();
+                this.showToast('Habit deleted');
+                return;
+            }
+        });
+
+        // Habit swipe actions - Archive
+        app.addEventListener('click', (e) => {
+            const archiveBtn = e.target.closest('[data-action="archive-habit"]');
+            if (archiveBtn) {
+                e.stopPropagation();
+                const swipeContainer = archiveBtn.closest('.swipe-container');
+                const habitId = swipeContainer ? swipeContainer.dataset.swipeId : null;
+                if (habitId) {
+                    HabitManager.archive(habitId);
+                    this.render();
+                    this.showToast('Habit archived');
+                }
+                return;
+            }
+        });
+
+        // Habit swipe actions - Delete
+        app.addEventListener('click', (e) => {
+            const deleteBtn = e.target.closest('[data-action="delete-habit"]');
+            if (deleteBtn) {
+                e.stopPropagation();
+                const swipeContainer = deleteBtn.closest('.swipe-container');
+                const habitId = swipeContainer ? swipeContainer.dataset.swipeId : null;
+                if (habitId) {
+                    HabitManager.delete(habitId);
+                    this.render();
+                    this.showToast('Habit deleted');
+                }
+                return;
+            }
+        });
+
+        // Habit time slot collapse/expand
+        app.addEventListener('click', (e) => {
+            const toggleBtn = e.target.closest('[data-action="toggle-time-slot"]');
+            if (toggleBtn) {
+                e.stopPropagation();
+                const slot = toggleBtn.dataset.slot;
+                this.state.collapsedTimeSlots[slot] = !this.state.collapsedTimeSlots[slot];
+                this.render();
+                return;
+            }
+        });
+
+        // ============================================
+        // END HABIT EVENT HANDLERS
+        // ============================================
 
         // Experiment row click (with swipe protection)
         app.addEventListener('click', (e) => {
