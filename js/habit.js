@@ -30,7 +30,7 @@ const HabitManager = {
     },
 
     /**
-     * Get array of date keys for the current week (Mon-Sun)
+     * Get array of date keys for the current week (Mon-Sat, 6 days)
      */
     getWeekDates(referenceDate = new Date()) {
         const dates = [];
@@ -42,8 +42,8 @@ const HabitManager = {
         const monday = new Date(current);
         monday.setDate(diff);
 
-        // Generate 7 days starting from Monday
-        for (let i = 0; i < 7; i++) {
+        // Generate 6 days starting from Monday (Mon-Sat, excluding Sunday)
+        for (let i = 0; i < 6; i++) {
             const date = new Date(monday);
             date.setDate(monday.getDate() + i);
             dates.push(this.getDateKey(date));
@@ -53,7 +53,7 @@ const HabitManager = {
     },
 
     /**
-     * Get weekday labels (localized short names)
+     * Get weekday labels (Mon-Sat, 6 days)
      */
     getWeekdayLabels() {
         const monday = new Date();
@@ -62,7 +62,8 @@ const HabitManager = {
         monday.setDate(diff);
 
         const labels = [];
-        for (let i = 0; i < 7; i++) {
+        // Generate 6 labels (Mon-Sat, excluding Sunday)
+        for (let i = 0; i < 6; i++) {
             const date = new Date(monday);
             date.setDate(monday.getDate() + i);
             // Get first letter of weekday name
