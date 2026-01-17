@@ -15,19 +15,20 @@
 .habit-week-header {
     display: flex;
     justify-content: flex-end;
-    /* Match habit-item padding (var(--space-md) = 16px) on right side */
-    padding-right: calc(var(--space-md) + 2px);
-    margin-bottom: var(--space-md);
-    gap: var(--space-sm);
+    /* Match habit-item padding on right side */
+    padding-right: calc(var(--space-md) + 4px);
+    margin-bottom: var(--space-sm);
+    gap: 6px;
 }
 
 .habit-week-day {
-    width: 36px;
+    width: 28px;
     text-align: center;
-    font-size: var(--text-xs);
+    font-size: 10px;
     font-weight: var(--weight-semibold);
     color: var(--text-tertiary);
     text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .habit-week-day.today {
@@ -105,12 +106,13 @@
 .habit-item {
     display: flex;
     align-items: center;
-    gap: var(--space-md);
-    padding: var(--space-md);
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
     background: var(--surface-color);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-sm);
     cursor: pointer;
+    min-height: 52px;
     transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
                 box-shadow 0.2s ease,
                 opacity 0.2s ease;
@@ -128,38 +130,38 @@
 /* Habit title section */
 .habit-content {
     flex: 1 1 0;
-    min-width: 60px;
+    min-width: 0;
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    justify-content: center;
     overflow: hidden;
     margin-right: var(--space-sm);
+    gap: 2px;
 }
 
 .habit-title {
     font-weight: var(--weight-medium);
     color: var(--text-primary);
-    font-size: var(--text-base);
+    font-size: var(--text-sm);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    line-height: 1.3;
 }
 
-/* Streak badge */
+/* Streak badge - positioned below title */
 .habit-streak {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    margin-left: var(--space-sm);
-    font-size: var(--text-xs);
-    color: var(--text-secondary);
-    background: var(--inactive-bg);
-    padding: 2px 8px;
-    border-radius: var(--radius-sm);
+    gap: 3px;
+    font-size: 10px;
+    color: var(--text-tertiary);
+    width: fit-content;
 }
 
 .habit-streak svg {
-    width: 12px;
-    height: 12px;
+    width: 10px;
+    height: 10px;
     color: #FF9500;
 }
 
@@ -169,22 +171,24 @@
 
 .habit-entries {
     display: flex;
-    gap: var(--space-sm);
+    gap: 6px;
     flex-shrink: 0;
 }
 
 .habit-entry {
-    width: 36px;
-    height: 36px;
+    width: 28px;
+    height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-sm);
     cursor: pointer;
     transition: transform 0.15s ease,
                 background 0.2s ease,
                 box-shadow 0.2s ease;
     -webkit-tap-highlight-color: transparent;
+    border: none;
+    padding: 0;
 }
 
 .habit-entry:hover {
@@ -211,12 +215,12 @@
 
 .habit-entry.completed {
     background: var(--success-color);
-    box-shadow: 0 2px 8px rgba(52, 199, 89, 0.3);
+    box-shadow: 0 1px 4px rgba(52, 199, 89, 0.3);
 }
 
 .habit-entry.completed svg {
-    width: 18px;
-    height: 18px;
+    width: 14px;
+    height: 14px;
     color: white;
 }
 
@@ -524,16 +528,16 @@
    RESPONSIVE ADJUSTMENTS
 ======================================== */
 
-/* Small phones */
-@media (max-width: 380px) {
+/* Very small phones */
+@media (max-width: 340px) {
     .habit-entry {
-        width: 28px;
-        height: 28px;
+        width: 24px;
+        height: 24px;
     }
 
     .habit-week-day {
-        width: 28px;
-        font-size: 10px;
+        width: 24px;
+        font-size: 9px;
     }
 
     .habit-entries {
@@ -542,19 +546,17 @@
 
     .habit-week-header {
         gap: 4px;
+        padding-right: var(--space-md);
     }
 
-    .habit-content {
-        min-width: 50px;
-    }
-
-    .habit-title {
-        font-size: var(--text-sm);
+    .habit-entry.completed svg {
+        width: 12px;
+        height: 12px;
     }
 }
 
-/* Medium phones (default 36px entries) */
-@media (min-width: 381px) and (max-width: 430px) {
+/* Tablets and larger screens */
+@media (min-width: 600px) {
     .habit-entry {
         width: 32px;
         height: 32px;
@@ -562,25 +564,23 @@
 
     .habit-week-day {
         width: 32px;
+        font-size: var(--text-xs);
     }
 
     .habit-entries {
-        gap: 6px;
+        gap: var(--space-sm);
     }
 
     .habit-week-header {
-        gap: 6px;
-    }
-}
-
-/* Larger screens */
-@media (min-width: 600px) {
-    .habit-entry {
-        width: 40px;
-        height: 40px;
+        gap: var(--space-sm);
     }
 
-    .habit-week-day {
-        width: 40px;
+    .habit-entry.completed svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .habit-title {
+        font-size: var(--text-base);
     }
 }
