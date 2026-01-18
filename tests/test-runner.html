@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Experiments - Unit Tests</title>
+    <style>
+        :root {
+            --bg: #1a1a1a;
+            --surface: #2d2d2d;
+            --text: #ffffff;
+            --text-secondary: #888888;
+            --success: #4ade80;
+            --error: #f87171;
+            --accent: #818cf8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            padding: 24px;
+            line-height: 1.6;
+        }
+
+        h1 {
+            margin-bottom: 8px;
+            color: var(--accent);
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+        }
+
+        .btn-secondary {
+            background: var(--surface);
+            color: var(--text);
+        }
+
+        .results {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+
+        .results h2 {
+            margin-bottom: 16px;
+            font-size: 18px;
+        }
+
+        .summary {
+            display: flex;
+            gap: 24px;
+            margin-bottom: 16px;
+        }
+
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .passed {
+            color: var(--success);
+        }
+
+        .failed {
+            color: var(--error);
+        }
+
+        #console-output {
+            background: #0d0d0d;
+            border-radius: 8px;
+            padding: 16px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            max-height: 500px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .log-pass {
+            color: var(--success);
+        }
+
+        .log-fail {
+            color: var(--error);
+        }
+
+        .log-info {
+            color: var(--accent);
+        }
+
+        .log-default {
+            color: var(--text-secondary);
+        }
+
+        .test-section {
+            margin-bottom: 24px;
+        }
+
+        .test-section h3 {
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--surface);
+        }
+
+        .instructions {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 24px;
+        }
+
+        .instructions h3 {
+            margin-bottom: 12px;
+        }
+
+        .instructions code {
+            background: #0d0d0d;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        .instructions ol {
+            margin-left: 20px;
+        }
+
+        .instructions li {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🧪 Experiments Unit Tests</h1>
+    <p class="subtitle">Testing TodoManager and UI utilities</p>
+
+    <div class="controls">
+        <button class="btn-primary" onclick="runAllTests()">Run All Tests</button>
+        <button class="btn-secondary" onclick="runTodoTests()">Todo Tests Only</button>
+        <button class="btn-secondary" onclick="runUITests()">UI Tests Only</button>
+        <button class="btn-secondary" onclick="clearOutput()">Clear</button>
+    </div>
+
+    <div class="results">
+        <h2>📊 Results</h2>
+        <div class="summary">
+            <div class="stat">
+                <span class="stat-value passed" id="passed-count">0</span>
+                <span class="stat-label">Passed</span>
+            </div>
+            <div class="stat">
+                <span class="stat-value failed" id="failed-count">0</span>
+                <span class="stat-label">Failed</span>
+            </div>
+            <div class="stat">
+                <span class="stat-value" id="total-count" style="color: var(--text)">0</span>
+                <span class="stat-label">Total</span>
+            </div>
+        </div>
+        <div id="console-output">Click "Run All Tests" to start...</div>
+    </div>
+
+    <div class="instructions">
+        <h3>📖 How It Works</h3>
+        <ol>
+            <li>This page loads the main app scripts (<code>ui.js</code>, <code>todo.js</code>)</li>
+            <li>Click <strong>Run All Tests</strong> to execute both test suites</li>
+            <li>Tests backup existing localStorage data before running</li>
+            <li>After tests complete, your original data is restored</li>
+            <li>Results show pass/fail counts and detailed output</li>
+        </ol>
+        <p style="margin-top: 12px; color: var(--text-secondary);">
+            <strong>Tip:</strong> You can also run tests in DevTools Console by loading the test files directly.
+        </p>
+    </div>
+
+    <!-- Load app dependencies (test-runner.html is in tests/) -->
+    <script src="../js/ui.js"></script>
+    <script src="../js/todo.js"></script>
+
+    <!-- Load test files -->
+    <script src="unit/todo.test.js"></script>
+    <script src="unit/ui.test.js"></script>
+
+    <script>
+        // Override console for visual output
+        const outputEl = document.getElementById('console-output');
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalClear = console.clear;
+
+        let totalPassed = 0;
+        let totalFailed = 0;
+
+        function appendOutput(message, type = 'default') {
+            const line = document.createElement('div');
+            line.className = `log-${type}`;
+            line.textContent = message;
+            outputEl.appendChild(line);
+            outputEl.scrollTop = outputEl.scrollHeight;
+        }
+
+        console.log = function (...args) {
+            const message = args.join(' ');
+            let type = 'default';
+            if (message.includes('✅')) type = 'pass';
+            else if (message.includes('📋') || message.includes('═')) type = 'info';
+            appendOutput(message, type);
+            originalLog.apply(console, args);
+        };
+
+        console.error = function (...args) {
+            const message = args.join(' ');
+            appendOutput(message, 'fail');
+            originalError.apply(console, args);
+        };
+
+        console.clear = function () {
+            outputEl.innerHTML = '';
+            originalClear.apply(console);
+        };
+
+        function updateSummary(passed, failed) {
+            totalPassed += passed;
+            totalFailed += failed;
+            document.getElementById('passed-count').textContent = totalPassed;
+            document.getElementById('failed-count').textContent = totalFailed;
+            document.getElementById('total-count').textContent = totalPassed + totalFailed;
+        }
+
+        function resetSummary() {
+            totalPassed = 0;
+            totalFailed = 0;
+            updateSummary(0, 0);
+        }
+
+        function clearOutput() {
+            console.clear();
+            resetSummary();
+            appendOutput('Ready to run tests...', 'info');
+        }
+
+        function runTodoTests() {
+            console.clear();
+            resetSummary();
+            const result = TodoTests.runAll();
+            updateSummary(result.passed, result.failed);
+        }
+
+        function runUITests() {
+            console.clear();
+            resetSummary();
+            const result = UITests.runAll();
+            updateSummary(result.passed, result.failed);
+        }
+
+        function runAllTests() {
+            console.clear();
+            resetSummary();
+
+            console.log('═══════════════════════════════════════════');
+            console.log('   🚀 RUNNING ALL UNIT TESTS');
+            console.log('═══════════════════════════════════════════\n');
+
+            // Run TodoManager tests
+            const todoResult = TodoTests.runAll();
+            updateSummary(todoResult.passed, todoResult.failed);
+
+            console.log('\n');
+
+            // Run UI tests
+            const uiResult = UITests.runAll();
+            updateSummary(uiResult.passed, uiResult.failed);
+
+            // Final summary
+            console.log('\n═══════════════════════════════════════════');
+            console.log(`   🏁 ALL TESTS COMPLETE: ${totalPassed} passed, ${totalFailed} failed`);
+            console.log('═══════════════════════════════════════════');
+        }
+
+        // Initial message
+        appendOutput('Ready to run tests. Click "Run All Tests" to begin.', 'info');
+    </script>
+</body>
+
+</html>

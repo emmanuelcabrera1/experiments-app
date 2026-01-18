@@ -1,35 +1,29 @@
-# HTML Apps Workspace
+# Experiments Web
 
-## Welcome! 👋
+## Intent
+The **Experiments Web** project is a Progressive Web App (PWA) designed to help users track their life experiments using the Tiny Experiments Framework. It serves as both a practical productivity tool and a sandbox for testing new web technologies, UI prototypes, and accessibility patterns.
 
-This workspace is designed to help you build beautiful, professional web applications using **The Elegance Formula**.
+## Key Features
+- **PWA Capabilities**: Offline support, Service Workers, and installability.
+- **Experiment Tracking**: Track experiments with mood logging, streaks, and insights.
+- **Diagnostic Tools**: Built-in debug console and diagnostic pages.
+- **Accessibility First**: WCAG AA compliant with comprehensive audit documentation.
 
-## 📂 Structure
+## Structure
+- **`index.html`**: Main entry point.
+- **`docs/`**: Documentation and audits.
+- **`tests/`**: Diagnostic tools.
+- **`css/`**: Stylesheets.
+- **`js/`**: Application logic and service workers.
+- **`assets/`**: Static assets (PWA icons).
+- **`sw.js`**: Service Worker definition.
+- **`manifest.json`**: Web App Manifest.
 
-- **`documentation/`**: The complete guide and reference manuals.
-  - [The Elegance Formula Guide](documentation/elegance-formula.md)
-- **[GITHUB.md](GITHUB.md)**: Git/GitHub workflow commands (pull, push, etc.)
-- **`projects/`**: Your applications.
-  - [First Elegant App](projects/first-elegant-app/index.html) (Landing Page Demo)
+## Documentation
+- **`docs/ACCESSIBILITY_AUDIT.md`**: Audit reports and accessibility improvements.
+- **`docs/ARCHITECTURE.md`**: System map and technical stack.
+- **`docs/AGENT_CONTEXT.md`**: High-efficiency context for AI Agents.
+- **`docs/DEVELOPER_GUIDE.md`**: Manual for adding experiments and debugging.
 
-- **`templates/`**: Ready-to-use starting points.
-  - [Basic Setup](templates/basic-index.html)
-  - [Landing Page](templates/landing-page.html)
-  - [Contact Form](templates/contact-form.html)
-  - [Dashboard](templates/dashboard.html)
-
-- **`components/`**: Reusable code snippets.
-  - [Navbar](components/navbar.html)
-  - [Buttons](components/buttons.html)
-  - [Forms](components/forms.html)
-  - [Cards](components/cards.html)
-  - [Alerts](components/alerts.html)
-  - [Modal](components/modal.html)
-
-## 🚀 Getting Started
-
-1. **Read the Guide**: Start with [documentation/elegance-formula.md](documentation/elegance-formula.md).
-2. **Explore the Index**: Open [index.html](index.html) in your browser for a visual dashboard.
-3. **Start Building**: Copy a template from `templates/` to `projects/my-new-app/` and start coding!
-
-Happy coding!
+## Getting Started
+Open `index.html` in a modern browser. To test PWA features, serve the directory via HTTP (e.g., using Live Server).
