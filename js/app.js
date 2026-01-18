@@ -19,6 +19,7 @@ const App = {
         showCompleted: true, // Show/hide completed tasks (collapsible)
         showHidden: localStorage.getItem('experiments_show_hidden') === 'true', // Load state from storage
         showDelegated: localStorage.getItem('experiments_show_delegated') === 'true', // Load state for delegated section
+        showFundamentals: localStorage.getItem('experiments_show_fundamentals') !== 'false', // Default to true (expanded)
         showChecklists: localStorage.getItem('experiments_show_checklists') !== 'false', // Default to true (expanded)
         deletedTodo: null, // Temporarily store deleted todo for undo
         undoTimeout: null // Timeout ID for undo operation
@@ -667,9 +668,27 @@ const App = {
         const visibleTodos = todos.filter(t => !t.hidden);
         const hiddenTodos = todos.filter(t => t.hidden);
 
-        // Active and completed from visible only
-        const activeTodos = visibleTodos.filter(t => !t.completed);
-        // REMOVED: completedTodos - No longer rendering completed section
+        // Split visible todos into Fundamentals and regular/today
+        const fundamentalsTodos = visibleTodos.filter(t => !t.completed && t.section === 'fundamentals');
+        const regularTodos = visibleTodos.filter(t => !t.completed && t.section !== 'fundamentals');
+
+        // Build Fundamentals section (collapsible)
+        let fundamentalsSection = '';
+        if (fundamentalsTodos.length > 0) {
+            fundamentalsSection = `
+                <div style="margin-bottom: var(--space-lg);">
+                    <button style="display: flex; width: 100%; align-items: center; justify-content: space-between; margin-bottom: var(--space-sm); cursor: pointer; background: none; border: none; padding: 0; text-align: left;" data-action="toggle-fundamentals" aria-expanded="${this.state.showFundamentals}" aria-label="${this.state.showFundamentals ? 'Hide' : 'Show'} fundamentals">
+                        <p class="subheader" style="margin: 0; color: var(--text-tertiary);">FUNDAMENTALS (${fundamentalsTodos.length})</p>
+                        <span style="color: var(--text-tertiary); font-size: 20px; font-weight: bold;" aria-hidden="true">${this.state.showFundamentals ? '−' : '+'}</span>
+                    </button>
+                    <div style="max-height: ${this.state.showFundamentals ? '10000px' : '0'}; opacity: ${this.state.showFundamentals ? '1' : '0'}; ${!this.state.showFundamentals ? 'display: none;' : ''}">
+                        <div class="todo-list" id="fundamentals-list" role="list" aria-label="Fundamentals tasks">
+                            ${fundamentalsTodos.map(t => this.renderTodoItem(t)).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
 
         let content = '';
         if (todos.length === 0) {
@@ -678,11 +697,11 @@ const App = {
             content = UI.emptyState('All Tasks Hidden', 'Open the Personal or Delegated sections below to see your hidden tasks.');
         } else {
             content = `
+                ${fundamentalsSection}
                 <div class="todo-list" id="todo-list" role="list" aria-label="Active tasks">
-                    ${activeTodos.map(t => this.renderTodoItem(t)).join('')}
+                    ${regularTodos.map(t => this.renderTodoItem(t)).join('')}
                 </div>
             `;
-            // REMOVED: completedTodos section
         }
 
         // Personal section (non-delegated hidden tasks)
@@ -1031,14 +1050,20 @@ const App = {
                             <input type="text" id="todo-detail-title" class="todo-detail-title" value="${escapeHtml(todo.title)}" placeholder="What do you want to accomplish?" maxlength="100" style="width: 100%; font-size: var(--text-xl); font-weight: var(--weight-bold); border: none; background: transparent; padding: 0; color: inherit;">
                             <div style="display: flex; align-items: center; gap: 12px; margin-top: 8px;">
                                 <div style="font-size: var(--text-xs); color: var(--text-tertiary); letter-spacing: 0.5px;">${formattedDate}</div>
-                                
+
                                 ${todo.hidden ? `
                                     <!-- Delegated Toggle -->
                                     <div class="delegated-toggle" style="display: flex; background: var(--inactive-bg); border-radius: 6px; padding: 2px;">
                                         <button type="button" data-action="set-delegated-false" style="border: none; background: ${!todo.delegated ? 'var(--surface-color)' : 'transparent'}; box-shadow: ${!todo.delegated ? '0 1px 2px rgba(0,0,0,0.1)' : 'none'}; border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: 600; color: ${!todo.delegated ? 'var(--text-primary)' : 'var(--text-tertiary)'}; cursor: pointer;">Me</button>
                                         <button type="button" data-action="set-delegated-true" style="border: none; background: ${todo.delegated ? 'var(--surface-color)' : 'transparent'}; box-shadow: ${todo.delegated ? '0 1px 2px rgba(0,0,0,0.1)' : 'none'}; border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: 600; color: ${todo.delegated ? 'var(--text-primary)' : 'var(--text-tertiary)'}; cursor: pointer;">Delegated</button>
                                     </div>
-                                ` : ''}
+                                ` : `
+                                    <!-- Section Toggle (Today vs Fundamentals) -->
+                                    <div class="section-toggle" style="display: flex; background: var(--inactive-bg); border-radius: 6px; padding: 2px;">
+                                        <button type="button" data-action="set-section-today" style="border: none; background: ${todo.section !== 'fundamentals' ? 'var(--surface-color)' : 'transparent'}; box-shadow: ${todo.section !== 'fundamentals' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none'}; border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: 600; color: ${todo.section !== 'fundamentals' ? 'var(--text-primary)' : 'var(--text-tertiary)'}; cursor: pointer;">Today</button>
+                                        <button type="button" data-action="set-section-fundamentals" style="border: none; background: ${todo.section === 'fundamentals' ? 'var(--surface-color)' : 'transparent'}; box-shadow: ${todo.section === 'fundamentals' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none'}; border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: 600; color: ${todo.section === 'fundamentals' ? 'var(--text-primary)' : 'var(--text-tertiary)'}; cursor: pointer;">Fundamentals</button>
+                                    </div>
+                                `}
                             </div>
                         </div>
                         <button class="modal-close" aria-label="Close modal" data-close="modal-todo-detail" style="flex-shrink: 0;">${UI.icons.x}</button>
@@ -1154,7 +1179,12 @@ const App = {
                             <span class="swipe-btn-icon">${todo.delegated ? '👤' : '👋'}</span>
                             <span class="swipe-btn-label">${todo.delegated ? 'Me' : 'Delegate'}</span>
                         </button>
-                    ` : ''}
+                    ` : `
+                        <button class="swipe-btn" data-action="toggle-fundamentals" style="background-color: ${todo.section === 'fundamentals' ? '#FF9800' : '#4CAF50'};" aria-label="${todo.section === 'fundamentals' ? 'Move to Today' : 'Move to Fundamentals'}">
+                            <span class="swipe-btn-icon">${todo.section === 'fundamentals' ? '📋' : '⭐'}</span>
+                            <span class="swipe-btn-label">${todo.section === 'fundamentals' ? 'Today' : 'Fundmtls'}</span>
+                        </button>
+                    `}
                 </div>
                 <!-- Right actions (swipe left reveals) -->
                 <div class="swipe-actions-right">
@@ -1953,6 +1983,17 @@ const App = {
             }
         });
 
+        // Toggle fundamentals section visibility
+        app.addEventListener('click', (e) => {
+            if (e.target.closest('[data-action="toggle-fundamentals"]')) {
+                e.stopPropagation();
+                this.state.showFundamentals = !this.state.showFundamentals;
+                localStorage.setItem('experiments_show_fundamentals', this.state.showFundamentals);
+                this.render();
+                return;
+            }
+        });
+
         // Toggle Checklists section visibility (Selective DOM Update)
         app.addEventListener('click', (e) => {
             const toggle = e.target.closest('[data-action="toggle-checklists-section"]');
@@ -2081,6 +2122,22 @@ const App = {
             }
         });
 
+        // Todo detail modal: Section Toggle (Today/Fundamentals)
+        app.addEventListener('click', (e) => {
+            const setSectionToday = e.target.closest('[data-action="set-section-today"]');
+            const setSectionFundamentals = e.target.closest('[data-action="set-section-fundamentals"]');
+
+            if (setSectionToday || setSectionFundamentals) {
+                e.stopPropagation();
+                if (this.state.currentTodo) {
+                    const section = setSectionFundamentals ? 'fundamentals' : null;
+                    TodoManager.update(this.state.currentTodo, { section: section });
+                    this.render(); // Re-render to update toggle styles and section lists
+                }
+                return;
+            }
+        });
+
         // Swipe Action: Delegated Toggle
         app.addEventListener('click', (e) => {
             const toggleDelegatedBtn = e.target.closest('[data-action="toggle-delegated"]');
@@ -2096,6 +2153,27 @@ const App = {
                         TodoManager.update(todoId, { delegated: newDelegatedState });
                         this.refreshTodoScreenOnly();
                         this.showToast(newDelegatedState ? 'Task Delegated' : 'Task Reclaimed');
+                    }
+                }
+                return;
+            }
+        });
+
+        // Swipe Action: Fundamentals Toggle
+        app.addEventListener('click', (e) => {
+            const toggleFundamentalsBtn = e.target.closest('[data-action="toggle-fundamentals"]');
+            if (toggleFundamentalsBtn) {
+                e.stopPropagation();
+                const swipeContainer = toggleFundamentalsBtn.closest('.swipe-container');
+                const todoId = swipeContainer ? swipeContainer.dataset.swipeId : null;
+
+                if (todoId) {
+                    const todo = TodoManager.getAll().find(t => t.id === todoId);
+                    if (todo) {
+                        const newSection = todo.section === 'fundamentals' ? null : 'fundamentals';
+                        TodoManager.update(todoId, { section: newSection });
+                        this.refreshTodoScreenOnly();
+                        this.showToast(newSection === 'fundamentals' ? 'Moved to Fundamentals' : 'Moved to Today');
                     }
                 }
                 return;

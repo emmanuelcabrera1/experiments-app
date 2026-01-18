@@ -59,6 +59,12 @@ const TodoManager = {
                     t.delegated = false;
                     needsSave = true;
                 }
+
+                // MIGRATION: Add section property (Fundamentals section)
+                if (!t.hasOwnProperty('section')) {
+                    t.section = null; // null = regular/today, 'fundamentals' = Fundamentals section
+                    needsSave = true;
+                }
             });
 
             // Save if migrations were applied
@@ -100,6 +106,7 @@ const TodoManager = {
             completed: false,
             hidden: todoData.hidden || false,
             delegated: todoData.delegated || false,
+            section: todoData.section || null, // null = regular/today, 'fundamentals' = Fundamentals section
             createdAt: new Date().toISOString(),
             sourceSubtaskId: todoData.sourceSubtaskId || null,
             sourceTaskId: todoData.sourceTaskId || null
