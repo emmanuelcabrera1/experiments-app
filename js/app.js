@@ -869,7 +869,6 @@ const App = {
                     </button>
                 </div>
                 <div class="habit-item habit-row" data-habit-id="${habit.id}" draggable="true">
-                    <div class="habit-grip" data-action="drag-habit">${UI.icons.grip}</div>
                     <div class="habit-content" data-action="open-habit-detail">
                         <span class="habit-title">${escapeHtml(habit.title)}</span>
                     </div>
