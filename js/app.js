@@ -664,51 +664,25 @@ const App = {
     renderTodoScreen() {
         const todos = TodoManager.getAll();
 
-        // 1. TODAY: Non-hidden, Not in Fundamentals section
-        const todayTodos = todos.filter(t => !t.hidden && t.completed !== true && t.section !== 'fundamentals');
+        // Filter: visible vs hidden
+        const visibleTodos = todos.filter(t => !t.hidden);
+        const hiddenTodos = todos.filter(t => t.hidden);
 
-        // 2. FUNDAMENTALS: Non-hidden, In Fundamentals section
-        const fundamentalsTodos = todos.filter(t => !t.hidden && t.completed !== true && t.section === 'fundamentals');
+        // Split visible todos into Fundamentals and regular/today
+        const fundamentalsTodos = visibleTodos.filter(t => !t.completed && t.section === 'fundamentals');
+        const regularTodos = visibleTodos.filter(t => !t.completed && t.section !== 'fundamentals');
 
-        // 3. PERSONAL: Hidden, Not Delegated
-        const personalTodos = todos.filter(t => t.hidden && !t.delegated);
-
-        // 4. DELEGATED: Hidden, Delegated
-        const delegatedTodos = todos.filter(t => t.hidden && t.delegated);
-
-        // COMPLETED (Standard handling)
-        const completedTodos = todos.filter(t => t.completed);
-
-
-        // --- SECTION 1: TODAY (Top, Active) ---
-        let todaySection = '';
-        if (todayTodos.length > 0) {
-            todaySection = `
-                <div class="todo-list" id="todo-list" role="list" aria-label="Today tasks">
-                    ${todayTodos.map(t => this.renderTodoItem(t)).join('')}
-                </div>
-            `;
-        } else if (todos.length === 0) {
-            todaySection = UI.emptyState('No Tasks Yet', 'Tap the + button to create your first task.');
-        } else if (todayTodos.length === 0 && (fundamentalsTodos.length > 0 || personalTodos.length > 0 || delegatedTodos.length > 0)) {
-            todaySection = `<div style="padding: 24px; text-align: center; color: var(--text-tertiary); font-style: italic;">All caught up for Today!</div>`;
-        }
-
-
-        // --- SECTION 2: FUNDAMENTALS (Middle) ---
+        // Build Fundamentals section (collapsible)
         let fundamentalsSection = '';
         if (fundamentalsTodos.length > 0) {
             fundamentalsSection = `
-                <div style="margin-top: var(--space-lg); border-top: 1px dashed var(--border-color); padding-top: var(--space-md);">
-                    <button style="display: flex; width: 100%; align-items: center; justify-content: space-between; margin-bottom: var(--space-sm); cursor: pointer; background: none; border: none; padding: 0; text-align: left;" data-action="toggle-fundamentals" aria-expanded="${this.state.showFundamentals}">
-                         <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 18px;">${UI.icons.clipboard || '📋'}</span>
-                            <p class="subheader" style="margin: 0; color: var(--text-secondary); font-weight: 600;">FUNDAMENTALS (${fundamentalsTodos.length})</p>
-                        </div>
-                        <span style="color: var(--text-tertiary); font-size: 20px; font-weight: bold;">${this.state.showFundamentals ? '−' : '+'}</span>
+                <div style="margin-bottom: var(--space-lg);">
+                    <button style="display: flex; width: 100%; align-items: center; justify-content: space-between; margin-bottom: var(--space-sm); cursor: pointer; background: none; border: none; padding: 0; text-align: left;" data-action="toggle-fundamentals" aria-expanded="${this.state.showFundamentals}" aria-label="${this.state.showFundamentals ? 'Hide' : 'Show'} fundamentals">
+                        <p class="subheader" style="margin: 0; color: var(--text-tertiary);">FUNDAMENTALS (${fundamentalsTodos.length})</p>
+                        <span style="color: var(--text-tertiary); font-size: 20px; font-weight: bold;" aria-hidden="true">${this.state.showFundamentals ? '−' : '+'}</span>
                     </button>
-                    <div style="max-height: ${this.state.showFundamentals ? '10000px' : '0'}; opacity: ${this.state.showFundamentals ? '1' : '0'}; overflow: hidden; transition: all 0.3s ease;">
-                        <div class="todo-list" id="fundamentals-list" role="list">
+                    <div style="max-height: ${this.state.showFundamentals ? '10000px' : '0'}; opacity: ${this.state.showFundamentals ? '1' : '0'}; ${!this.state.showFundamentals ? 'display: none;' : ''}">
+                        <div class="todo-list" id="fundamentals-list" role="list" aria-label="Fundamentals tasks">
                             ${fundamentalsTodos.map(t => this.renderTodoItem(t)).join('')}
                         </div>
                     </div>
@@ -716,20 +690,32 @@ const App = {
             `;
         }
 
-        // --- SECTION 3: PERSONAL (Bottom, Muted) ---
-        let personalSection = '';
+        let content = '';
+        if (todos.length === 0) {
+            content = UI.emptyState('No Tasks Yet', 'Tap the + button to create your first task and start getting things done.');
+        } else if (visibleTodos.length === 0 && hiddenTodos.length > 0) {
+            content = UI.emptyState('All Tasks Hidden', 'Open the Personal or Delegated sections below to see your hidden tasks.');
+        } else {
+            content = `
+                ${fundamentalsSection}
+                <div class="todo-list" id="todo-list" role="list" aria-label="Active tasks">
+                    ${regularTodos.map(t => this.renderTodoItem(t)).join('')}
+                </div>
+            `;
+        }
+
+        // Personal section (non-delegated hidden tasks)
+        const personalTodos = hiddenTodos.filter(t => !t.delegated);
+        let personalSectionContent = '';
         if (personalTodos.length > 0) {
-            personalSection = `
+            personalSectionContent = `
                 <div style="margin-top: var(--space-lg);">
-                    <button style="display: flex; width: 100%; align-items: center; justify-content: space-between; margin-bottom: var(--space-sm); cursor: pointer; background: none; border: none; padding: 0; text-align: left;" data-action="toggle-hidden" aria-expanded="${this.state.showHidden}">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 18px;">👤</span>
-                            <p class="subheader" style="margin: 0; color: var(--text-tertiary);">PERSONAL (${personalTodos.length})</p>
-                        </div>
-                        <span style="color: var(--text-tertiary); font-size: 20px; font-weight: bold;">${this.state.showHidden ? '−' : '+'}</span>
+                    <button style="display: flex; width: 100%; align-items: center; justify-content: space-between; margin-bottom: var(--space-sm); cursor: pointer; background: none; border: none; padding: 0; text-align: left;" data-action="toggle-hidden" aria-expanded="${this.state.showHidden}" aria-label="${this.state.showHidden ? 'Hide' : 'Show'} personal tasks">
+                        <p class="subheader" style="margin: 0; color: var(--text-tertiary);">PERSONAL (${personalTodos.length})</p>
+                        <span style="color: var(--text-tertiary); font-size: 20px; font-weight: bold;" aria-hidden="true">${this.state.showHidden ? '−' : '+'}</span>
                     </button>
-                    <div style="max-height: ${this.state.showHidden ? '10000px' : '0'}; opacity: ${this.state.showHidden ? '1' : '0'}; overflow: hidden; transition: all 0.3s ease;">
-                        <div class="todo-list" id="personal-list" role="list" style="filter: grayscale(1); opacity: 0.8;">
+                    <div style="max-height: ${this.state.showHidden ? '10000px' : '0'}; opacity: ${this.state.showHidden ? '1' : '0'}; ${!this.state.showHidden ? 'display: none;' : ''}">
+                        <div class="todo-list" role="list" aria-label="Personal tasks" style="opacity: 0.7;">
                             ${personalTodos.map(t => this.renderTodoItem(t)).join('')}
                         </div>
                     </div>
@@ -737,20 +723,18 @@ const App = {
             `;
         }
 
-        // --- SECTION 4: DELEGATED (Bottom, Muted) ---
-        let delegatedSection = '';
+        // Delegated section (delegated hidden tasks)
+        const delegatedTodos = hiddenTodos.filter(t => t.delegated);
+        let delegatedSectionContent = '';
         if (delegatedTodos.length > 0) {
-            delegatedSection = `
+            delegatedSectionContent = `
                 <div style="margin-top: var(--space-lg);">
-                    <button style="display: flex; width: 100%; align-items: center; justify-content: space-between; margin-bottom: var(--space-sm); cursor: pointer; background: none; border: none; padding: 0; text-align: left;" data-action="toggle-delegated-section" aria-expanded="${this.state.showDelegated}">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 18px;">👋</span>
-                            <p class="subheader" style="margin: 0; color: var(--text-tertiary);">DELEGATED (${delegatedTodos.length})</p>
-                        </div>
-                         <span style="color: var(--text-tertiary); font-size: 20px; font-weight: bold;">${this.state.showDelegated ? '−' : '+'}</span>
+                    <button style="display: flex; width: 100%; align-items: center; justify-content: space-between; margin-bottom: var(--space-sm); cursor: pointer; background: none; border: none; padding: 0; text-align: left;" data-action="toggle-delegated-section" aria-expanded="${this.state.showDelegated}" aria-label="${this.state.showDelegated ? 'Hide' : 'Show'} delegated tasks">
+                        <p class="subheader" style="margin: 0; color: var(--text-tertiary);">DELEGATED (${delegatedTodos.length})</p>
+                        <span style="color: var(--text-tertiary); font-size: 20px; font-weight: bold;" aria-hidden="true">${this.state.showDelegated ? '−' : '+'}</span>
                     </button>
-                    <div style="max-height: ${this.state.showDelegated ? '10000px' : '0'}; opacity: ${this.state.showDelegated ? '1' : '0'}; overflow: hidden; transition: all 0.3s ease;">
-                        <div class="todo-list" id="delegated-list" role="list" style="filter: grayscale(1); opacity: 0.8;">
+                    <div style="max-height: ${this.state.showDelegated ? '10000px' : '0'}; opacity: ${this.state.showDelegated ? '1' : '0'}; ${!this.state.showDelegated ? 'display: none;' : ''}">
+                        <div class="todo-list" role="list" aria-label="Delegated tasks" style="opacity: 0.7;">
                             ${delegatedTodos.map(t => this.renderTodoItem(t)).join('')}
                         </div>
                     </div>
@@ -758,48 +742,20 @@ const App = {
             `;
         }
 
-        // --- SECTION 5: COMPLETED (Collapsible) ---
-        let completedSection = '';
-        if (completedTodos.length > 0) {
-            completedSection = `
-                <div style="margin-top: var(--space-xl); border-top: 1px solid var(--border-color); padding-top: var(--space-lg);">
-                    <button style="display: flex; width: 100%; align-items: center; justify-content: space-between; margin-bottom: var(--space-sm); cursor: pointer; background: none; border: none; padding: 0; text-align: left;" data-action="toggle-completed" aria-expanded="${this.state.showCompleted}">
-                        <p class="subheader" style="margin: 0; color: var(--text-tertiary);">COMPLETED (${completedTodos.length})</p>
-                        <span style="color: var(--text-tertiary); font-size: 14px; transition: transform 0.2s; transform: ${this.state.showCompleted ? 'rotate(180deg)' : 'rotate(0deg)'};" aria-hidden="true">▼</span>
-                    </button>
-                    <div class="completed-list-container" style="max-height: ${this.state.showCompleted ? '10000px' : '0'}; opacity: ${this.state.showCompleted ? '1' : '0'}; overflow: hidden; transition: all 0.3s ease;">
-                         <div class="todo-list completed-list" role="list">
-                            ${completedTodos.map(t => this.renderTodoItem(t)).join('')}
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
+        const hiddenSection = personalSectionContent + delegatedSectionContent;
 
         const today = new Date();
-        const startOfWeek = new Date(today);
-        startOfWeek.setDate(today.getDate() - today.getDay() + 1); // Monday
-        const weekStr = `Week of ${startOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+        const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
+        const dateStr = today.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }).toUpperCase();
 
         return `
             <div class="screen ${this.state.currentTab === 'todo' ? 'active' : ''}" id="screen-todo">
-                <div class="header" style="display: flex; align-items: flex-end; justify-content: space-between;">
-                    <div>
-                        <h1>Today</h1>
-                        <p class="subheader">⭐ Focus</p>
-                    </div>
-                    <div style="text-align: right;">
-                        <span style="font-size: 24px; font-weight: bold; color: var(--primary-color);">${todayTodos.length}</span>
-                        <span style="font-size: 12px; color: var(--text-tertiary); display: block;">Active</span>
-                    </div>
+                <div class="header">
+                    <h1>Today</h1>
+                    <p class="subheader">${dayName} ${dateStr}</p>
                 </div>
-                
-                ${todaySection}
-                ${fundamentalsSection}
-                ${personalSection}
-                ${delegatedSection}
-                ${completedSection}
+                ${content}
+                ${hiddenSection}
             </div>
         `;
     },
@@ -1207,14 +1163,28 @@ const App = {
 
         const statusText = todo.completed ? 'completed' : 'not completed';
         const subtaskText = subtaskCount > 0 ? `, ${completedSubtasks} of ${subtaskCount} subtasks completed` : '';
+        const hideLabel = todo.hidden ? 'Unhide' : 'Hide';
+        const hideIcon = todo.hidden ? '👁️' : '👁️‍🗨️';
+
         return `
             <div class="swipe-container" data-swipe-id="${escapeHtml(todo.id)}" data-swipe-type="todo" aria-label="Swipe to reveal actions">
                 <!-- Left actions (swipe right reveals) -->
                 <div class="swipe-actions-left">
-                    <button class="swipe-btn" data-action="move" style="background-color: var(--primary-color, #2196F3); width: 80px;" aria-label="Move task">
-                        <span class="swipe-btn-icon">➡️</span>
-                        <span class="swipe-btn-label">Move</span>
+                    <button class="swipe-btn swipe-btn-hide" data-action="hide" aria-label="${hideLabel} task">
+                        <span class="swipe-btn-icon">${hideIcon}</span>
+                        <span class="swipe-btn-label">${hideLabel}</span>
                     </button>
+                    ${todo.hidden ? `
+                        <button class="swipe-btn" data-action="toggle-delegated" style="background-color: ${todo.delegated ? '#2196F3' : '#9C27B0'};" aria-label="${todo.delegated ? 'Reclaim' : 'Delegate'} task">
+                            <span class="swipe-btn-icon">${todo.delegated ? '👤' : '👋'}</span>
+                            <span class="swipe-btn-label">${todo.delegated ? 'Me' : 'Delegate'}</span>
+                        </button>
+                    ` : `
+                        <button class="swipe-btn" data-action="toggle-fundamentals" style="background-color: ${todo.section === 'fundamentals' ? '#FF9800' : '#4CAF50'};" aria-label="${todo.section === 'fundamentals' ? 'Move to Today' : 'Move to Fundamentals'}">
+                            <span class="swipe-btn-icon">${todo.section === 'fundamentals' ? '📋' : '⭐'}</span>
+                            <span class="swipe-btn-label">${todo.section === 'fundamentals' ? 'Today' : 'Fundmtls'}</span>
+                        </button>
+                    `}
                 </div>
                 <!-- Right actions (swipe left reveals) -->
                 <div class="swipe-actions-right">
@@ -1890,20 +1860,6 @@ const App = {
         app.addEventListener('click', (e) => {
             if (e.target.closest('#fab-add')) {
                 e.stopPropagation();
-
-                // NEW: Todo Quick Add
-                if (this.state.currentTab === 'todo') {
-                    this.promptAction('New Task', (name) => {
-                        const taskName = name && name.trim();
-                        if (taskName) {
-                            TodoManager.add({ title: taskName });
-                            this.showToast('Task added to Today');
-                            this.render();
-                        }
-                    });
-                    return;
-                }
-
                 // Reset form for new experiment creation
                 const form = document.getElementById('form-create');
                 if (form) {
@@ -2001,17 +1957,6 @@ const App = {
                         }, 300);
                     }
                 }
-                return;
-            }
-        });
-
-        // Toggle fundamentals section visibility
-        app.addEventListener('click', (e) => {
-            if (e.target.closest('[data-action="toggle-fundamentals"]')) {
-                e.stopPropagation();
-                this.state.showFundamentals = !this.state.showFundamentals;
-                localStorage.setItem('experiments_show_fundamentals', this.state.showFundamentals);
-                this.render();
                 return;
             }
         });
@@ -3461,7 +3406,50 @@ const App = {
         // LONG-PRESS DRAG DETECTION (TODO REORDER)
         // ========================================
 
-        // (Merged into Swipe Logic below)
+        let longPressTimer = null;
+        let longPressContainer = null;
+        const LONG_PRESS_DURATION = 500; // ms
+
+        // Start long-press timer on touchstart
+        app.addEventListener('touchstart', (e) => {
+            const container = e.target.closest('.swipe-container[data-swipe-type="todo"]');
+            if (!container) return;
+
+            // Don't trigger if touching buttons or checkbox
+            if (e.target.closest('.swipe-btn, .todo-checkbox')) return;
+
+            longPressContainer = container;
+
+            longPressTimer = setTimeout(() => {
+                if (longPressContainer) {
+                    // Add ready-to-drag class for visual feedback
+                    longPressContainer.classList.add('ready-to-drag');
+                    longPressContainer.setAttribute('draggable', 'true');
+
+                    // Haptic feedback
+                    if (navigator.vibrate) {
+                        navigator.vibrate(30);
+                    }
+                }
+            }, LONG_PRESS_DURATION);
+        }, { passive: true });
+
+        // Cancel long-press on touchmove (user is scrolling/swiping)
+        app.addEventListener('touchmove', (e) => {
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+            }
+        }, { passive: true });
+
+        // Cancel long-press on touchend
+        app.addEventListener('touchend', (e) => {
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+            }
+            // Note: ready-to-drag is cleared in dragend
+        }, { passive: true });
 
         // ========================================
         // SWIPE-TO-REVEAL GESTURE HANDLING
@@ -3501,46 +3489,15 @@ const App = {
         };
 
         // Touch start
-        // Global timer for long-press (Merged)
-        let longPressTimer = null;
-
-        // Touch start
         app.addEventListener('touchstart', (e) => {
             const container = e.target.closest('.swipe-container');
             if (!container) return;
 
-            // 1. HANDLE GRIP (Immediate Drag Mode)
-            if (e.target.closest('.todo-grip, .habit-grip, .grip-handler')) {
-                container.classList.add('ready-to-drag');
-                container.draggable = true;
-                return; // Allow native drag to take over, skip swipe logic
-            }
-
             // Don't start swipe if tapping a button
             if (e.target.closest('.swipe-btn')) return;
 
-            // 2. LONG PRESS LOGIC (Delayed Drag Mode)
-            // Only if NOT touching a button/checkbox
-            if (!e.target.closest('.todo-checkbox, .swipe-btn')) {
-                longPressTimer = setTimeout(() => {
-                    container.classList.add('ready-to-drag');
-
-                    // Visual feedback
-                    const row = container.querySelector('.experiment-row, .todo-row, .habit-row');
-                    if (row) {
-                        row.style.transform = 'scale(1.02)';
-                        row.style.transition = 'transform 0.2s ease';
-                        setTimeout(() => row.style.transform = '', 200);
-                    }
-
-                    container.draggable = true;
-                    // Haptic feedback
-                    if (navigator.vibrate) navigator.vibrate(30);
-
-                    // Cancel swipe state just in case
-                    this.swipeState.active = false;
-                }, 600);
-            }
+            // Prevent swipe if touching the drag grip
+            if (e.target.closest('.todo-grip, .habit-grip, .grip-handler')) return;
 
             const touch = e.touches[0];
             const row = container.querySelector('.experiment-row, .todo-row, .habit-row');
@@ -3643,11 +3600,6 @@ const App = {
 
         // Touch end
         app.addEventListener('touchend', (e) => {
-            if (longPressTimer) {
-                clearTimeout(longPressTimer);
-                longPressTimer = null;
-            }
-
             if (!this.swipeState.active) return;
 
             const { currentX, row, initialTranslateX, leftWidth, rightWidth } = this.swipeState;
@@ -3742,8 +3694,20 @@ const App = {
 
             // Handle todo actions
             if (swipeType === 'todo') {
-                if (action === 'move') {
-                    this.handleMoveAction(swipeId);
+                if (action === 'hide') {
+                    const todo = TodoManager.getAll().find(t => t.id === swipeId);
+                    const isHidden = todo?.hidden;
+                    const updated = TodoManager.toggleHidden(swipeId);
+
+                    // UX Fix: Auto-expand hidden section when hiding a task
+                    // so it doesn't just "disappear"
+                    if (!isHidden) { // Was not hidden, now is hidden
+                        this.state.showHidden = true;
+                        localStorage.setItem('experiments_show_hidden', 'true');
+                    }
+
+                    this.render();
+                    this.showToast(isHidden ? 'Task unhidden' : 'Task hidden');
                 } else if (action === 'delete') {
                     // Get full todo for undo
                     const deletedTodo = TodoManager.getAll().find(t => t.id === swipeId);
@@ -4946,149 +4910,6 @@ const App = {
         this.closeModal('modal-edit-entry');
         this.showToast('Entry updated');
         this.render();
-    },
-
-    /**
-     * Handle Move Action (Swipe Right)
-     */
-    handleMoveAction(todoId) {
-        const todo = TodoManager.get(todoId);
-        if (!todo) return;
-
-        const options = [];
-
-        // Define destinations based on current state
-
-        // 1. Fundamentals
-        if (todo.section !== 'fundamentals') {
-            options.push({
-                label: 'Fundamentals', icon: '📋', handler: () => {
-                    todo.section = 'fundamentals';
-                    todo.hidden = false;
-                    // todo.delegated = false;
-                    TodoManager.save([todo]);
-                }
-            });
-        }
-
-        // 2. Today (Standard)
-        if (todo.hidden || todo.section === 'fundamentals') {
-            options.push({
-                label: 'Today', icon: '⭐', handler: () => {
-                    todo.section = '';
-                    todo.hidden = false;
-                    // todo.delegated = false;
-                    TodoManager.save([todo]);
-                }
-            });
-        }
-
-        // 3. Personal (Hidden, Not Delegated)
-        if (!todo.hidden || todo.delegated) {
-            options.push({
-                label: 'Personal', icon: '👤', handler: () => {
-                    todo.hidden = true;
-                    todo.delegated = false;
-                    todo.section = '';
-                    TodoManager.save([todo]);
-                }
-            });
-        }
-
-        // 4. Delegated (Hidden, Delegated)
-        if (!todo.delegated) {
-            options.push({
-                label: 'Delegated', icon: '👋', handler: () => {
-                    todo.hidden = true;
-                    todo.delegated = true;
-                    todo.section = '';
-                    TodoManager.save([todo]);
-                }
-            });
-        }
-
-        // Show sheet
-        this.showActionSheet('Move Task to...', options);
-    },
-
-    /**
-     * Show Action Sheet Overlay
-     */
-    showActionSheet(title, actions) {
-        // Create or get overlay
-        let overlay = document.getElementById('action-sheet-overlay');
-        if (!overlay) {
-            overlay = document.createElement('div');
-            overlay.id = 'action-sheet-overlay';
-            overlay.className = 'modal-overlay';
-            overlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; display: flex; flex-direction: column; justify-content: flex-end; opacity: 0; transition: opacity 0.3s;';
-            document.body.appendChild(overlay);
-
-            // Close on click
-            overlay.addEventListener('click', (e) => {
-                if (e.target === overlay) this.closeActionSheet();
-            });
-        }
-
-        // Sheet content
-        const sheetHtml = `
-            <div class="action-sheet" style="background: var(--bg-secondary, #fff); border-radius: 16px 16px 0 0; padding: 20px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); max-height: 80vh; overflow-y: auto;">
-                <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600; text-align: center;">${title}</h3>
-                <div class="action-sheet-options" style="display: flex; flex-direction: column; gap: 12px;">
-                    ${actions.map((action, index) => `
-                        <button class="action-sheet-btn" data-index="${index}" style="display: flex; align-items: center; gap: 12px; padding: 16px; background: var(--bg-primary, #f5f5f5); border: none; border-radius: 12px; font-size: 16px; font-weight: 500; cursor: pointer; text-align: left; color: var(--text-primary, #000);">
-                            <span style="font-size: 24px;">${action.icon}</span>
-                            <span>${action.label}</span>
-                        </button>
-                    `).join('')}
-                </div>
-                <button class="action-sheet-cancel" style="margin-top: 16px; width: 100%; padding: 16px; background: transparent; border: none; color: var(--text-secondary, #666); font-size: 16px; cursor: pointer;">Cancel</button>
-            </div>
-        `;
-
-        overlay.innerHTML = sheetHtml;
-        // Ensure it is visible if it was hidden
-        overlay.style.display = 'flex';
-
-        // Bind events
-        const sheet = overlay.querySelector('.action-sheet');
-        const cancelBtn = overlay.querySelector('.action-sheet-cancel');
-
-        cancelBtn.addEventListener('click', () => this.closeActionSheet());
-
-        overlay.querySelectorAll('.action-sheet-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const index = parseInt(btn.dataset.index);
-                const action = actions[index];
-                if (action && action.handler) {
-                    action.handler();
-                }
-                this.closeActionSheet(); // Close after action
-                this.render(); // Ensure re-render
-                this.showToast(`Moved to ${action.label}`);
-            });
-        });
-
-        // Animate in
-        requestAnimationFrame(() => {
-            overlay.style.opacity = '1';
-            sheet.style.transform = 'translateY(0)';
-        });
-
-        this.activeActionSheet = overlay;
-    },
-
-    closeActionSheet() {
-        const overlay = document.getElementById('action-sheet-overlay');
-        if (overlay) {
-            const sheet = overlay.querySelector('.action-sheet');
-            overlay.style.opacity = '0';
-            if (sheet) sheet.style.transform = 'translateY(100%)';
-            setTimeout(() => {
-                if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-                this.activeActionSheet = null;
-            }, 300);
-        }
     }
 };
 
