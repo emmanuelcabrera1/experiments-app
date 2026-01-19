@@ -1169,22 +1169,30 @@ const App = {
         return `
             <div class="swipe-container" data-swipe-id="${escapeHtml(todo.id)}" data-swipe-type="todo" aria-label="Swipe to reveal actions">
                 <div class="swipe-actions-left">
-                    <button class="swipe-btn" data-action="move-to-today" style="background-color: ${!todo.hidden && todo.section !== 'fundamentals' ? '#FFB300' : '#FFC107'};" aria-label="Move to Today">
+                    ${(!todo.hidden && todo.section !== 'fundamentals') ? '' : `
+                    <button class="swipe-btn" data-action="move-to-today" style="background-color: #FFC107;" aria-label="Move to Today">
                         <span class="swipe-btn-icon">⭐</span>
                         <span class="swipe-btn-label">Today</span>
                     </button>
-                    <button class="swipe-btn" data-action="move-to-fundamentals" style="background-color: ${!todo.hidden && todo.section === 'fundamentals' ? '#388E3C' : '#4CAF50'};" aria-label="Move to Fundamentals">
+                    `}
+                    ${(!todo.hidden && todo.section === 'fundamentals') ? '' : `
+                    <button class="swipe-btn" data-action="move-to-fundamentals" style="background-color: #4CAF50;" aria-label="Move to Fundamentals">
                         <span class="swipe-btn-icon">📋</span>
                         <span class="swipe-btn-label">Fundmtls</span>
                     </button>
-                    <button class="swipe-btn" data-action="move-to-personal" style="background-color: ${todo.hidden && !todo.delegated ? '#7B1FA2' : '#9C27B0'};" aria-label="Move to Personal">
+                    `}
+                    ${(todo.hidden && !todo.delegated) ? '' : `
+                    <button class="swipe-btn" data-action="move-to-personal" style="background-color: #9C27B0;" aria-label="Move to Personal">
                         <span class="swipe-btn-icon">👤</span>
                         <span class="swipe-btn-label">Personal</span>
                     </button>
-                    <button class="swipe-btn" data-action="move-to-delegated" style="background-color: ${todo.delegated ? '#1565C0' : '#2196F3'};" aria-label="Move to Delegated">
+                    `}
+                    ${(todo.delegated) ? '' : `
+                    <button class="swipe-btn" data-action="move-to-delegated" style="background-color: #2196F3;" aria-label="Move to Delegated">
                         <span class="swipe-btn-icon">👋</span>
                         <span class="swipe-btn-label">Delegate</span>
                     </button>
+                    `}
                 </div>
                 <!-- Right actions (swipe left reveals) -->
                 <div class="swipe-actions-right">
