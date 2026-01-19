@@ -697,9 +697,11 @@ const App = {
             content = UI.emptyState('All Tasks Hidden', 'Open the Personal or Delegated sections below to see your hidden tasks.');
         } else {
             content = `
-                ${fundamentalsSection}
                 <div class="todo-list" id="todo-list" role="list" aria-label="Active tasks">
                     ${regularTodos.map(t => this.renderTodoItem(t)).join('')}
+                </div>
+                <div style="margin-top: var(--space-lg);">
+                    ${fundamentalsSection}
                 </div>
             `;
         }
@@ -1163,28 +1165,26 @@ const App = {
 
         const statusText = todo.completed ? 'completed' : 'not completed';
         const subtaskText = subtaskCount > 0 ? `, ${completedSubtasks} of ${subtaskCount} subtasks completed` : '';
-        const hideLabel = todo.hidden ? 'Unhide' : 'Hide';
-        const hideIcon = todo.hidden ? '👁️' : '👁️‍🗨️';
 
         return `
             <div class="swipe-container" data-swipe-id="${escapeHtml(todo.id)}" data-swipe-type="todo" aria-label="Swipe to reveal actions">
-                <!-- Left actions (swipe right reveals) -->
                 <div class="swipe-actions-left">
-                    <button class="swipe-btn swipe-btn-hide" data-action="hide" aria-label="${hideLabel} task">
-                        <span class="swipe-btn-icon">${hideIcon}</span>
-                        <span class="swipe-btn-label">${hideLabel}</span>
+                    <button class="swipe-btn" data-action="move-to-today" style="background-color: ${!todo.hidden && todo.section !== 'fundamentals' ? '#FFB300' : '#FFC107'};" aria-label="Move to Today">
+                        <span class="swipe-btn-icon">⭐</span>
+                        <span class="swipe-btn-label">Today</span>
                     </button>
-                    ${todo.hidden ? `
-                        <button class="swipe-btn" data-action="toggle-delegated" style="background-color: ${todo.delegated ? '#2196F3' : '#9C27B0'};" aria-label="${todo.delegated ? 'Reclaim' : 'Delegate'} task">
-                            <span class="swipe-btn-icon">${todo.delegated ? '👤' : '👋'}</span>
-                            <span class="swipe-btn-label">${todo.delegated ? 'Me' : 'Delegate'}</span>
-                        </button>
-                    ` : `
-                        <button class="swipe-btn" data-action="toggle-fundamentals" style="background-color: ${todo.section === 'fundamentals' ? '#FF9800' : '#4CAF50'};" aria-label="${todo.section === 'fundamentals' ? 'Move to Today' : 'Move to Fundamentals'}">
-                            <span class="swipe-btn-icon">${todo.section === 'fundamentals' ? '📋' : '⭐'}</span>
-                            <span class="swipe-btn-label">${todo.section === 'fundamentals' ? 'Today' : 'Fundmtls'}</span>
-                        </button>
-                    `}
+                    <button class="swipe-btn" data-action="move-to-fundamentals" style="background-color: ${!todo.hidden && todo.section === 'fundamentals' ? '#388E3C' : '#4CAF50'};" aria-label="Move to Fundamentals">
+                        <span class="swipe-btn-icon">📋</span>
+                        <span class="swipe-btn-label">Fundmtls</span>
+                    </button>
+                    <button class="swipe-btn" data-action="move-to-personal" style="background-color: ${todo.hidden && !todo.delegated ? '#7B1FA2' : '#9C27B0'};" aria-label="Move to Personal">
+                        <span class="swipe-btn-icon">👤</span>
+                        <span class="swipe-btn-label">Personal</span>
+                    </button>
+                    <button class="swipe-btn" data-action="move-to-delegated" style="background-color: ${todo.delegated ? '#1565C0' : '#2196F3'};" aria-label="Move to Delegated">
+                        <span class="swipe-btn-icon">👋</span>
+                        <span class="swipe-btn-label">Delegate</span>
+                    </button>
                 </div>
                 <!-- Right actions (swipe left reveals) -->
                 <div class="swipe-actions-right">
@@ -2138,43 +2138,74 @@ const App = {
             }
         });
 
-        // Swipe Action: Delegated Toggle
+        // Swipe Action: Move to Today
         app.addEventListener('click', (e) => {
-            const toggleDelegatedBtn = e.target.closest('[data-action="toggle-delegated"]');
-            if (toggleDelegatedBtn) {
+            const btn = e.target.closest('[data-action="move-to-today"]');
+            if (btn) {
                 e.stopPropagation();
-                const swipeContainer = toggleDelegatedBtn.closest('.swipe-container');
+                const swipeContainer = btn.closest('.swipe-container');
                 const todoId = swipeContainer ? swipeContainer.dataset.swipeId : null;
-
                 if (todoId) {
-                    const todo = TodoManager.getAll().find(t => t.id === todoId);
-                    if (todo) {
-                        const newDelegatedState = !todo.delegated;
-                        TodoManager.update(todoId, { delegated: newDelegatedState });
-                        this.refreshTodoScreenOnly();
-                        this.showToast(newDelegatedState ? 'Task Delegated' : 'Task Reclaimed');
-                    }
+                    TodoManager.update(todoId, { hidden: false, delegated: false, section: null });
+                    this.refreshTodoScreenOnly();
+                    this.showToast('Moved to Today');
                 }
                 return;
             }
         });
 
-        // Swipe Action: Fundamentals Toggle
+        // Swipe Action: Move to Fundamentals
         app.addEventListener('click', (e) => {
-            const toggleFundamentalsBtn = e.target.closest('[data-action="toggle-fundamentals"]');
-            if (toggleFundamentalsBtn) {
+            const btn = e.target.closest('[data-action="move-to-fundamentals"]');
+            if (btn) {
                 e.stopPropagation();
-                const swipeContainer = toggleFundamentalsBtn.closest('.swipe-container');
+                const swipeContainer = btn.closest('.swipe-container');
                 const todoId = swipeContainer ? swipeContainer.dataset.swipeId : null;
-
                 if (todoId) {
-                    const todo = TodoManager.getAll().find(t => t.id === todoId);
-                    if (todo) {
-                        const newSection = todo.section === 'fundamentals' ? null : 'fundamentals';
-                        TodoManager.update(todoId, { section: newSection });
-                        this.refreshTodoScreenOnly();
-                        this.showToast(newSection === 'fundamentals' ? 'Moved to Fundamentals' : 'Moved to Today');
-                    }
+                    TodoManager.update(todoId, { hidden: false, delegated: false, section: 'fundamentals' });
+                    // Auto-expand Fundamentals section
+                    this.state.showFundamentals = true;
+                    localStorage.setItem('experiments_show_fundamentals', 'true');
+                    this.refreshTodoScreenOnly();
+                    this.showToast('Moved to Fundamentals');
+                }
+                return;
+            }
+        });
+
+        // Swipe Action: Move to Personal
+        app.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-action="move-to-personal"]');
+            if (btn) {
+                e.stopPropagation();
+                const swipeContainer = btn.closest('.swipe-container');
+                const todoId = swipeContainer ? swipeContainer.dataset.swipeId : null;
+                if (todoId) {
+                    TodoManager.update(todoId, { hidden: true, delegated: false });
+                    // Auto-expand Personal section
+                    this.state.showHidden = true;
+                    localStorage.setItem('experiments_show_hidden', 'true');
+                    this.refreshTodoScreenOnly();
+                    this.showToast('Moved to Personal');
+                }
+                return;
+            }
+        });
+
+        // Swipe Action: Move to Delegated
+        app.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-action="move-to-delegated"]');
+            if (btn) {
+                e.stopPropagation();
+                const swipeContainer = btn.closest('.swipe-container');
+                const todoId = swipeContainer ? swipeContainer.dataset.swipeId : null;
+                if (todoId) {
+                    TodoManager.update(todoId, { hidden: true, delegated: true });
+                    // Auto-expand Delegated section
+                    this.state.showDelegated = true;
+                    localStorage.setItem('experiments_show_delegated', 'true');
+                    this.refreshTodoScreenOnly();
+                    this.showToast('Moved to Delegated');
                 }
                 return;
             }
