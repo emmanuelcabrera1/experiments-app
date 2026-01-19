@@ -284,7 +284,7 @@ button:focus-visible,
     transition: none;
 }
 
-/* Action button containers */
+/* Action button containers - hidden by default */
 .swipe-actions-right,
 .swipe-actions-left {
     position: absolute;
@@ -295,6 +295,20 @@ button:focus-visible,
     gap: 8px;
     padding: 0 8px;
     z-index: 1;
+    visibility: hidden;
+    opacity: 0;
+    transition: visibility 0s, opacity 0.2s ease;
+}
+
+/* Show actions when container is swiped */
+.swipe-container[data-revealed] .swipe-actions-right,
+.swipe-container[data-revealed] .swipe-actions-left,
+.swipe-container .todo-row.swiping ~ .swipe-actions-right,
+.swipe-container .todo-row.swiping ~ .swipe-actions-left,
+.swipe-container .experiment-row.swiping ~ .swipe-actions-right,
+.swipe-container .experiment-row.swiping ~ .swipe-actions-left {
+    visibility: visible;
+    opacity: 1;
 }
 
 .swipe-actions-right {
